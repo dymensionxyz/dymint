@@ -1,4 +1,4 @@
-package daclient
+package client
 
 import (
 	"encoding/json"

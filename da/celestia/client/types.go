@@ -1,4 +1,4 @@
-package daclient
+package client
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// DA defines very generic interface for interaction with Data Availability layers.
-type DA interface {
+// DAClient defines very generic interface for interaction with Data Availability layers.
+type DAClient interface {
 	// MaxBlobSize returns the max blob size
 	MaxBlobSize(ctx context.Context) (uint64, error)
 
@@ -70,11 +70,6 @@ type Balance = sdk.Coin
 type GetIDsResult struct {
 	IDs       []ID
 	Timestamp time.Time
-}
-
-//go:generate mockgen -destination=mocks/api.go -package=mocks . Module
-type Module interface {
-	DA
 }
 
 // API defines the jsonrpc DA service module API

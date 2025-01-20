@@ -6,7 +6,7 @@ require (
 	cosmossdk.io/errors v1.0.1
 	github.com/avast/retry-go/v4 v4.5.0
 	github.com/celestiaorg/celestia-openrpc v0.4.1-0.20240828130104-089b92870cb6
-	github.com/celestiaorg/go-cnc v0.4.2
+	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/cosmos/ibc-go/v6 v6.2.1
@@ -19,7 +19,6 @@ require (
 	github.com/gogo/protobuf v1.3.3
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.5.1
 	github.com/ignite/cli v0.26.1
@@ -51,7 +50,6 @@ require (
 	cosmossdk.io/depinject v1.0.0-alpha.4 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/celestiaorg/go-square v1.0.1 // indirect
-	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/coinbase/rosetta-sdk-go v0.7.9 // indirect
 	github.com/cosmos/cosmos-db v1.0.0 // indirect
@@ -63,6 +61,7 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gogo/gateway v1.1.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
+	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
@@ -103,7 +102,7 @@ require (
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/ethereum/go-ethereum v1.12.0
-	github.com/filecoin-project/go-jsonrpc v0.6.0 // indirect
+	github.com/filecoin-project/go-jsonrpc v0.6.0
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -170,7 +169,6 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
-	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect

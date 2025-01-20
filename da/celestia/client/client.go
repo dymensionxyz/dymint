@@ -1,4 +1,4 @@
-package daclient
+package client
 
 import (
 	"context"
@@ -14,6 +14,56 @@ type Client struct {
 	Headers HeadersAPI
 	State   StateAPI
 	closer  multiClientCloser
+}
+
+// Balance implements DAClient.
+func (c Client) Balance(ctx context.Context) (*Balance, error) {
+	return c.State.Balance(ctx)
+}
+
+// Commit implements DAClient.
+func (c Client) Commit(ctx context.Context, blobs []Blob, namespace Namespace) ([]Commitment, error) {
+	return c.DA.Commit(ctx, blobs, namespace)
+}
+
+// Get implements DAClient.
+func (c Client) Get(ctx context.Context, ids []ID, namespace Namespace) ([]Blob, error) {
+	return c.DA.Get(ctx, ids, namespace)
+}
+
+// GetByHeight implements DAClient.
+func (c Client) GetByHeight(ctx context.Context, height uint64) (*ExtendedHeader, error) {
+	return c.Headers.GetByHeight(ctx, height)
+}
+
+// GetIDs implements DAClient.
+func (c Client) GetIDs(ctx context.Context, height uint64, namespace Namespace) (*GetIDsResult, error) {
+	return c.DA.GetIDs(ctx, height, namespace)
+}
+
+// GetProofs implements DAClient.
+func (c Client) GetProofs(ctx context.Context, ids []ID, namespace Namespace) ([]Proof, error) {
+	return c.DA.GetProofs(ctx, ids, namespace)
+}
+
+// MaxBlobSize implements DAClient.
+func (c Client) MaxBlobSize(ctx context.Context) (uint64, error) {
+	return c.DA.MaxBlobSize(ctx)
+}
+
+// Submit implements DAClient.
+func (c Client) Submit(ctx context.Context, blobs []Blob, gasPrice float64, namespace Namespace) ([]ID, error) {
+	return c.DA.Submit(ctx, blobs, gasPrice, namespace)
+}
+
+// SubmitWithOptions implements DAClient.
+func (c Client) SubmitWithOptions(ctx context.Context, blobs []Blob, gasPrice float64, namespace Namespace, options []byte) ([]ID, error) {
+	return c.DA.SubmitWithOptions(ctx, blobs, gasPrice, namespace, options)
+}
+
+// Validate implements DAClient.
+func (c Client) Validate(ctx context.Context, ids []ID, proofs []Proof, namespace Namespace) ([]bool, error) {
+	return c.DA.Validate(ctx, ids, proofs, namespace)
 }
 
 // multiClientCloser is a wrapper struct to close clients across multiple namespaces.
@@ -40,15 +90,15 @@ func (c *Client) Close() {
 
 // NewClient returns a DA backend based on the uri
 // and auth token.
-func NewClient(uri, token string) (Client, error) {
+func NewClient(uri, token string) (DAClient, error) {
 
-	var client Client
+	var client DAClient
 
 	authHeader := http.Header{"Authorization": []string{fmt.Sprintf("Bearer %s", token)}}
 
 	jsonrpcClient, err := newClient(context.Background(), uri, authHeader)
 	if err != nil {
-		return Client{}, err
+		return nil, err
 	}
 	client = *jsonrpcClient
 
