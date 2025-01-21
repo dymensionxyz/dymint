@@ -13,6 +13,7 @@ const (
 	CodeTxTooLarge                 Code = 32006
 	CodeContextDeadline            Code = 32007
 	CodeFutureHeight               Code = 32008
+	CodeHeightZero                 Code = 32009
 )
 
 // ErrBlobNotFound is used to indicate that the blob was not found.
@@ -69,4 +70,11 @@ type ErrFutureHeight struct{}
 
 func (e *ErrFutureHeight) Error() string {
 	return "given height is from the future"
+}
+
+// ErrHeightZero returned when requested headers height is equal to 0.
+type ErrHeightZero struct{}
+
+func (e *ErrFutureHeight) Error() string {
+	return "height is equal to 0"
 }

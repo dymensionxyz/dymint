@@ -139,5 +139,6 @@ func getKnownErrorsMapping() jsonrpc.Errors {
 	errs.Register(jsonrpc.ErrorCode(CodeTxTooLarge), new(*ErrTxTooLarge))
 	errs.Register(jsonrpc.ErrorCode(CodeContextDeadline), new(*ErrContextDeadline))
 	errs.Register(jsonrpc.ErrorCode(CodeFutureHeight), new(*ErrFutureHeight))
+	errs.Register(jsonrpc.ErrorCode(CodeHeightZero), new(*ErrHeightZero))
 	return errs
 }
