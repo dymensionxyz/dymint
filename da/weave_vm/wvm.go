@@ -553,7 +553,7 @@ func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHa
 			return nil
 		},
 		retry.Context(ctx),
-		retry.Attempts(uint(*c.config.RetryAttempts)),
+		retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 		retry.Delay(c.config.RetryDelay),
 		retry.DelayType(retry.FixedDelay), // Force fixed delay between attempts
 		retry.LastErrorOnly(true),         // Only log the last error
@@ -573,7 +573,7 @@ func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHa
 }
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
-func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 	return weaveVMtypes.WeaveVMMaxTransactionSize
 }
 

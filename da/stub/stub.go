@@ -43,7 +43,7 @@ func (l Layer) WaitForSyncing() {
 	panic("implement me")
 }
 
-func (l Layer) GetMaxBlobSizeBytes() uint32 {
+func (l Layer) GetMaxBlobSizeBytes() uint64 {
 	panic("implement me")
 }
 

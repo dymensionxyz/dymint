@@ -241,7 +241,7 @@ type DataAvailabilityLayerClient interface {
 	WaitForSyncing()
 
 	// Returns the maximum allowed blob size in the DA, used to check the max batch size configured
-	GetMaxBlobSizeBytes() uint32
+	GetMaxBlobSizeBytes() uint64
 
 	// GetSignerBalance returns the balance for a specific address
 	GetSignerBalance() (Balance, error)

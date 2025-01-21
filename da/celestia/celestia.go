@@ -205,7 +205,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 			defer cancel()
 			ids, err := c.client.Submit(ctx, []da.Blob{data}, c.config.GasPrices, c.config.NamespaceID.Bytes())
-
 			if err != nil {
 				c.logger.Error("Submit blob.", "error", err)
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
@@ -274,6 +273,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 		}
 	}
 }
+
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	var availabilityResult da.ResultCheckBatch
 	for {
@@ -307,13 +307,12 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 }
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
-func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
-	/*bytes, err := c.getMaxBlobSizeBytes()
+func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
+	bytes, err := c.getMaxBlobSizeBytes()
 	if err != nil {
 		c.logger.Error("GetMaxBlobSizeBytes error", err)
 	}
-	return uint32(bytes)*/
-	return maxBlobSizeBytes
+	return bytes
 }
 
 // getMaxBlobSizeBytes returns the maximum allowed blob size from celestia rpc
@@ -379,7 +378,6 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 
 	DACheckMetaData.Root = dah.DAH.Hash()
 
-	included := false
 	ids := []goDA.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
 	daProofs, err := c.client.GetProofs(ctx, ids, c.config.NamespaceID.Bytes())
 	if err != nil || daProofs[0] == nil {
@@ -443,9 +441,8 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 			}
 		}
 	}
-	includeds, err := c.client.Validate(ctx, ids, daProofs, c.config.NamespaceID.Bytes())
-	included = includeds[0]
-	//included, err = c.validateProof(daMetaData, proof)
+	included, err := c.client.Validate(ctx, ids, daProofs, c.config.NamespaceID.Bytes())
+	// included, err = c.validateProof(daMetaData, proof)
 	// The both cases below (there is an error validating the proof or the proof is wrong) should not happen
 	// if we consider correct functioning of the celestia light node.
 	// This will only happen in case the previous step the celestia light node returned wrong proofs..
@@ -458,7 +455,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 			},
 			CheckMetaData: DACheckMetaData,
 		}
-	} else if !included {
+	} else if !included[0] {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,

@@ -91,7 +91,6 @@ func (c *Client) Close() {
 // NewClient returns a DA backend based on the uri
 // and auth token.
 func NewClient(uri, token string) (DAClient, error) {
-
 	var client DAClient
 
 	authHeader := http.Header{"Authorization": []string{fmt.Sprintf("Bearer %s", token)}}
