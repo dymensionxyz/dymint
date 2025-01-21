@@ -7,8 +7,6 @@ import (
 	"time"
 
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
-
-	openrpcns "github.com/celestiaorg/celestia-openrpc/types/namespace"
 )
 
 const (
@@ -34,7 +32,7 @@ type Config struct {
 	Backoff        uretry.BackoffConfig `json:"backoff,omitempty"`
 	RetryAttempts  *int                 `json:"retry_attempts,omitempty"`
 	RetryDelay     time.Duration        `json:"retry_delay,omitempty"`
-	NamespaceID    openrpcns.Namespace  `json:"-"`
+	NamespaceID    Namespace            `json:"-"`
 }
 
 var TestConfig = Config{
@@ -42,7 +40,7 @@ var TestConfig = Config{
 	Timeout:        5 * time.Second,
 	GasPrices:      DefaultGasPrices,
 	NamespaceIDStr: "",
-	NamespaceID:    openrpcns.Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 0, 0, 255, 255}},
+	NamespaceID:    Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 0, 0, 255, 255}},
 }
 
 func generateRandNamespaceID() string {
@@ -65,11 +63,11 @@ func (c *Config) InitNamespaceID() error {
 	}
 
 	// Check if NamespaceID is of correct length (10 bytes)
-	if len(namespaceBytes) != openrpcns.NamespaceVersionZeroIDSize {
-		return fmt.Errorf("wrong length: got: %v: expect %v", len(namespaceBytes), openrpcns.NamespaceVersionZeroIDSize)
+	if len(namespaceBytes) != NamespaceVersionZeroIDSize {
+		return fmt.Errorf("wrong length: got: %v: expect %v", len(namespaceBytes), NamespaceVersionZeroIDSize)
 	}
 
-	ns, err := openrpcns.New(openrpcns.NamespaceVersionZero, append(openrpcns.NamespaceVersionZeroPrefix, namespaceBytes...))
+	ns, err := New(NamespaceVersionZero, append(NamespaceVersionZeroPrefix, namespaceBytes...))
 	if err != nil {
 		return err
 	}

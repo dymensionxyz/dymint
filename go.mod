@@ -5,7 +5,6 @@ go 1.23.1
 require (
 	cosmossdk.io/errors v1.0.1
 	github.com/avast/retry-go/v4 v4.5.0
-	github.com/celestiaorg/celestia-openrpc v0.4.1-0.20240828130104-089b92870cb6
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/cosmos-sdk v0.46.16
@@ -48,8 +47,9 @@ require (
 	cosmossdk.io/collections v0.4.0 // indirect
 	cosmossdk.io/core v0.12.0 // indirect
 	cosmossdk.io/depinject v1.0.0-alpha.4 // indirect
+	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
+	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
-	github.com/celestiaorg/go-square v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/coinbase/rosetta-sdk-go v0.7.9 // indirect
 	github.com/cosmos/cosmos-db v1.0.0 // indirect
@@ -66,6 +66,7 @@ require (
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/opencontainers/runc v1.1.5 // indirect
 	github.com/rakyll/statik v0.1.7 // indirect
 	github.com/regen-network/cosmos-proto v0.3.1 // indirect
 	github.com/rs/zerolog v1.29.1 // indirect
@@ -88,10 +89,7 @@ require (
 	github.com/btcsuite/btcd v0.23.4 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
-	github.com/celestiaorg/go-header v0.4.1 // indirect
-	github.com/celestiaorg/merkletree v0.0.0-20210714075610-a84dc3ddbbe4 // indirect
 	github.com/celestiaorg/nmt v0.21.0
-	github.com/celestiaorg/rsmt2d v0.11.0 // indirect
 	github.com/cometbft/cometbft v0.37.2
 	github.com/cometbft/cometbft-db v0.11.0 // indirect
 	github.com/cosmos/cosmos-proto v1.0.0-beta.3
@@ -111,7 +109,6 @@ require (
 	github.com/google/pprof v0.0.0-20240207164012-fb44976bdcd5 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
-	github.com/klauspost/reedsolomon v1.11.8 // indirect
 	github.com/lib/pq v1.10.7 // indirect
 	github.com/libp2p/go-yamux/v4 v4.0.1 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
