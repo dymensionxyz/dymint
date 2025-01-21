@@ -221,15 +221,8 @@ func NewMockDA(t *testing.T) (*MockDA, error) {
 		celestia.WithRPCAttempts(1),
 		celestia.WithRPCRetryDelay(time.Second * 2),
 	}
-	roots := [][]byte{[]byte("apple"), []byte("watermelon"), []byte("kiwi")}
-	dah := &daclient.DataAvailabilityHeader{
-		RowRoots:    roots,
-		ColumnRoots: roots,
-	}
-	mockDA.Header = &daclient.ExtendedHeader{
-		DAH: dah,
-	}
 
+	mockDA.Header = GetMockExtenderHeader()
 	mockDA.NID = config.NamespaceID.Bytes()
 
 	mockDA.IDS = []daclient.ID{[]byte("test")}
@@ -239,17 +232,36 @@ func NewMockDA(t *testing.T) (*MockDA, error) {
 	// build a proof for an NID that is within the namespace range of the tree
 	proof, err := tree.ProveNamespace(mockDA.NID)
 	require.NoError(t, err)
-	var proofs []*nmt.Proof
-	proofs = append(proofs, &proof)
-	jsonProofs, err := json.Marshal(proofs)
+	jsonProofs, err := GetMockJsonNMTProofs(&proof)
 	require.NoError(t, err)
-	mockDA.BlobProofs = []daclient.Proof{jsonProofs}
-
+	mockDA.BlobProofs = jsonProofs
+	mockDA.Header = GetMockExtenderHeader()
 	err = mockDA.DaClient.Init(conf, nil, store.NewDefaultInMemoryKVStore(), log.TestingLogger(), options...)
 	if err != nil {
 		return nil, err
 	}
 	return mockDA, nil
+}
+
+func GetMockJsonNMTProofs(proof *nmt.Proof) ([]daclient.Proof, error) {
+	var proofs []*nmt.Proof
+	proofs = append(proofs, proof)
+	jsonProofs, err := json.Marshal(proofs)
+	if err != nil {
+		return nil, err
+	}
+	return []daclient.Proof{jsonProofs}, nil
+}
+
+func GetMockExtenderHeader() *daclient.ExtendedHeader {
+	roots := [][]byte{[]byte("apple"), []byte("watermelon"), []byte("kiwi")}
+	dah := &daclient.DataAvailabilityHeader{
+		RowRoots:    roots,
+		ColumnRoots: roots,
+	}
+	return &daclient.ExtendedHeader{
+		DAH: dah,
+	}
 }
 
 // exampleNMT creates a new NamespacedMerkleTree with the given namespace ID size and leaf namespace IDs. Each byte in the leavesNIDs parameter corresponds to one leaf's namespace ID. If nidSize is greater than 1, the function repeats each NID in leavesNIDs nidSize times before prepending it to the leaf data.
