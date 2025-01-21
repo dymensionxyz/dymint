@@ -1,4 +1,4 @@
-package weave_vm
+package weavevm
 
 import (
 	"bytes"
@@ -12,10 +12,10 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/weave_vm/gateway"
-	"github.com/dymensionxyz/dymint/da/weave_vm/rpc"
-	"github.com/dymensionxyz/dymint/da/weave_vm/signer"
-	weaveVMtypes "github.com/dymensionxyz/dymint/da/weave_vm/types"
+	"github.com/dymensionxyz/dymint/da/weavevm/gateway"
+	"github.com/dymensionxyz/dymint/da/weavevm/rpc"
+	"github.com/dymensionxyz/dymint/da/weavevm/signer"
+	weaveVMtypes "github.com/dymensionxyz/dymint/da/weavevm/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/metrics"

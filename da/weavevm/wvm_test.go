@@ -1,4 +1,4 @@
-package weave_vm_test
+package weavevm_test
 
 import (
 	"context"
@@ -20,8 +20,8 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/weave_vm"
-	weaveVMtypes "github.com/dymensionxyz/dymint/da/weave_vm/types"
+	"github.com/dymensionxyz/dymint/da/weavevm"
+	weaveVMtypes "github.com/dymensionxyz/dymint/da/weavevm/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
@@ -68,7 +68,7 @@ const (
 	testBlockHash = "0xblockhash"
 )
 
-func setupTestDALC(t *testing.T, mockWVM *MockWeaveVM, mockGateway *MockGateway) (*weave_vm.DataAvailabilityLayerClient, *pubsub.Server) {
+func setupTestDALC(t *testing.T, mockWVM *MockWeaveVM, mockGateway *MockGateway) (*weavevm.DataAvailabilityLayerClient, *pubsub.Server) {
 	t.Helper()
 
 	cfg := getTestConfig()
@@ -79,9 +79,9 @@ func setupTestDALC(t *testing.T, mockWVM *MockWeaveVM, mockGateway *MockGateway)
 	err = pubsubServer.Start()
 	require.NoError(t, err)
 
-	dalc := &weave_vm.DataAvailabilityLayerClient{}
+	dalc := &weavevm.DataAvailabilityLayerClient{}
 	err = dalc.Init(configBytes, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger(),
-		weave_vm.WithRPCClient(mockWVM), weave_vm.WithGatewayClient(mockGateway))
+		weavevm.WithRPCClient(mockWVM), weavevm.WithGatewayClient(mockGateway))
 	require.NoError(t, err)
 
 	err = dalc.Start()
@@ -123,7 +123,7 @@ func TestInit(t *testing.T) {
 		configBytes, err := json.Marshal(config)
 		require.NoError(t, err)
 
-		dalc := &weave_vm.DataAvailabilityLayerClient{}
+		dalc := &weavevm.DataAvailabilityLayerClient{}
 		err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 		require.NoError(t, err)
 	})
@@ -137,7 +137,7 @@ func TestInit(t *testing.T) {
 		configBytes, err := json.Marshal(config)
 		require.NoError(t, err)
 
-		dalc := &weave_vm.DataAvailabilityLayerClient{}
+		dalc := &weavevm.DataAvailabilityLayerClient{}
 		err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 		require.NoError(t, err)
 	})
@@ -150,7 +150,7 @@ func TestInit(t *testing.T) {
 		configBytes, err := json.Marshal(config)
 		require.NoError(t, err)
 
-		dalc := &weave_vm.DataAvailabilityLayerClient{}
+		dalc := &weavevm.DataAvailabilityLayerClient{}
 		err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 		require.Error(t, err)
 	})
@@ -163,7 +163,7 @@ func TestInit(t *testing.T) {
 		configBytes, err := json.Marshal(config)
 		require.NoError(t, err)
 
-		dalc := &weave_vm.DataAvailabilityLayerClient{}
+		dalc := &weavevm.DataAvailabilityLayerClient{}
 		err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 		require.Error(t, err)
 	})
