@@ -43,14 +43,20 @@ func TestRetrieveBatches(t *testing.T) {
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
 	assert.NoError(err)
+
+	// set mocks for sync flow
+	// Set the mock functions
+	mockSubstrateApiClient.On("GetFinalizedHead", mock.Anything).Return(availtypes.NewHash([]byte("123")), nil)
+	mockSubstrateApiClient.On("GetHeader", mock.Anything).Return(&availtypes.Header{Number: 1}, nil)
+	mockSubstrateApiClient.On("GetBlockLatest", mock.Anything).Return(&availtypes.SignedBlock{Block: availtypes.Block{Header: availtypes.Header{Number: 1}}}, nil)
+
 	// Start the DALC
 	dalc := avail.DataAvailabilityLayerClient{}
 	err = dalc.Init(configBytes, pubsubServer, nil, testutil.NewLogger(t), options...)
 	require.NoError(err)
 	err = dalc.Start()
 	require.NoError(err)
-	// Set the mock functions
-	mockSubstrateApiClient.On("GetBlockHash", mock.Anything).Return(availtypes.NewHash([]byte("123")), nil)
+
 	// Build batches for the block extrinsics
 	batch1 := testutil.MustGenerateBatchAndKey(0, 1)
 	batch2 := testutil.MustGenerateBatchAndKey(2, 3)
@@ -86,7 +92,11 @@ func TestRetrieveBatches(t *testing.T) {
 			},
 		},
 	}
+
+	// Set the mock functions
+	mockSubstrateApiClient.On("GetBlockHash", mock.Anything).Return(availtypes.NewHash([]byte("123")), nil)
 	mockSubstrateApiClient.On("GetBlock", mock.Anything).Return(signedBlock, nil)
+
 	// Retrieve the batches and make sure we only get the batches relevant for our app id
 	daMetaData := &da.DASubmitMetaData{
 		Height: 1,
