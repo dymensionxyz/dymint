@@ -9,9 +9,6 @@ import (
 
 // DAClient defines very generic interface for interaction with Data Availability layers.
 type DAClient interface {
-	// MaxBlobSize returns the max blob size
-	MaxBlobSize(ctx context.Context) (uint64, error)
-
 	// Get returns Blob for each given ID, or an error.
 	//
 	// Error should be returned if ID is not formatted properly, there is no Blob for given ID or any other client-level
@@ -42,9 +39,14 @@ type DAClient interface {
 	// Validate validates Commitments against the corresponding Proofs. This should be possible without retrieving the Blobs.
 	Validate(ctx context.Context, ids []ID, proofs []Proof, namespace Namespace) ([]bool, error)
 
+	// GetByHeight retrieves celestia extended header by height
 	GetByHeight(ctx context.Context, height uint64) (*ExtendedHeader, error)
 
+	// Balance returns the celestia light client account balance
 	Balance(context.Context) (*Balance, error)
+
+	// MaxBlobSize returns the max blob size allowed in celestia
+	MaxBlobSize(ctx context.Context) (uint64, error)
 }
 
 // Namespace is an optional parameter used to set the location a blob should be
