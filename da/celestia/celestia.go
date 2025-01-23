@@ -318,7 +318,6 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 
 // checkBatchAvailability gets da availability data from celestia and validates blob inclusion with it
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-
 	daCheckMetaData, err := c.getDAAvailabilityMetaData(daMetaData)
 	if err != nil {
 		return da.ResultCheckBatch{
