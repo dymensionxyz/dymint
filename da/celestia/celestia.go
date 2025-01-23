@@ -220,6 +220,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	}
 }
 
+// RetrieveBatches downloads a batch from celestia, defined by daMetadata, and retries RetryAttempts in case of failure
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	for {
 		select {
@@ -247,6 +248,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 	}
 }
 
+// CheckBatchAvailability retrieves availability proofs from celestia for the blob defined in daMetaData, and validates its inclusion
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	for {
 		select {
@@ -295,6 +297,7 @@ func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	return daBalance, nil
 }
 
+// submit submits a blob to celestia, including data bytes.
 func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData, error) {
 
 	// TODO(srene):  Split batch in multiple blobs if necessary when supported
@@ -314,21 +317,7 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 	}, nil
 }
 
-func makeID(height uint64, commitment da.Commitment) daclient.ID {
-	id := make([]byte, heightLen+len(commitment))
-	binary.LittleEndian.PutUint64(id, height)
-	copy(id[heightLen:], commitment)
-	return id
-}
-
-func splitID(id daclient.ID) (uint64, da.Commitment) {
-	if len(id) <= heightLen {
-		return 0, nil
-	}
-	commitment := id[heightLen:]
-	return binary.LittleEndian.Uint64(id[:heightLen]), commitment
-}
-
+// checkBatchAvailability gets da availability data from celestia and validates blob inclusion with it
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 
 	root, err := c.getDataRoot(daMetaData)
@@ -364,6 +353,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 	}
 }
 
+// retrieveBatches downloads a blob from celestia and returns the batch included
 func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
@@ -427,6 +417,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	}
 }
 
+// getDataRoot returns celestia data root included in the extended headers
 func (c *DataAvailabilityLayerClient) getDataRoot(daMetaData *da.DASubmitMetaData) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
@@ -437,6 +428,7 @@ func (c *DataAvailabilityLayerClient) getDataRoot(daMetaData *da.DASubmitMetaDat
 	return dah.DAH.Hash(), nil
 }
 
+// getDAAvailabilityMetaData returns the da metadata (span + proofs) necessary to check blob inclusion
 func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.DASubmitMetaData) (*da.DACheckMetaData, error) {
 
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
@@ -512,4 +504,21 @@ func (c *DataAvailabilityLayerClient) validateInclusion(daMetaData *da.DACheckMe
 		}
 	}
 	return nil
+}
+
+// makeID generates a blob ID, to be used with the light client, defined by height + commitment
+func makeID(height uint64, commitment da.Commitment) daclient.ID {
+	id := make([]byte, heightLen+len(commitment))
+	binary.LittleEndian.PutUint64(id, height)
+	copy(id[heightLen:], commitment)
+	return id
+}
+
+// splitID returns height + commitment from the daclient ID
+func splitID(id daclient.ID) (uint64, da.Commitment) {
+	if len(id) <= heightLen {
+		return 0, nil
+	}
+	commitment := id[heightLen:]
+	return binary.LittleEndian.Uint64(id[:heightLen]), commitment
 }
