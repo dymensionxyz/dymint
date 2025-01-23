@@ -302,11 +302,6 @@ func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 	return maxBlobSizeBytes
 }
 
-// getMaxBlobSizeBytes returns the maximum allowed blob size from celestia rpc
-func (c *DataAvailabilityLayerClient) getMaxBlobSizeBytes() (uint64, error) {
-	return c.client.MaxBlobSize(c.ctx)
-}
-
 // GetSignerBalance returns the balance for a specific address
 func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
