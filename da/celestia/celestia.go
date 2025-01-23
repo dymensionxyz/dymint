@@ -154,10 +154,6 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.logger.Info("Stopping Celestia Data Availability Layer Client.")
-	err := c.pubsubServer.Stop()
-	if err != nil {
-		return err
-	}
 	c.cancel()
 	return nil
 }
