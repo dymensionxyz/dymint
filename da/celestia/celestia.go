@@ -41,7 +41,6 @@ type DataAvailabilityLayerClient struct {
 	logger       types.Logger
 	ctx          context.Context
 	cancel       context.CancelFunc
-	synced       chan struct{}
 }
 
 var (
@@ -80,7 +79,6 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 // Init initializes DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
-	c.synced = make(chan struct{}, 1)
 	var err error
 	c.config, err = createConfig(config)
 	if err != nil {
@@ -144,7 +142,6 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 	// other client has already been set
 	if c.client != nil {
 		c.logger.Info("Celestia-node client already set.")
-		c.synced <- struct{}{}
 		return nil
 	}
 
@@ -153,7 +150,6 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 		return fmt.Errorf("error while establishing connection to DA layer: %w", err)
 	}
 	c.client = client
-	c.synced <- struct{}{}
 
 	return
 }
@@ -166,13 +162,7 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 		return err
 	}
 	c.cancel()
-	close(c.synced)
 	return nil
-}
-
-// WaitForSyncing is used to check when the DA light client finished syncing
-func (m *DataAvailabilityLayerClient) WaitForSyncing() {
-	<-m.synced
 }
 
 // GetClientType returns client type.

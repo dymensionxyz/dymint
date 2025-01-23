@@ -59,7 +59,6 @@ type DataAvailabilityLayerClient struct {
 	logger       types.Logger
 	ctx          context.Context
 	cancel       context.CancelFunc
-	synced       chan struct{}
 }
 
 var (
@@ -116,7 +115,6 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	// Set initial values
 	c.pubsubServer = pubsubServer
 	c.logger = logger
-	c.synced = make(chan struct{}, 1)
 
 	// Validate and set defaults for config
 	if cfg.Timeout == 0 {
@@ -180,20 +178,13 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
-	c.synced <- struct{}{}
 	return nil
 }
 
 // Stop stops DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.cancel()
-	close(c.synced)
 	return nil
-}
-
-// WaitForSyncing is used to check when the DA light client finished syncing
-func (m *DataAvailabilityLayerClient) WaitForSyncing() {
-	<-m.synced
 }
 
 // GetClientType returns client type.

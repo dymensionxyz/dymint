@@ -39,10 +39,6 @@ func (l Layer) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.Result
 	panic("implement me")
 }
 
-func (l Layer) WaitForSyncing() {
-	panic("implement me")
-}
-
 func (l Layer) GetMaxBlobSizeBytes() uint64 {
 	panic("implement me")
 }

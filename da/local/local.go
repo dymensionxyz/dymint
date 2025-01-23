@@ -23,7 +23,6 @@ type DataAvailabilityLayerClient struct {
 	dalcKV   store.KV
 	daHeight atomic.Uint64
 	config   config
-	synced   chan struct{}
 }
 
 const (
@@ -54,14 +53,12 @@ func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalc
 	} else {
 		m.config.BlockTime = defaultBlockTime
 	}
-	m.synced = make(chan struct{}, 1)
 	return nil
 }
 
 // Start implements DataAvailabilityLayerClient interface.
 func (m *DataAvailabilityLayerClient) Start() error {
 	m.logger.Debug("Mock Data Availability Layer Client starting")
-	m.synced <- struct{}{}
 	go func() {
 		for {
 			time.Sleep(m.config.BlockTime)
@@ -75,13 +72,7 @@ func (m *DataAvailabilityLayerClient) Start() error {
 // Stop implements DataAvailabilityLayerClient interface.
 func (m *DataAvailabilityLayerClient) Stop() error {
 	m.logger.Debug("Mock Data Availability Layer Client stopped")
-	close(m.synced)
 	return nil
-}
-
-// WaitForSyncing is used to check when the DA light client finished syncing
-func (m *DataAvailabilityLayerClient) WaitForSyncing() {
-	<-m.synced
 }
 
 // GetClientType returns client type.
