@@ -163,18 +163,18 @@ func (_c *MockDataAvailabilityLayerClient_GetClientType_Call) RunAndReturn(run f
 }
 
 // GetMaxBlobSizeBytes provides a mock function with no fields
-func (_m *MockDataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+func (_m *MockDataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetMaxBlobSizeBytes")
 	}
 
-	var r0 uint32
-	if rf, ok := ret.Get(0).(func() uint32); ok {
+	var r0 uint64
+	if rf, ok := ret.Get(0).(func() uint64); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(uint32)
+		r0 = ret.Get(0).(uint64)
 	}
 
 	return r0
@@ -197,12 +197,12 @@ func (_c *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call) Run(run func
 	return _c
 }
 
-func (_c *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call) Return(_a0 uint32) *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call {
+func (_c *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call) Return(_a0 uint64) *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call) RunAndReturn(run func() uint32) *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call {
+func (_c *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call) RunAndReturn(run func() uint64) *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -459,38 +459,6 @@ func (_c *MockDataAvailabilityLayerClient_SubmitBatch_Call) Return(_a0 da.Result
 
 func (_c *MockDataAvailabilityLayerClient_SubmitBatch_Call) RunAndReturn(run func(*types.Batch) da.ResultSubmitBatch) *MockDataAvailabilityLayerClient_SubmitBatch_Call {
 	_c.Call.Return(run)
-	return _c
-}
-
-// WaitForSyncing provides a mock function with no fields
-func (_m *MockDataAvailabilityLayerClient) WaitForSyncing() {
-	_m.Called()
-}
-
-// MockDataAvailabilityLayerClient_WaitForSyncing_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WaitForSyncing'
-type MockDataAvailabilityLayerClient_WaitForSyncing_Call struct {
-	*mock.Call
-}
-
-// WaitForSyncing is a helper method to define mock.On call
-func (_e *MockDataAvailabilityLayerClient_Expecter) WaitForSyncing() *MockDataAvailabilityLayerClient_WaitForSyncing_Call {
-	return &MockDataAvailabilityLayerClient_WaitForSyncing_Call{Call: _e.mock.On("WaitForSyncing")}
-}
-
-func (_c *MockDataAvailabilityLayerClient_WaitForSyncing_Call) Run(run func()) *MockDataAvailabilityLayerClient_WaitForSyncing_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockDataAvailabilityLayerClient_WaitForSyncing_Call) Return() *MockDataAvailabilityLayerClient_WaitForSyncing_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockDataAvailabilityLayerClient_WaitForSyncing_Call) RunAndReturn(run func()) *MockDataAvailabilityLayerClient_WaitForSyncing_Call {
-	_c.Run(run)
 	return _c
 }
 

@@ -27,9 +27,7 @@ import (
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 )
 
-// heightLen is a length (in bytes) of serialized height.
-//
-// This is 8 as uint64 consist of 8 bytes.
+// heightLen is a length (in bytes) of serialized height. used in daclient.ID to translate ID to height+commitment
 const heightLen = 8
 
 // DataAvailabilityLayerClient use celestia-node public API.
