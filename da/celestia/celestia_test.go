@@ -217,7 +217,7 @@ func TestAvalabilityWrongProof(t *testing.T) {
 	retriever := dalc.(da.BatchRetriever)
 	t.Log("Checking availability batch1")
 	availRes := retriever.CheckBatchAvailability(h1)
-	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProof)
+	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProofs)
 }
 
 func TestRetrievalWrongCommitment(t *testing.T) {
@@ -246,7 +246,7 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 	mockRPCClient.On("GetProofs", mock.Anything, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("Proofs not found")).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 
 	availRes := retriever.CheckBatchAvailability(h1)
-	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProof)
+	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProofs)
 }
 
 func setDAandMock(t *testing.T) (*mocks.MockDAClient, da.DataAvailabilityLayerClient, []byte) {

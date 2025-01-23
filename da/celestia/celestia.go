@@ -255,33 +255,26 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 }
 
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-	var availabilityResult da.ResultCheckBatch
 	for {
 		select {
 		case <-c.ctx.Done():
 			c.logger.Debug("Context cancelled")
 			return da.ResultCheckBatch{}
 		default:
+			var resultAvailabilityBatch da.ResultCheckBatch
 			err := retry.Do(
 				func() error {
-					result := c.checkBatchAvailability(daMetaData)
-					availabilityResult = result
-
-					if result.Code != da.StatusSuccess {
-						c.logger.Error("Blob submitted not found in DA. Retrying availability check.", "error", result.Message)
-						return da.ErrBlobNotFound
-					}
-
-					return nil
+					resultAvailabilityBatch = c.checkBatchAvailability(daMetaData)
+					return resultAvailabilityBatch.Error
 				},
 				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 				retry.DelayType(retry.FixedDelay),
 				retry.Delay(c.config.RetryDelay),
 			)
 			if err != nil {
-				c.logger.Error("CheckAvailability process failed.", "error", err)
+				c.logger.Error("CheckBatchAvailability batch", "height", daMetaData.Height, "commitment", hex.EncodeToString(daMetaData.Commitment), "error", err)
 			}
-			return availabilityResult
+			return resultAvailabilityBatch
 		}
 	}
 }
@@ -344,121 +337,31 @@ func splitID(id goDA.ID) (uint64, da.Commitment) {
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-	defer cancel()
-	DACheckMetaData := &da.DACheckMetaData{
-		Client:     daMetaData.Client,
-		Height:     daMetaData.Height,
-		Commitment: daMetaData.Commitment,
-		Namespace:  daMetaData.Namespace,
-	}
 
-	dah, err := c.client.GetByHeight(ctx, daMetaData.Height)
+	root, err := c.getDataRoot(daMetaData)
 	if err != nil {
-		// Returning Data Availability header Data Root for dispute validation
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: fmt.Sprintf("Error getting DAHeader: %s", err),
-				Error:   da.ErrUnableToGetProof,
-			},
-			CheckMetaData: DACheckMetaData,
-		}
-	}
-
-	DACheckMetaData.Root = dah.DAH.Hash()
-
-	ids := []goDA.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
-	daProofs, err := c.client.GetProofs(ctx, ids, c.config.NamespaceID.Bytes())
-	if err != nil || daProofs[0] == nil {
-		// TODO (srene): Not getting proof means there is no existing data for the namespace and the commitment (the commitment is wrong).
-		// Therefore we need to prove whether the commitment is wrong or the span does not exists.
-		// In case the span is correct it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
-		// is the data for the span, and reproducing the commitment will generate a different one.
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("Error getting NMT proof: %s", err),
-				Error:   da.ErrUnableToGetProof,
+				Error:   da.ErrUnableToGetProofs,
 			},
-			CheckMetaData: DACheckMetaData,
 		}
 	}
+	daMetaData.Root = root
+	DACheckMetaData, err := c.getDAAvailabilityMetaData(daMetaData)
 
-	var nmtProofs [][]*nmt.Proof
-	for _, daProof := range daProofs {
-		blobProof := &[]nmt.Proof{}
-		err := json.Unmarshal(daProof, blobProof)
-		if err != nil {
-			return da.ResultCheckBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: fmt.Sprintf("Error parsing NMT proof: %s", err),
-					Error:   da.ErrUnableToGetProof,
-				},
-				CheckMetaData: DACheckMetaData,
-			}
-		}
-		var nmtProof []*nmt.Proof
-		for _, prf := range *blobProof {
-			nmtProof = append(nmtProof, &prf)
-		}
-		nmtProofs = append(nmtProofs, nmtProof)
-
-	}
-	shares := 0
-	index := 0
-	for j, proof := range nmtProofs[0] {
-		if j == 0 {
-			index = proof.Start()
-		}
-		shares += proof.End() - proof.Start()
-	}
-
-	if daMetaData.Index > 0 && daMetaData.Length > 0 {
-		if index != daMetaData.Index || shares != daMetaData.Length {
-			// TODO (srene): In this case the commitment is correct but does not match the span.
-			// If the span is correct we have to repeat the previous step (sending data + proof of data)
-			// In case the span is not correct we need to send unavailable proof by sending proof of any row root to data root
-			return da.ResultCheckBatch{
-				CheckMetaData: DACheckMetaData,
-				BaseResult: da.BaseResult{
-					Code: da.StatusError,
-					Message: fmt.Sprintf("Proof index not matching: %d != %d or length not matching: %d != %d",
-						index, daMetaData.Index, shares, daMetaData.Length),
-					Error: da.ErrProofNotMatching,
-				},
-			}
-		}
-	}
-	included, err := c.client.Validate(ctx, ids, daProofs, c.config.NamespaceID.Bytes())
-	// included, err = c.validateProof(daMetaData, proof)
-	// The both cases below (there is an error validating the proof or the proof is wrong) should not happen
-	// if we consider correct functioning of the celestia light node.
-	// This will only happen in case the previous step the celestia light node returned wrong proofs..
+	err = c.validateInclusion(DACheckMetaData)
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: "Error validating proof",
-				Error:   err,
-			},
-			CheckMetaData: DACheckMetaData,
-		}
-	} else if !included[0] {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Blob not included",
+				Message: fmt.Sprintf("Error validating blob inclusion: %s", err),
 				Error:   da.ErrBlobNotIncluded,
 			},
-			CheckMetaData: DACheckMetaData,
 		}
 	}
 
-	DACheckMetaData.Index = index
-	DACheckMetaData.Length = shares
-	DACheckMetaData.Proofs = nmtProofs
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusSuccess,
@@ -490,7 +393,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: "Blob not found",
+				Message: "blob retrieved is nil",
 				Error:   da.ErrBlobNotFound,
 			},
 		}
@@ -499,11 +402,10 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	var batch pb.Batch
 	err = proto.Unmarshal(blob[0], &batch)
 	if err != nil {
-		c.logger.Error("Unmarshal blob.", "daHeight", daMetaData.Height, "error", err)
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: err.Error(),
+				Message: fmt.Sprintf("Error unmarshaling batch: %s", err),
 				Error:   da.ErrBlobNotParsed,
 			},
 		}
@@ -530,4 +432,91 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		},
 		Batches: batches,
 	}
+}
+
+func (c *DataAvailabilityLayerClient) getDataRoot(daMetaData *da.DASubmitMetaData) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
+	defer cancel()
+	dah, err := c.client.GetByHeight(ctx, daMetaData.Height)
+	if err != nil {
+		return nil, err
+	}
+	return dah.DAH.Hash(), nil
+}
+
+func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.DASubmitMetaData) (*da.DACheckMetaData, error) {
+
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
+	defer cancel()
+
+	ids := []goDA.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
+	daProofs, err := c.client.GetProofs(ctx, ids, c.config.NamespaceID.Bytes())
+	if err != nil || daProofs[0] == nil {
+		// TODO (srene): Not getting proof means there is no existing data for the namespace and commitment (the commitment is not valid).
+		// Therefore we need to prove whether the commitment is wrong or the span does not exists.
+		// In case the span is valid (within the size of the matrix) it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
+		// is the data for the span, and reproducing the commitment will generate a different one.
+		return &da.DACheckMetaData{}, err
+	}
+
+	var nmtProofs [][]*nmt.Proof
+	for _, daProof := range daProofs {
+		blobProof := &[]nmt.Proof{}
+		err := json.Unmarshal(daProof, blobProof)
+		if err != nil {
+			return &da.DACheckMetaData{}, err
+		}
+		var nmtProof []*nmt.Proof
+		for _, prf := range *blobProof {
+			nmtProof = append(nmtProof, &prf)
+		}
+		nmtProofs = append(nmtProofs, nmtProof)
+
+	}
+	sharesNum := 0
+	index := 0
+	for j, proof := range nmtProofs[0] {
+		if j == 0 {
+			index = proof.Start()
+		}
+		sharesNum += proof.End() - proof.Start()
+	}
+
+	if daMetaData.Index > 0 && daMetaData.Length > 0 {
+		if index != daMetaData.Index || sharesNum != daMetaData.Length {
+			// In this case the commitment is valid but does not match the span.
+			// TODO (srene): In this case the commitment is correct but does not match the span.
+			// If the span is valid we have to repeat the previous step (sending data + proof of data as inclusion proof)
+			// In case the span is not valid (out of the size of the matrix) we need to send unavailable proof (the span does not exist) by sending proof of any row root to data root
+			return &da.DACheckMetaData{}, fmt.Errorf("span does not match blob commitment")
+		}
+	}
+
+	return &da.DACheckMetaData{Client: daMetaData.Client,
+		Height:     daMetaData.Height,
+		Commitment: daMetaData.Commitment,
+		Namespace:  daMetaData.Namespace,
+		Root:       daMetaData.Root,
+		Index:      index,
+		Length:     sharesNum,
+		Proofs:     daProofs,
+	}, nil
+
+}
+
+func (c *DataAvailabilityLayerClient) validateInclusion(daMetaData *da.DACheckMetaData) error {
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
+	defer cancel()
+
+	ids := []goDA.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
+	included, err := c.client.Validate(ctx, ids, daMetaData.Proofs, c.config.NamespaceID.Bytes())
+	if err != nil {
+		return err
+	}
+	for _, incl := range included {
+		if !incl {
+			return fmt.Errorf("blob commitment not included")
+		}
+	}
+	return nil
 }
