@@ -14,7 +14,7 @@ var (
 	// ErrTxBroadcastTimeout is returned when transaction broadcast times out.
 	ErrTxBroadcastTimeout = errors.New("broadcast timeout error")
 	// ErrUnableToGetProofs is returned when proof is not available.
-	ErrUnableToGetProofs = errors.New("unable to get proof")
+	ErrUnableToGetProofs = errors.New("unable to get availability proofs")
 	// ErrRetrieval is returned when retrieval rpc falls
 	ErrRetrieval = errors.New("retrieval failed")
 	// ErrBlobNotFound is returned when blob is not found.
