@@ -10,7 +10,6 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da/stub"
-	"github.com/gogo/protobuf/proto"
 
 	"github.com/dymensionxyz/dymint/types"
 
@@ -25,7 +24,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types/metrics"
-	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
 const (
@@ -208,23 +206,24 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 
 			data := ext.Method.Args
 			for 0 < len(data) {
-				var pbBatch pb.Batch
-				err := proto.Unmarshal(data, &pbBatch)
-				if err != nil {
-					c.logger.Error("unmarshal batch", "daHeight", daMetaData.Height, "error", err)
-					break
-				}
-				// Convert the proto batch to a batch
 				batch := &types.Batch{}
-				err = batch.FromProto(&pbBatch)
+				err := batch.UnmarshalBinary(data)
 				if err != nil {
-					c.logger.Error("batch from proto", "daHeight", daMetaData.Height, "error", err)
-					break
+					// try to parse from the next byte on the next iteration
+					data = data[1:]
+					continue
 				}
+
 				// Add the batch to the list
 				batches = append(batches, batch)
 				// Remove the bytes we just decoded.
-				data = data[proto.Size(&pbBatch):]
+				size := batch.ToProto().Size()
+				if len(data) < size {
+					// not supposed to happen, additional safety check
+					break
+				}
+
+				data = data[size:]
 			}
 		}
 	}
