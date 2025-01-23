@@ -299,7 +299,6 @@ func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 
 // submit submits a blob to celestia, including data bytes.
 func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData, error) {
-
 	// TODO(srene):  Split batch in multiple blobs if necessary when supported
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
@@ -320,7 +319,7 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 // checkBatchAvailability gets da availability data from celestia and validates blob inclusion with it
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 
-	root, err := c.getDataRoot(daMetaData)
+	daCheckMetaData, err := c.getDAAvailabilityMetaData(daMetaData)
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
@@ -330,10 +329,8 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 			},
 		}
 	}
-	daMetaData.Root = root
-	DACheckMetaData, err := c.getDAAvailabilityMetaData(daMetaData)
 
-	err = c.validateInclusion(DACheckMetaData)
+	err = c.validateInclusion(daCheckMetaData)
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
@@ -349,7 +346,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 			Code:    da.StatusSuccess,
 			Message: "Blob available",
 		},
-		CheckMetaData: DACheckMetaData,
+		CheckMetaData: daCheckMetaData,
 	}
 }
 
@@ -430,7 +427,6 @@ func (c *DataAvailabilityLayerClient) getDataRoot(daMetaData *da.DASubmitMetaDat
 
 // getDAAvailabilityMetaData returns the da metadata (span + proofs) necessary to check blob inclusion
 func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.DASubmitMetaData) (*da.DACheckMetaData, error) {
-
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -477,16 +473,21 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.D
 		}
 	}
 
-	return &da.DACheckMetaData{Client: daMetaData.Client,
+	root, err := c.getDataRoot(daMetaData)
+	if err != nil {
+		return &da.DACheckMetaData{}, err
+	}
+
+	return &da.DACheckMetaData{
+		Client:     daMetaData.Client,
 		Height:     daMetaData.Height,
 		Commitment: daMetaData.Commitment,
 		Namespace:  daMetaData.Namespace,
-		Root:       daMetaData.Root,
+		Root:       root,
 		Index:      index,
 		Length:     sharesNum,
 		Proofs:     daProofs,
 	}, nil
-
 }
 
 func (c *DataAvailabilityLayerClient) validateInclusion(daMetaData *da.DACheckMetaData) error {

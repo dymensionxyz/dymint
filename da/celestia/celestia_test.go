@@ -211,7 +211,6 @@ func TestAvalabilityWrongProof(t *testing.T) {
 	h1 := res1.SubmitMetaData
 	assert.Equal(da.StatusSuccess, res1.Code)
 
-	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(testutil.GetMockExtenderHeader(), nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 	mockRPCClient.On("GetProofs", mock.Anything, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("Proofs not found")).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 
 	retriever := dalc.(da.BatchRetriever)
@@ -242,7 +241,6 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 	assert.ErrorIs(retrieveRes.Error, da.ErrBlobNotFound)
 	require.True(len(retrieveRes.Batches) == 0)
 
-	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(testutil.GetMockExtenderHeader(), nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 	mockRPCClient.On("GetProofs", mock.Anything, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("Proofs not found")).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 
 	availRes := retriever.CheckBatchAvailability(h1)
