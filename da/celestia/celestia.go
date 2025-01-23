@@ -192,23 +192,12 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			return da.ResultSubmitBatch{}
 		default:
 
-			// TODO(srene):  Split batch in multiple blobs if necessary if supported
-			ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-			defer cancel()
-			ids, err := c.client.Submit(ctx, []da.Blob{data}, c.config.GasPrices, c.config.NamespaceID.Bytes())
+			daMetaData, err := c.submit(data)
 			if err != nil {
 				c.logger.Error("Submit blob.", "error", err)
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
-			}
-			height, commitment := splitID(ids[0])
-
-			daMetaData := &da.DASubmitMetaData{
-				Client:     da.Celestia,
-				Height:     height,
-				Commitment: commitment,
-				Namespace:  c.config.NamespaceID.Bytes(),
 			}
 
 			c.logger.Debug("Submitted blob to DA successfully.")
@@ -318,6 +307,25 @@ func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	}
 
 	return daBalance, nil
+}
+
+func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData, error) {
+
+	// TODO(srene):  Split batch in multiple blobs if necessary when supported
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
+	defer cancel()
+	ids, err := c.client.Submit(ctx, []da.Blob{data}, c.config.GasPrices, c.config.NamespaceID.Bytes())
+	if err != nil {
+		return &da.DASubmitMetaData{}, err
+	}
+	height, commitment := splitID(ids[0])
+
+	return &da.DASubmitMetaData{
+		Client:     da.Celestia,
+		Height:     height,
+		Commitment: commitment,
+		Namespace:  c.config.NamespaceID.Bytes(),
+	}, nil
 }
 
 func makeID(height uint64, commitment da.Commitment) goDA.ID {
