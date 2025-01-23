@@ -14,6 +14,7 @@ const (
 	namespaceVersion        = 0
 	DefaultGasPrices        = 0.1
 	defaultRpcRetryAttempts = 5
+	maxBlobSizeBytes        = 500000
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(

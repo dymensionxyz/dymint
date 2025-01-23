@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	errorsmod "cosmossdk.io/errors"
 	"github.com/avast/retry-go/v4"
 	"github.com/celestiaorg/nmt"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -266,7 +267,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 				retry.Delay(c.config.RetryDelay),
 			)
 			if err != nil {
-				c.logger.Error("Retrieve batch", "height", daMetaData.Height, "commitment", hex.EncodeToString(daMetaData.Commitment))
+				c.logger.Error("Retrieve batch", "height", daMetaData.Height, "commitment", hex.EncodeToString(daMetaData.Commitment), "error", err)
 			}
 			return resultRetrieveBatch
 
@@ -308,11 +309,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
-	bytes, err := c.getMaxBlobSizeBytes()
-	if err != nil {
-		c.logger.Error("GetMaxBlobSizeBytes error", err)
-	}
-	return bytes
+	return maxBlobSizeBytes
 }
 
 // getMaxBlobSizeBytes returns the maximum allowed blob size from celestia rpc
@@ -492,7 +489,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
-				Error:   da.ErrRetrieval,
+				Error:   errorsmod.Wrap(da.ErrRetrieval, err.Error()),
 			},
 		}
 	}

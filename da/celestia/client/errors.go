@@ -75,6 +75,6 @@ func (e *ErrFutureHeight) Error() string {
 // ErrHeightZero returned when requested headers height is equal to 0.
 type ErrHeightZero struct{}
 
-func (e *ErrFutureHeight) Error() string {
+func (e *ErrHeightZero) Error() string {
 	return "height is equal to 0"
 }
