@@ -8,9 +8,9 @@ import (
 
 	"cosmossdk.io/math"
 	"github.com/cometbft/cometbft/crypto/merkle"
-	"github.com/rollkit/go-da"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
+	daclient "github.com/dymensionxyz/dymint/da/celestia/client"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -176,7 +176,7 @@ type DACheckMetaData struct {
 	// Number of shares of each blob
 	Length int
 	// Proofs necessary to validate blob inclusion in the specific height
-	Proofs []da.Proof
+	Proofs []daclient.Proof
 	// NMT roots for each NMT Proof
 	NMTRoots []byte
 	// Proofs necessary to validate blob inclusion in the specific height

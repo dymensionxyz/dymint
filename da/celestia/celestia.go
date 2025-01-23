@@ -14,7 +14,6 @@ import (
 	"github.com/celestiaorg/nmt"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/gogo/protobuf/proto"
-	goDA "github.com/rollkit/go-da"
 
 	"github.com/dymensionxyz/dymint/da/celestia/client"
 	daclient "github.com/dymensionxyz/dymint/da/celestia/client"
@@ -321,14 +320,14 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 	}, nil
 }
 
-func makeID(height uint64, commitment da.Commitment) goDA.ID {
+func makeID(height uint64, commitment da.Commitment) daclient.ID {
 	id := make([]byte, heightLen+len(commitment))
 	binary.LittleEndian.PutUint64(id, height)
 	copy(id[heightLen:], commitment)
 	return id
 }
 
-func splitID(id goDA.ID) (uint64, da.Commitment) {
+func splitID(id daclient.ID) (uint64, da.Commitment) {
 	if len(id) <= heightLen {
 		return 0, nil
 	}
@@ -379,7 +378,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	var batches []*types.Batch
 
 	id := makeID(daMetaData.Height, daMetaData.Commitment)
-	blob, err := c.client.Get(ctx, []goDA.ID{id}, c.config.NamespaceID.Bytes())
+	blob, err := c.client.Get(ctx, []daclient.ID{id}, c.config.NamespaceID.Bytes())
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -449,7 +448,7 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.D
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	ids := []goDA.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
+	ids := []daclient.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
 	daProofs, err := c.client.GetProofs(ctx, ids, c.config.NamespaceID.Bytes())
 	if err != nil || daProofs[0] == nil {
 		// TODO (srene): Not getting proof means there is no existing data for the namespace and commitment (the commitment is not valid).
@@ -508,7 +507,7 @@ func (c *DataAvailabilityLayerClient) validateInclusion(daMetaData *da.DACheckMe
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	ids := []goDA.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
+	ids := []daclient.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
 	included, err := c.client.Validate(ctx, ids, daMetaData.Proofs, c.config.NamespaceID.Bytes())
 	if err != nil {
 		return err

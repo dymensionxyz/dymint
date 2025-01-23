@@ -29,7 +29,6 @@ require (
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.3
 	github.com/multiformats/go-multiaddr v0.12.2
 	github.com/prometheus/client_golang v1.18.0
-	github.com/rollkit/go-da v0.9.0
 	github.com/rs/cors v1.9.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.15.0
