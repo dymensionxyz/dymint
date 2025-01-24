@@ -63,7 +63,6 @@ func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context) error {
 // AmIProposerOnSL checks if the current node is the proposer on the hub
 // Proposer on the Hub is not necessarily the proposer on the Rollapp during rotation phase.
 func (m *Manager) AmIProposerOnSL() (bool, error) {
-
 	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw()
 	// get hub proposer key
 	SLProposer, err := m.SLClient.GetProposerAtHeight(-1)
