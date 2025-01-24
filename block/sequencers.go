@@ -63,9 +63,14 @@ func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context) error {
 // AmIProposerOnSL checks if the current node is the proposer on the hub
 // Proposer on the Hub is not necessarily the proposer on the Rollapp during rotation phase.
 func (m *Manager) AmIProposerOnSL() (bool, error) {
+
 	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw()
 	// get hub proposer key
 	SLProposer, err := m.SLClient.GetProposerAtHeight(-1)
+	// if no proposer set return nil
+	if errors.Is(err, settlement.ErrProposerIsSentinel) {
+		return false, nil
+	}
 	if err != nil {
 		return false, fmt.Errorf("get proposer at height: %w", err)
 	}
@@ -191,4 +196,32 @@ func (m *Manager) UpdateProposerFromSL() error {
 	m.logger.Debug("Updating proposer to ", SLProposer.SettlementAddress)
 	m.State.SetProposer(SLProposer)
 	return nil
+}
+
+func (m *Manager) WaitForActiveProposer(ctx context.Context) error {
+	ticker := time.NewTicker(ProposerMonitorInterval) // TODO: make this configurable
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+
+			proposer, err := m.SLClient.GetProposerAtHeight(-1)
+
+			// no next proposer yet
+			if errors.Is(err, settlement.ErrProposerIsSentinel) {
+				continue
+			}
+
+			if err != nil {
+				return err
+			}
+
+			m.logger.Info("New proposer set.", "nextSeqAddr", proposer.SettlementAddress)
+			m.State.SetProposer(proposer)
+			return nil
+		}
+	}
 }

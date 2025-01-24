@@ -27,7 +27,6 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 
 	for {
 		if err := m.checkForkUpdate(ForkMonitorMessage); err != nil {
-			m.logger.Error("Check for update.", err)
 			if errors.Is(err, ErrNonRecoverable) {
 				return err
 			}

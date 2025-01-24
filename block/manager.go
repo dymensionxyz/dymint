@@ -230,8 +230,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
 		err := m.UpdateProposerFromSL()
 		if errors.Is(err, settlement.ErrProposerIsSentinel) {
-			m.freezeNode(fmt.Errorf("unable to start without new proposer at height %d", m.State.NextHeight()))
-		} else if err != nil {
+			m.logger.Info("No active proposer. Chain is halted. Waiting for a new proposer.", "height", m.State.Height())
+			err = m.WaitForActiveProposer(ctx)
+		}
+		if err != nil {
 			return err
 		}
 		_, err = m.Store.SaveState(m.State, nil)
@@ -245,9 +247,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
 	// The hub proposer, after sending the last state update, will panic and restart as full node.
 	amIProposerOnSL, err := m.AmIProposerOnSL()
-	if errors.Is(err, settlement.ErrProposerIsSentinel) {
-		amIProposerOnSL = false
-	} else if err != nil {
+	if err != nil {
 		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
 
@@ -320,10 +320,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		} else if errors.Is(err, gerrc.ErrFault) {
 			// Here we handle the fault by calling the fraud handler.
 			// it publishes a DataHealthStatus event to the pubsub and stops the block manager.
-			m.logger.Error("block manager exited with fault", "error", err)
+			m.logger.Error("block manager exited with fault")
 			m.FraudHandler.HandleFault(err)
 		} else if err != nil {
-			m.logger.Error("block manager exited with error", "error", err)
+			m.logger.Error("block manager exited with error")
 			m.StopManager(err)
 		}
 	}()
@@ -449,7 +449,6 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 
 // StopManager sets the node as unhealthy and stops the block manager context
 func (m *Manager) StopManager(err error) {
-	m.logger.Info("Freezing node", "err", err)
 	m.setUnhealthy(err)
 	m.Cancel()
 }

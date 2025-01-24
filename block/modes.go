@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/p2p"
