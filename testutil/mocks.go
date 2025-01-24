@@ -137,7 +137,7 @@ func (m *MockStore) SaveState(state *types.State, batch store.KVBatch) (store.KV
 func NewMockStore() *MockStore {
 	defaultStore := store.New(store.NewDefaultInMemoryKVStore())
 	return &MockStore{
-		DefaultStore:       defaultStore.(*store.DefaultStore),
+		DefaultStore:       defaultStore,
 		height:             0,
 		ShoudFailSaveState: false,
 	}

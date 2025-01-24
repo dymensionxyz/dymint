@@ -2,7 +2,6 @@ package block
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/p2p"
@@ -24,11 +23,6 @@ const (
 func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 	m.logger.Info("starting block manager", "mode", "full node")
 	m.RunMode = RunModeFullNode
-	// update latest finalized height
-	err := m.updateLastFinalizedHeightFromSettlement()
-	if err != nil {
-		return fmt.Errorf("sync block manager from settlement: %w", err)
-	}
 
 	// Start the settlement validation loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
@@ -104,17 +98,6 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorProposerRotation(ctx)
 	})
-
-	go func() {
-		err = eg.Wait()
-		// Check if loops exited due to sequencer rotation signal
-		if errors.Is(err, errRotationRequested) {
-			m.rotate(ctx)
-		} else if err != nil {
-			m.logger.Error("block manager exited with error", "error", err)
-			m.freezeNode(err)
-		}
-	}()
 
 	return nil
 }

@@ -30,7 +30,7 @@ type ExecutorI interface {
 	ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, error)
 	UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain)
 	UpdateMempoolAfterInitChain(s *types.State)
-	UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte)
+	UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, block *types.Block)
 	UpdateProposerFromBlock(s *types.State, seqSet *types.SequencerSet, block *types.Block) bool
 
 	/* Consensus Messages */
@@ -164,14 +164,14 @@ func (e *Executor) CreateBlock(
 			ProposerAddress: e.localAddress,
 		},
 		Data: types.Data{
-			Txs:                    toDymintTxs(mempoolTxs),
-			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
-			Evidence:               types.EvidenceData{Evidence: nil},
-			ConsensusMessages:      protoutils.FromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
+			Txs:               toDymintTxs(mempoolTxs),
+			ConsensusMessages: protoutils.FromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
 		},
 		LastCommit: *lastCommit,
 	}
-	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
+
+	block.Header.SetDymHeader(types.MakeDymHeader(block.Data.ConsensusMessages))
+	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit))
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
 	copy(block.Header.SequencerHash[:], state.GetProposerHash())
 	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])

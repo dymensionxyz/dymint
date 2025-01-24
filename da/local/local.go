@@ -9,6 +9,7 @@ import (
 
 	"cosmossdk.io/math"
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/stub"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -17,6 +18,7 @@ import (
 // DataAvailabilityLayerClient is intended only for usage in tests.
 // It does actually ensures DA - it stores data in-memory.
 type DataAvailabilityLayerClient struct {
+	stub.Layer
 	logger   types.Logger
 	dalcKV   store.KV
 	daHeight atomic.Uint64

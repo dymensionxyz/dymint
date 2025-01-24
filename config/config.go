@@ -61,6 +61,8 @@ type BlockManagerConfig struct {
 	BatchSubmitBytes uint64 `mapstructure:"batch_submit_bytes"`
 	// SequencerSetUpdateInterval defines the interval at which to fetch sequencer updates from the settlement layer
 	SequencerSetUpdateInterval time.Duration `mapstructure:"sequencer_update_interval"`
+	// SkipValidationHeight can be used to skip fraud validation for a specific height (used to bypass backward compatibility issues between versions)
+	SkipValidationHeight uint64 `mapstructure:"skip_validation_height"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -228,6 +230,8 @@ type DBConfig struct {
 	SyncWrites bool `mapstructure:"sync_writes"`
 	// InMemory sets the database to run in-memory, without touching the disk.
 	InMemory bool `mapstructure:"in_memory"`
+	// if zero, default is used
+	BadgerCompactors int `mapstructure:"badger_num_compactors"`
 }
 
 func (dbc DBConfig) Validate() error {

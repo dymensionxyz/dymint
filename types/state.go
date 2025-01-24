@@ -7,12 +7,15 @@ import (
 
 	// TODO(tzdybal): copy to local project?
 
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/types/pb/dymint"
 )
+
+const rollappparams_modulename = "rollappparams"
 
 // State contains information about current state of the blockchain.
 type State struct {
@@ -49,12 +52,21 @@ func (s *State) GetProposer() *Sequencer {
 	return s.Proposer.Load()
 }
 
+// Warning: can be nil during 'graceful' shutdown
 func (s *State) GetProposerPubKey() tmcrypto.PubKey {
 	proposer := s.Proposer.Load()
 	if proposer == nil {
 		return nil
 	}
 	return proposer.PubKey()
+}
+
+func (s *State) SafeProposerPubKey() (tmcrypto.PubKey, error) {
+	ret := s.GetProposerPubKey()
+	if ret == nil {
+		return nil, gerrc.ErrNotFound.Wrap("proposer")
+	}
+	return ret, nil
 }
 
 // GetProposerHash returns the hash of the proposer
@@ -73,10 +85,6 @@ func (s *State) SetProposer(proposer *Sequencer) {
 
 func (s *State) IsGenesis() bool {
 	return s.Height() == 0
-}
-
-type RollappParams struct {
-	Params *dymint.RollappParams
 }
 
 // SetHeight sets the height saved in the Store if it is higher than the existing height
@@ -105,9 +113,9 @@ func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	params, ok := objmap["rollappparams"]
+	params, ok := objmap[rollappparams_modulename]
 	if !ok {
-		return fmt.Errorf("rollappparams not defined in genesis")
+		return fmt.Errorf("module not defined in genesis: %s", rollappparams_modulename)
 	}
 
 	var rollappParams RollappParams

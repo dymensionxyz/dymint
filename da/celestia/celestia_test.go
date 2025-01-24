@@ -319,25 +319,21 @@ func compareBatches(t *testing.T, b1, b2 *types.Batch) {
 func getRandomBlock(height uint64, nTxs int) *types.Block {
 	block := &types.Block{
 		Header: types.Header{
-			Height: height,
+			Height:                height,
+			ConsensusMessagesHash: types.ConsMessagesHash(nil),
 		},
 		Data: types.Data{
 			Txs: make(types.Txs, nTxs),
-			IntermediateStateRoots: types.IntermediateStateRoots{
-				RawRootsList: make([][]byte, nTxs),
-			},
 		},
 	}
 	copy(block.Header.AppHash[:], getRandomBytes(32))
 
 	for i := 0; i < nTxs; i++ {
 		block.Data.Txs[i] = getRandomTx()
-		block.Data.IntermediateStateRoots.RawRootsList[i] = getRandomBytes(32)
 	}
 
 	if nTxs == 0 {
 		block.Data.Txs = nil
-		block.Data.IntermediateStateRoots.RawRootsList = nil
 	}
 
 	return block

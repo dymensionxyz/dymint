@@ -73,23 +73,22 @@ func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) 
 				Block: BlockVersion,
 				App:   AppVersion,
 			},
-			Height:             height,
-			Time:               4567,
-			LastHeaderHash:     lastHeaderHash,
-			LastCommitHash:     h[0],
-			DataHash:           h[1],
-			ConsensusHash:      h[2],
-			AppHash:            [32]byte{},
-			LastResultsHash:    GetEmptyLastResultsHash(),
-			ProposerAddress:    []byte{4, 3, 2, 1},
-			SequencerHash:      [32]byte(proposerHash),
-			NextSequencersHash: [32]byte(proposerHash),
-			ChainID:            "test-chain",
+			Height:                height,
+			Time:                  4567,
+			LastHeaderHash:        lastHeaderHash,
+			LastCommitHash:        h[0],
+			DataHash:              h[1],
+			ConsensusHash:         h[2],
+			AppHash:               [32]byte{},
+			LastResultsHash:       GetEmptyLastResultsHash(),
+			ProposerAddress:       []byte{4, 3, 2, 1},
+			SequencerHash:         [32]byte(proposerHash),
+			NextSequencersHash:    [32]byte(proposerHash),
+			ChainID:               "test-chain",
+			ConsensusMessagesHash: types.ConsMessagesHash(nil),
 		},
 		Data: types.Data{
-			Txs:                    nil,
-			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: [][]byte{{0x1}}},
-			Evidence:               types.EvidenceData{Evidence: nil},
+			Txs: nil,
 		},
 		LastCommit: types.Commit{
 			Height:     8,
@@ -114,14 +113,10 @@ func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.Pr
 
 		block.Data = types.Data{
 			Txs: make(types.Txs, nTxs),
-			IntermediateStateRoots: types.IntermediateStateRoots{
-				RawRootsList: make([][]byte, nTxs),
-			},
 		}
 
 		for i := 0; i < nTxs; i++ {
 			block.Data.Txs[i] = GetRandomTx()
-			block.Data.IntermediateStateRoots.RawRootsList[i] = GetRandomBytes(32)
 		}
 
 		signature, err := generateSignature(proposerKey, &block.Header)
@@ -147,7 +142,7 @@ func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, 
 		block := generateBlock(i+startHeight, proposerHash, lastHeaderHash)
 		copy(block.Header.DataHash[:], types.GetDataHash(block))
 		if i > 0 {
-			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit, &block.Header))
+			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit))
 		}
 
 		signature, err := generateSignature(proposerKey, &block.Header)
@@ -267,7 +262,7 @@ func GenerateLastBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivK
 
 		copy(block.Header.DataHash[:], types.GetDataHash(block))
 		if i > 0 {
-			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit, &block.Header))
+			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit))
 		}
 
 		signature, err := generateSignature(proposerKey, &block.Header)
@@ -388,19 +383,16 @@ func GetEmptyLastResultsHash() [32]byte {
 func GetRandomBlock(height uint64, nTxs int) *types.Block {
 	block := &types.Block{
 		Header: types.Header{
-			Height: height,
+			Height:                height,
+			ConsensusMessagesHash: types.ConsMessagesHash(nil),
 		},
 		Data: types.Data{
 			Txs: make(types.Txs, nTxs),
-			IntermediateStateRoots: types.IntermediateStateRoots{
-				RawRootsList: make([][]byte, nTxs),
-			},
 		},
 	}
 
 	for i := 0; i < nTxs; i++ {
 		block.Data.Txs[i] = GetRandomTx()
-		block.Data.IntermediateStateRoots.RawRootsList[i] = GetRandomBytes(32)
 	}
 
 	return block

@@ -125,8 +125,11 @@ func testSubmitLoopInner(
 	pendingBytes := func() int {
 		return int(nProducedBytes.Load())
 	}
+	isLastBatchRecent := func(time.Duration) bool {
+		return true
+	}
 
-	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, pendingBytes, skewTime, args.maxTime, args.batchBytes, submitBatch)
+	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, pendingBytes, skewTime, isLastBatchRecent, args.maxTime, args.batchBytes, submitBatch)
 }
 
 // Make sure the producer does not get too far ahead

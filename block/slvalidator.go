@@ -11,6 +11,8 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/metrics"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // SettlementValidator validates batches from settlement layer with the corresponding blocks from DA and P2P.
@@ -31,7 +33,11 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 		logger:       logger,
 		blockManager: blockManager,
 	}
-	validator.lastValidatedHeight.Store(lastValidatedHeight)
+
+	// if SkipValidationHeight is set,  dont validate anything previous to that (used by 2D migration)
+	validationHeight := max(blockManager.Conf.SkipValidationHeight+1, lastValidatedHeight)
+
+	validator.lastValidatedHeight.Store(validationHeight)
 
 	return validator
 }
@@ -90,7 +96,6 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 	daBlocks := []*types.Block{}
 	for _, batch := range daBatch.Batches {
 		daBlocks = append(daBlocks, batch.Blocks...)
-		types.LastReceivedDAHeightGauge.Set(float64(batch.EndHeight()))
 	}
 
 	// validate DA blocks against the state update
@@ -179,8 +184,13 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	// last block of the batch
 	lastDABlock := daBlocks[numSlBDs-1]
 
+	// we get revision for the next state update
+	revision, err := v.blockManager.getRevisionFromSL(lastDABlock.Header.Height + 1)
+	if err != nil {
+		return err
+	}
 	// if lastDaBlock is previous block to fork, dont validate nextsequencerhash of last block because it will not match
-	if v.blockManager.State.RevisionStartHeight-1 == lastDABlock.Header.Height {
+	if revision.StartHeight-1 == lastDABlock.Header.Height {
 		v.logger.Debug("DA blocks, previous to fork, validated successfully", "start height", daBlocks[0].Header.Height, "end height", daBlocks[len(daBlocks)-1].Header.Height)
 		return nil
 	}
@@ -208,10 +218,13 @@ func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64) {
 	for {
 		curr := v.lastValidatedHeight.Load()
 		if v.lastValidatedHeight.CompareAndSwap(curr, max(curr, height)) {
-			_, err := v.blockManager.Store.SaveValidationHeight(v.GetLastValidatedHeight(), nil)
+			h := v.lastValidatedHeight.Load()
+			_, err := v.blockManager.Store.SaveValidationHeight(h, nil)
 			if err != nil {
 				v.logger.Error("update validation height: %w", err)
 			}
+
+			metrics.LastValidatedHeight.Set(float64(h))
 			break
 		}
 	}
@@ -230,6 +243,11 @@ func (v *SettlementValidator) NextValidationHeight() uint64 {
 // validateDRS compares the DRS version stored for the specific height, obtained from rollapp params.
 func (v *SettlementValidator) validateDRS(stateIndex uint64, height uint64, version uint32) error {
 	drs, err := v.blockManager.Store.LoadDRSVersion(height)
+	// it can happen DRS is not found for blocks applied previous to migration, in case of migration from 2D rollapps
+	if errors.Is(err, gerrc.ErrNotFound) {
+		v.logger.Error("Unable to validate BD DRS version. Height:%d Err:%w", height, err)
+		return nil
+	}
 	if err != nil {
 		return err
 	}

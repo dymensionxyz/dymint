@@ -1,42 +1,29 @@
 package block
 
 import (
-	"errors"
 	"fmt"
-
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	errorsmod "cosmossdk.io/errors"
 
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/metrics"
 )
 
-// applyBlockWithFraudHandling calls applyBlock and validateBlockBeforeApply with fraud handling.
-func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
-	validateWithFraud := func() error {
+// validateAndApplyBlock calls validateBlockBeforeApply and applyBlock.
+func (m *Manager) validateAndApplyBlock(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
+	if m.Conf.SkipValidationHeight != block.Header.Height {
 		if err := m.validateBlockBeforeApply(block, commit); err != nil {
 			m.blockCache.Delete(block.Header.Height)
 			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
 		}
-
-		if err := m.applyBlock(block, commit, blockMetaData); err != nil {
-			return fmt.Errorf("apply block: %w", err)
-		}
-
-		return nil
 	}
 
-	err := validateWithFraud()
-	if errors.Is(err, gerrc.ErrFault) {
-		// Here we handle the fault by calling the fraud handler.
-		// FraudHandler is an interface that defines a method to handle faults. Implement this interface to handle faults
-		// in specific ways. For example, once a fault is detected, it publishes a DataHealthStatus event to the
-		// pubsub which sets the node in a frozen state.
-		m.FraudHandler.HandleFault(m.Ctx, err)
+	if err := m.applyBlock(block, commit, blockMetaData); err != nil {
+		return fmt.Errorf("apply block: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 // applyBlock applies the block to the store and the abci app.
@@ -54,8 +41,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return types.ErrInvalidBlockHeight
 	}
 
-	types.SetLastAppliedBlockSource(blockMetaData.Source.String())
-
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.Source.String())
 
 	// Check if the app's last block height is the same as the currently produced block height
@@ -66,7 +51,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// In case the following true, it means we crashed after the app commit but before updating the state
 	// In that case we'll want to align the state with the app commit result, as if the block was applied.
 	if isBlockAlreadyApplied {
-		err := m.UpdateStateFromApp(block.Header.Hash())
+		err := m.UpdateStateFromApp(block)
 		if err != nil {
 			return fmt.Errorf("update state from app: %w", err)
 		}
@@ -123,12 +108,10 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		}
 		// Update the state with the new app hash, and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, block.Header.Hash())
+		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block)
 
 	}
 
-	// save last block time used to calculate batch skew time
-	m.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
 	// Update the store:
 	//  1. Save the proposer for the current height to the store.
 	//  2. Update the proposer in the state in case of rotation.
@@ -181,8 +164,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("commit state: %w", err)
 	}
 
-	types.RollappHeightGauge.Set(float64(block.Header.Height))
-
 	m.blockCache.Delete(block.Header.Height)
 
 	// validate whether configuration params and rollapp consensus params keep in line, after rollapp params are updated from the responses received in the block execution
@@ -198,6 +179,12 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if isProposerUpdated && m.AmIProposerOnRollapp() {
 		panic("I'm the new Proposer now. restarting as a proposer")
 	}
+
+	// update metrics
+	metrics.RollappHeightGauge.Set(float64(block.Header.Height))
+	metrics.RollappBlockSizeBytesGauge.Set(float64(block.SizeBytes()))
+	metrics.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
+	metrics.SetLastAppliedBlockSource(blockMetaData.Source.String())
 
 	return nil
 }
@@ -230,7 +217,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		if cachedBlock.Block.GetRevision() != m.State.GetRevision() {
 			break
 		}
-		err := m.applyBlockWithFraudHandling(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
+		err := m.validateAndApplyBlock(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}

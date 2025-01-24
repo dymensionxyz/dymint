@@ -7,11 +7,12 @@ import (
 )
 
 const (
-	FlagDAConfig         = "dymint.da_config"
-	FlagBlockTime        = "dymint.block_time"
-	FlagMaxIdleTime      = "dymint.max_idle_time"
-	FlagBatchSubmitTime  = "dymint.batch_submit_time"
-	FlagBatchSubmitBytes = "dymint.batch_submit_bytes"
+	FlagDAConfig             = "dymint.da_config"
+	FlagBlockTime            = "dymint.block_time"
+	FlagMaxIdleTime          = "dymint.max_idle_time"
+	FlagBatchSubmitTime      = "dymint.batch_submit_time"
+	FlagBatchSubmitBytes     = "dymint.batch_submit_bytes"
+	FlagSkipValidationHeight = "dymint.skip_validation_height"
 )
 
 const (
@@ -54,11 +55,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(FlagSLGasFees, def.SettlementConfig.GasFees, "Settlement Layer gas fees")
 	cmd.Flags().String(FlagSLGasPrices, def.SettlementConfig.GasPrices, "Settlement Layer gas prices")
 	cmd.Flags().Uint64(FlagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer batch submit gas limit")
-
 	cmd.Flags().String(FlagP2PListenAddress, def.P2PConfig.ListenAddress, "P2P listen address")
 	cmd.Flags().String(FlagP2PBootstrapNodes, def.P2PConfig.BootstrapNodes, "P2P bootstrap nodes")
 	cmd.Flags().Duration(FlagP2PBootstrapRetryTime, def.P2PConfig.BootstrapRetryTime, "P2P bootstrap time")
 	cmd.Flags().Uint64(FlagP2PGossipCacheSize, uint64(def.P2PConfig.GossipSubCacheSize), "P2P Gossiped blocks cache size") //nolint:gosec // GossipSubCacheSize should be always positive
+	cmd.Flags().Uint64(FlagSkipValidationHeight, def.SkipValidationHeight, "Full-node validation will be skipped for the specified height")
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
@@ -75,6 +76,9 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 		return err
 	}
 	if err := v.BindPFlag("batch_submit_bytes", cmd.Flags().Lookup(FlagBatchSubmitBytes)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("skip_validation_height", cmd.Flags().Lookup(FlagSkipValidationHeight)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("settlement_layer", cmd.Flags().Lookup(FlagSettlementLayer)); err != nil {

@@ -17,7 +17,7 @@ import (
 
 const (
 	ForkMonitorInterval = 15 * time.Second
-	ForkMessage         = "rollapp fork detected. please rollback to height previous to rollapp_revision_start_height."
+	ForkMonitorMessage  = "rollapp fork detected. please rollback to height previous to rollapp_revision_start_height."
 )
 
 // MonitorForkUpdateLoop monitors the hub for fork updates in a loop
@@ -26,8 +26,11 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 	defer ticker.Stop()
 
 	for {
-		if err := m.checkForkUpdate(ForkMessage); err != nil {
+		if err := m.checkForkUpdate(ForkMonitorMessage); err != nil {
 			m.logger.Error("Check for update.", err)
+			if errors.Is(err, ErrNonRecoverable) {
+				return err
+			}
 		}
 		select {
 		case <-ctx.Done():
@@ -63,7 +66,9 @@ func (m *Manager) checkForkUpdate(msg string) error {
 		if err != nil {
 			return err
 		}
-		m.freezeNode(fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), expectedRevision.StartHeight, actualRevision, expectedRevision.Number))
+
+		err = fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), expectedRevision.StartHeight, actualRevision, expectedRevision.Number)
+		return errors.Join(ErrNonRecoverable, err)
 	}
 
 	return nil
@@ -138,19 +143,26 @@ func (m *Manager) doFork(instruction types.Instruction) error {
 // It performs version validation and generates the necessary upgrade messages for the sequencer.
 //
 // The function implements the following logic:
-//   - If no faulty DRS version is provided (faultyDRS is nil), returns no messages
 //   - Validates the current DRS version against the potentially faulty version
-//   - Generates an upgrade message with the current valid DRS version
+//   - If DRS version used (binary version) is obsolete returns error
+//   - If DRS version used (binary version) is different from rollapp params, generates an upgrade message with the binary DRS version
+//   - Otherwise no upgrade messages are returned
 func (m *Manager) prepareDRSUpgradeMessages(obsoleteDRS []uint32) ([]proto.Message, error) {
 	drsVersion, err := version.GetDRSVersion()
 	if err != nil {
 		return nil, err
 	}
 
+	// if binary DRS is obsolete return error
 	for _, drs := range obsoleteDRS {
 		if drs == drsVersion {
 			return nil, gerrc.ErrCancelled.Wrapf("obsolete DRS version: %d", drs)
 		}
+	}
+
+	// same DRS message detected, no upgrade is necessary
+	if m.State.RollappParams.DrsVersion == drsVersion {
+		return []proto.Message{}, nil
 	}
 
 	return []proto.Message{
@@ -239,17 +251,8 @@ func (m *Manager) updateStateForNextRevision() error {
 	if nextRevision.StartHeight == m.State.NextHeight() {
 		// Set proposer to nil to force updating it from SL
 		m.State.SetProposer(nil)
-		// Upgrade revision on state
-		m.State.RevisionStartHeight = nextRevision.StartHeight
 		m.State.SetRevision(nextRevision.Number)
 
-		// we set rollappparam to node drs version to pass ValidateConfigWithRollappParams check, when drs upgrade is necessary.
-		// if the node starts with the wrong version at revision start height, it will stop after applyBlock.
-		drsVersion, err := version.GetDRSVersion()
-		if err != nil {
-			return err
-		}
-		m.State.RollappParams.DrsVersion = drsVersion
 		// update stored state
 		_, err = m.Store.SaveState(m.State, nil)
 		return err
@@ -285,7 +288,7 @@ func (m *Manager) doForkWhenNewRevision() error {
 
 	// this cannot happen. it means the revision number obtained is not the same or the next revision. unable to fork.
 	if expectedRevision.Number != m.State.GetRevision() {
-		panic("Inconsistent expected revision number from Hub. Unable to fork")
+		return fmt.Errorf("inconsistent expected revision number from Hub (%d != %d). Unable to fork", expectedRevision.Number, m.State.GetRevision())
 	}
 
 	// remove instruction file after fork

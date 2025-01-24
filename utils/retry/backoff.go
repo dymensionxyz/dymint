@@ -4,6 +4,8 @@ import (
 	"time"
 )
 
+// TODO: rethink this package. can probably use avast/retry-go instead
+
 const (
 	defaultBackoffInitialDelay = 200 * time.Millisecond
 	defaultBackoffMaxDelay     = 30 * time.Second

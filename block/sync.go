@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/types/metrics"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -21,6 +22,7 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	}
 
 	// Update heights based on state update end height
+	metrics.RollappHubHeightGauge.Set(float64(eventData.EndHeight))
 	m.LastSettlementHeight.Store(eventData.EndHeight)
 
 	// Update sequencers list from SL
@@ -72,17 +74,18 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				settlementBatch, err := m.SLClient.GetBatchAtHeight(m.State.NextHeight())
 				if err != nil {
+					// TODO: should be recoverable. set to unhealthy and continue
 					return fmt.Errorf("retrieve SL batch err: %w", err)
 				}
 				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
 
-				// we update LastBlockTimeInSettlement to be able to measure batch skew time with last block time in settlement
-				m.LastBlockTimeInSettlement.Store(settlementBatch.BlockDescriptors[len(settlementBatch.BlockDescriptors)-1].GetTimestamp().UTC().UnixNano())
+				// we update LastSubmissionTime to be able to measure batch submission time
+				m.LastSubmissionTime.Store(settlementBatch.Batch.CreationTime.UTC().UnixNano())
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
-
 				// this will keep sync loop alive when DA is down or retrievals are failing because DA issues.
 				if errors.Is(err, da.ErrRetrieval) {
+					// TODO: set to unhealthy?
 					continue
 				}
 				if err != nil {
@@ -94,11 +97,12 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				// trigger state update validation, after each state update is applied
 				m.triggerSettlementValidation()
 
-				err = m.attemptApplyCachedBlocks()
-				if err != nil {
-					return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
-				}
+			}
 
+			// after syncing from SL, attempt to apply cached blocks if any
+			err := m.attemptApplyCachedBlocks()
+			if err != nil {
+				return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
 			}
 
 			// avoid notifying as synced in case it fails before
@@ -107,7 +111,6 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				// nudge to signal to any listens that we're currently synced with the last settlement height we've seen so far
 				m.syncedFromSettlement.Nudge()
 			}
-
 		}
 	}
 }

@@ -2,10 +2,13 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/metrics"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -49,7 +52,7 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	}
 
 	m.UpdateTargetHeight(height)
-	types.LastReceivedP2PHeightGauge.Set(float64(height))
+	metrics.LastReceivedP2PHeightGauge.Set(float64(height))
 
 	m.logger.Debug("Received new block from p2p.", "block height", height, "source", source.String(), "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
 	m.blockCache.Add(height, &block, &commit, source)
@@ -58,7 +61,17 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
-		m.freezeNode(err)
+		// OnReceivedBlock is a callback, and we can't return an error.
+		// Therefore we handle the error here as well.
+		if errors.Is(err, gerrc.ErrFault) {
+			// Here we handle the fault by calling the fraud handler.
+			// it publishes a DataHealthStatus event to the pubsub and stops the block manager.
+			m.logger.Error("block manager exited with fault", "error", err)
+			m.FraudHandler.HandleFault(err)
+		} else {
+			m.logger.Error("block manager exited with error", "error", err)
+			m.StopManager(err)
+		}
 		m.logger.Error("Attempt apply cached blocks.", "err", err)
 	}
 }

@@ -43,6 +43,10 @@ type Header struct {
 
 	// The Chain ID
 	ChainID string
+
+	// The following fields are added on top of the normal TM header, for dymension purposes
+	// Note: LOSSY when converted to tendermint (squashed into a single hash)
+	ConsensusMessagesHash [32]byte // must be the hash of the (merkle root) of the consensus messages
 }
 
 func (h Header) GetTimestamp() time.Time {
@@ -85,10 +89,8 @@ var (
 
 // Data defines Dymint block data.
 type Data struct {
-	Txs                    Txs
-	IntermediateStateRoots IntermediateStateRoots
-	Evidence               EvidenceData
-	ConsensusMessages      []*proto.Any
+	Txs               Txs
+	ConsensusMessages []*proto.Any
 }
 
 // EvidenceData defines how evidence is stored in block.
@@ -118,12 +120,15 @@ type IntermediateStateRoots struct {
 	RawRootsList [][]byte
 }
 
-func GetLastCommitHash(lastCommit *Commit, header *Header) []byte {
-	lastABCICommit := ToABCICommit(lastCommit, header)
+func GetLastCommitHash(lastCommit *Commit) []byte {
+	lastABCICommit := ToABCICommit(lastCommit)
+	// Note: hash only depends on the signature
 	return lastABCICommit.Hash()
 }
 
 // GetDataHash returns the hash of the block data to be set in the block header.
+// Doesn't include consensus messages because we want to avoid touching
+// fundamental primitive and allow tx inclusion proofs.
 func GetDataHash(block *Block) []byte {
 	abciData := tmtypes.Data{
 		Txs: ToABCIBlockDataTxs(&block.Data),

@@ -25,21 +25,35 @@ func ValidateProposedTransition(state *State, block *Block, commit *Commit, prop
 func (b *Block) ValidateBasic() error {
 	err := b.Header.ValidateBasic()
 	if err != nil {
-		return err
+		return fmt.Errorf("header: %w", err)
 	}
 
 	err = b.Data.ValidateBasic()
 	if err != nil {
-		return err
+		return fmt.Errorf("data: %w", err)
 	}
 
 	err = b.LastCommit.ValidateBasic()
 	if err != nil {
-		return err
+		return fmt.Errorf("last commit: %w", err)
 	}
 
 	if b.Header.DataHash != [32]byte(GetDataHash(b)) {
 		return ErrInvalidHeaderDataHash
+	}
+
+	if err := b.validateDymHeader(); err != nil {
+		return fmt.Errorf("dym header: %w", err)
+	}
+
+	return nil
+}
+
+func (b *Block) validateDymHeader() error {
+	exp := b.Header.DymHash()
+	got := MakeDymHeader(b.Data.ConsensusMessages).Hash()
+	if !bytes.Equal(exp, got) {
+		return ErrInvalidDymHeaderHash
 	}
 	return nil
 }
@@ -49,6 +63,9 @@ func (b *Block) ValidateWithState(state *State) error {
 	if err != nil {
 		if errors.Is(err, ErrInvalidHeaderDataHash) {
 			return NewErrInvalidHeaderDataHashFraud(b)
+		}
+		if errors.Is(err, ErrInvalidDymHeader) {
+			return NewErrInvalidDymHeaderFraud(b, err)
 		}
 
 		return err

@@ -374,7 +374,6 @@ func TestValidatedHeight(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-
 			node.BlockManager.SettlementValidator.UpdateLastValidatedHeight(test.validatedHeight)
 			node.BlockManager.LastSettlementHeight.Store(test.submittedHeight)
 
@@ -389,7 +388,6 @@ func TestValidatedHeight(t *testing.T) {
 
 	err = node.Stop()
 	require.NoError(err)
-
 }
 
 func TestGetCommit(t *testing.T) {
@@ -929,28 +927,24 @@ func TestValidatorSetHandling(t *testing.T) {
 func getRandomBlock(height uint64, nTxs int) *types.Block {
 	block := &types.Block{
 		Header: types.Header{
-			Height:          height,
-			Version:         types.Version{Block: testutil.BlockVersion},
-			ProposerAddress: getRandomBytes(20),
+			Height:                height,
+			Version:               types.Version{Block: testutil.BlockVersion},
+			ProposerAddress:       getRandomBytes(20),
+			ConsensusMessagesHash: types.ConsMessagesHash(nil),
 		},
 		Data: types.Data{
 			Txs: make(types.Txs, nTxs),
-			IntermediateStateRoots: types.IntermediateStateRoots{
-				RawRootsList: make([][]byte, nTxs),
-			},
 		},
 	}
 	copy(block.Header.AppHash[:], getRandomBytes(32))
 
 	for i := 0; i < nTxs; i++ {
 		block.Data.Txs[i] = getRandomTx()
-		block.Data.IntermediateStateRoots.RawRootsList[i] = getRandomBytes(32)
 	}
 
 	// TODO(tzdybal): see https://github.com/dymensionxyz/dymint/issues/143
 	if nTxs == 0 {
 		block.Data.Txs = nil
-		block.Data.IntermediateStateRoots.RawRootsList = nil
 	}
 
 	tmprotoLC, err := tmtypes.CommitFromProto(&tmproto.Commit{})

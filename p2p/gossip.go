@@ -108,12 +108,12 @@ func (g *Gossiper) ProcessMessages(ctx context.Context) {
 	}
 }
 
-func wrapValidator(gossiper *Gossiper, validator GossipValidator) pubsub.Validator {
-	return func(_ context.Context, _ peer.ID, msg *pubsub.Message) bool {
+func wrapValidator(gossiper *Gossiper, validator GossipValidator) pubsub.ValidatorEx {
+	return func(_ context.Context, _ peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
 		// Make sure we don't process our own messages.
 		// In this case we'll want to return true but not to actually handle the message.
 		if msg.GetFrom() == gossiper.ownID {
-			return true
+			return pubsub.ValidationAccept
 		}
 		return validator(&GossipMessage{
 			Data: msg.Data,
