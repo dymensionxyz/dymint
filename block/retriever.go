@@ -1,10 +1,7 @@
 package block
 
 import (
-	"errors"
 	"fmt"
-
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -36,17 +33,8 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 	defer m.syncFromDaMu.Unlock()
 	m.syncFromDaMu.Lock()
 	for currH := m.State.NextHeight(); currH <= targetHeight; currH = m.State.NextHeight() {
-		// if we have the block locally, we don't need to fetch it from the DA
-		err := m.applyLocalBlock(currH)
-		if err == nil {
-			m.logger.Info("Synced from local", "store height", currH, "target height", targetHeight)
-			continue
-		}
-		if !errors.Is(err, gerrc.ErrNotFound) {
-			m.logger.Error("Apply local block", "err", err)
-		}
 
-		err = m.syncFromDABatch()
+		err := m.syncFromDABatch()
 		if err != nil {
 			return fmt.Errorf("process next DA batch: %w", err)
 		}
@@ -85,30 +73,6 @@ func (m *Manager) syncFromDABatch() error {
 	return nil
 }
 
-func (m *Manager) applyLocalBlock(height uint64) error {
-	defer m.retrieverMu.Unlock()
-	m.retrieverMu.Lock()
-
-	block, err := m.Store.LoadBlock(height)
-	if err != nil {
-		return fmt.Errorf("load block: %w", gerrc.ErrNotFound)
-	}
-	commit, err := m.Store.LoadCommit(height)
-	if err != nil {
-		return fmt.Errorf("load commit: %w", gerrc.ErrNotFound)
-	}
-	if err := m.validateBlock(block, commit); err != nil {
-		return fmt.Errorf("validate block from local store: height: %d: %w", height, err)
-	}
-
-	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.LocalDb})
-	if err != nil {
-		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
-	}
-
-	return nil
-}
-
 func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
@@ -118,6 +82,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 
+	m.logger.Info("onReceivedBlock locked")
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
 
@@ -143,6 +108,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 		}
 	}
 	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
+	m.logger.Info("onReceivedBlock unlocked")
 
 	return nil
 }

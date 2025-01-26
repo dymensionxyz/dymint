@@ -121,6 +121,8 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 }
 
 func (m *Manager) attemptApplyCachedBlocks() error {
+	m.logger.Info("onReceivedBlock locked")
+
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
 
@@ -145,6 +147,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 
 		m.blockCache.Delete(cachedBlock.Block.Header.Height)
 	}
+	m.logger.Info("onReceivedBlock unlocked")
 
 	return nil
 }
