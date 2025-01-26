@@ -53,10 +53,12 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		m.logger.Error("save block blocksync", "err", err)
 	}
 
+	m.logger.Info("executing block", "height", block.Header.Height)
 	responses, err := m.Executor.ExecuteBlock(m.State, block)
 	if err != nil {
 		return fmt.Errorf("execute block: %w", err)
 	}
+	m.logger.Info("block executed", "height", block.Header.Height)
 
 	dbBatch := m.Store.NewBatch()
 	dbBatch, err = m.Store.SaveBlockResponses(block.Header.Height, responses, dbBatch)
@@ -78,12 +80,14 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if err != nil {
 		return fmt.Errorf("commit batch to disk: %w", err)
 	}
+	m.logger.Info("committing block", "height", block.Header.Height)
 
 	// Commit block to app
 	appHash, retainHeight, err := m.Executor.Commit(m.State, block, responses)
 	if err != nil {
 		return fmt.Errorf("commit block: %w", err)
 	}
+	m.logger.Info("block committed", "height", block.Header.Height)
 
 	// If failed here, after the app committed, but before the state is updated, we'll update the state on
 	// UpdateStateFromApp using the saved responses and validators.

@@ -44,7 +44,7 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 
 	// It is not strictly necessary to return early, for correctness, but doing so helps us avoid mutex pressure and unnecessary repeated attempts to apply cached blocks
 	if m.blockCache.Has(height) {
-		m.logger.Info("onReceivedBlock unlocked")
+		m.logger.Info("onReceivedBlock unlocked exit")
 		m.retrieverMu.Unlock()
 		return
 	}
