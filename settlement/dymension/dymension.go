@@ -394,6 +394,7 @@ func (c *Client) eventHandler() {
 			panic("Settlement WS disconnected")
 		case event := <-eventsChannel:
 			// Assert value is in map and publish it to the event bus
+			c.logger.Info("new sl event", "event", event)
 			data, ok := c.eventMap[event.Query]
 			if !ok {
 				c.logger.Debug("Ignoring event. Type not supported", "event", event)

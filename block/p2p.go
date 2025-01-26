@@ -36,6 +36,9 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 	block := eventData.Block
 	commit := eventData.Commit
 	height := block.Header.Height
+
+	m.logger.Info("onReceivedBlock", "height", block.Header.Height)
+
 	m.retrieverMu.Lock() // needed to protect blockCache access
 
 	// It is not strictly necessary to return early, for correctness, but doing so helps us avoid mutex pressure and unnecessary repeated attempts to apply cached blocks
