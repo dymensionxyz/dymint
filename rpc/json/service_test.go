@@ -331,6 +331,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 			ListenAddress:                config.DefaultListenAddress,
 			GossipSubCacheSize:           50,
 			BootstrapRetryTime:           30 * time.Second,
+			DiscoveryEnabled:             true,
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 	}

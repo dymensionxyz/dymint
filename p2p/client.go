@@ -148,7 +148,7 @@ func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 	// to avoid any automatic p2p connectivity via dht, dht needs to be disabled
 	if !c.conf.DiscoveryEnabled {
 		c.logger.Debug("P2P discovery disabled. Blocksync disabled.")
-		//blocksync cannot be used if no dht is set
+		// blocksync cannot be used if no dht is set
 		c.conf.BlockSyncEnabled = false
 		return nil
 	}

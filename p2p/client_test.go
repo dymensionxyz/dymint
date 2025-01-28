@@ -39,6 +39,7 @@ func TestClientStartup(t *testing.T) {
 		GossipSubCacheSize:           50,
 		BootstrapRetryTime:           30 * time.Second,
 		BlockSyncRequestIntervalTime: 30 * time.Second,
+		DiscoveryEnabled:             true,
 	}, privKey, "TestChain", store, pubsubServer, datastore.NewMapDatastore(), log.TestingLogger())
 	assert := assert.New(t)
 	assert.NoError(err)
@@ -276,6 +277,7 @@ func TestSeedStringParsing(t *testing.T) {
 			client, err := p2p.NewClient(config.P2PConfig{
 				GossipSubCacheSize: 50,
 				BootstrapRetryTime: 30 * time.Second,
+				DiscoveryEnabled:   true,
 			}, privKey, "TestNetwork", store, pubsubServer, datastore.NewMapDatastore(), logger)
 			require.NoError(err)
 			require.NotNil(client)
