@@ -1,17 +1,19 @@
 with-expecter: true
 recursive: true
 packages:
+  github.com/dymensionxyz/dymint/store:
+    interfaces:
+      Store:
+  github.com/dymensionxyz/dymint/settlement:
+    interfaces:
+      ClientI:
   github.com/dymensionxyz/dymint/settlement/dymension:
     interfaces:
       CosmosClient:
-  github.com/dymensionxyz/dymint/settlement:
-    interfaces:
-      LayerI:
-      HubClient:
-  github.com/dymensionxyz/dymension/v3/x/sequencer/types:
+  github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer:
     interfaces:
       QueryClient:
-  github.com/dymensionxyz/dymension/v3/x/rollapp/types:
+  github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp:
     interfaces:
       QueryClient:
   github.com/tendermint/tendermint/abci/types:
@@ -27,5 +29,13 @@ packages:
   github.com/dymensionxyz/dymint/da/avail:
     interfaces:
      SubstrateApiI:
-
-
+  github.com/dymensionxyz/dymint/da:
+    interfaces:
+     DataAvailabilityLayerClient:
+  github.com/dymensionxyz/dymint/p2p:
+    interfaces:
+     StateGetter:
+  github.com/dymensionxyz/dymint/block:
+    interfaces:
+      ExecutorI:
+      FraudHandler:

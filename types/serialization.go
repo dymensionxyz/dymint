@@ -2,8 +2,9 @@ package types
 
 import (
 	"errors"
+	"fmt"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	prototypes "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 
@@ -82,22 +83,21 @@ func (c *Commit) UnmarshalBinary(data []byte) error {
 // ToProto converts Header into protobuf representation and returns it.
 func (h *Header) ToProto() *pb.Header {
 	return &pb.Header{
-		Version: &pb.Version{
-			Block: h.Version.Block,
-			App:   h.Version.App,
-		},
-		NamespaceId:     h.NamespaceID[:],
-		Height:          h.Height,
-		Time:            h.Time,
-		ChainId:         h.ChainID,
-		LastHeaderHash:  h.LastHeaderHash[:],
-		LastCommitHash:  h.LastCommitHash[:],
-		DataHash:        h.DataHash[:],
-		ConsensusHash:   h.ConsensusHash[:],
-		AppHash:         h.AppHash[:],
-		LastResultsHash: h.LastResultsHash[:],
-		ProposerAddress: h.ProposerAddress[:],
-		SequencersHash:  h.SequencersHash[:],
+		Version:               &pb.Version{Block: h.Version.Block, App: h.Version.App},
+		NamespaceId:           []byte{},
+		Height:                h.Height,
+		Time:                  h.Time,
+		LastHeaderHash:        h.LastHeaderHash[:],
+		LastCommitHash:        h.LastCommitHash[:],
+		DataHash:              h.DataHash[:],
+		ConsensusHash:         h.ConsensusHash[:],
+		AppHash:               h.AppHash[:],
+		LastResultsHash:       h.LastResultsHash[:],
+		ProposerAddress:       h.ProposerAddress[:],
+		SequencerHash:         h.SequencerHash[:],
+		NextSequencerHash:     h.NextSequencersHash[:],
+		ChainId:               h.ChainID,
+		ConsensusMessagesHash: h.ConsensusMessagesHash[:],
 	}
 }
 
@@ -106,9 +106,6 @@ func (h *Header) FromProto(other *pb.Header) error {
 	h.Version.Block = other.Version.Block
 	h.Version.App = other.Version.App
 	h.ChainID = other.ChainId
-	if !safeCopy(h.NamespaceID[:], other.NamespaceId) {
-		return errors.New("invalid length of 'NamespaceId'")
-	}
 	h.Height = other.Height
 	h.Time = other.Time
 	if !safeCopy(h.LastHeaderHash[:], other.LastHeaderHash) {
@@ -129,14 +126,27 @@ func (h *Header) FromProto(other *pb.Header) error {
 	if !safeCopy(h.LastResultsHash[:], other.LastResultsHash) {
 		return errors.New("invalid length of 'LastResultsHash'")
 	}
-	if !safeCopy(h.SequencersHash[:], other.SequencersHash) {
-		return errors.New("invalid length of 'SequencersHash'")
+	if !safeCopy(h.SequencerHash[:], other.SequencerHash) {
+		return errors.New("invalid length of 'SequencerHash'")
 	}
-	if len(other.ProposerAddress) > 0 {
+	// if NextSequencerHash is nil (2D rollapps) use sequencerHash
+	nextSequencerHash := other.NextSequencerHash
+	if nextSequencerHash == nil {
+		nextSequencerHash = other.SequencerHash
+	}
+	if !safeCopy(h.NextSequencersHash[:], nextSequencerHash) {
+		return errors.New("invalid length of 'NextSequencersHash'")
+	}
+
+	if len(other.ProposerAddress) > 0 { // TODO: why if?
 		h.ProposerAddress = make([]byte, len(other.ProposerAddress))
 		copy(h.ProposerAddress, other.ProposerAddress)
 	}
-
+	if 0 < len(other.ConsensusMessagesHash) {
+		if !safeCopy(h.ConsensusMessagesHash[:], other.ConsensusMessagesHash) {
+			return errors.New("invalid length of 'consensusMessagesHash'")
+		}
+	}
 	return nil
 }
 
@@ -162,8 +172,8 @@ func (b *Block) ToProto() *pb.Block {
 // ToProto converts Batch into protobuf representation and returns it.
 func (b *Batch) ToProto() *pb.Batch {
 	return &pb.Batch{
-		StartHeight: b.StartHeight,
-		EndHeight:   b.EndHeight,
+		StartHeight: b.StartHeight(),
+		EndHeight:   b.EndHeight(),
 		Blocks:      blocksToProto(b.Blocks),
 		Commits:     commitsToProto(b.Commits),
 	}
@@ -172,9 +182,8 @@ func (b *Batch) ToProto() *pb.Batch {
 // ToProto converts Data into protobuf representation and returns it.
 func (d *Data) ToProto() *pb.Data {
 	return &pb.Data{
-		Txs:                    txsToByteSlices(d.Txs),
-		IntermediateStateRoots: d.IntermediateStateRoots.RawRootsList,
-		Evidence:               evidenceToProto(d.Evidence),
+		Txs:               txsToByteSlices(d.Txs),
+		ConsensusMessages: d.ConsensusMessages,
 	}
 }
 
@@ -185,8 +194,7 @@ func (b *Block) FromProto(other *pb.Block) error {
 		return err
 	}
 	b.Data.Txs = byteSlicesToTxs(other.Data.Txs)
-	b.Data.IntermediateStateRoots.RawRootsList = other.Data.IntermediateStateRoots
-	b.Data.Evidence = evidenceFromProto(other.Data.Evidence)
+	b.Data.ConsensusMessages = other.Data.ConsensusMessages
 	if other.LastCommit != nil {
 		err := b.LastCommit.FromProto(other.LastCommit)
 		if err != nil {
@@ -199,8 +207,15 @@ func (b *Block) FromProto(other *pb.Block) error {
 
 // FromProto fills Batch with data from its protobuf representation.
 func (b *Batch) FromProto(other *pb.Batch) error {
-	b.StartHeight = other.StartHeight
-	b.EndHeight = other.EndHeight
+	n := len(other.Blocks)
+	start := other.StartHeight
+	end := other.EndHeight
+	if 0 < n && start != other.Blocks[0].Header.GetHeight() {
+		return fmt.Errorf("start height does not match first block height: %w", gerrc.ErrInvalidArgument)
+	}
+	if 0 < n && end != other.Blocks[n-1].Header.GetHeight() {
+		return fmt.Errorf("end height does not match last block height: %w", gerrc.ErrInvalidArgument)
+	}
 	b.Blocks = protoToBlocks(other.Blocks)
 	b.Commits = protoToCommits(other.Commits)
 	return nil
@@ -243,55 +258,118 @@ func (c *Commit) FromProto(other *pb.Commit) error {
 
 // ToProto converts State into protobuf representation and returns it.
 func (s *State) ToProto() (*pb.State, error) {
-	nextValidators, err := s.NextValidators.ToProto()
-	if err != nil {
-		return nil, err
-	}
-	validators, err := s.Validators.ToProto()
-	if err != nil {
-		return nil, err
+	var proposerProto *pb.Sequencer
+	proposer := s.GetProposer()
+	if proposer != nil {
+		var err error
+		proposerProto, err = proposer.ToProto()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &pb.State{
-		Version:                          &s.Version,
-		ChainId:                          s.ChainID,
-		InitialHeight:                    int64(s.InitialHeight),
-		LastBlockHeight:                  int64(s.LastBlockHeight.Load()),
-		NextValidators:                   nextValidators,
-		Validators:                       validators,
-		BaseHeight:                       s.BaseHeight,
-		LastHeightValidatorsChanged:      s.LastHeightValidatorsChanged,
-		ConsensusParams:                  s.ConsensusParams,
-		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
-		LastResultsHash:                  s.LastResultsHash[:],
-		AppHash:                          s.AppHash[:],
+		Version:             &s.Version,
+		ChainId:             s.ChainID,
+		InitialHeight:       int64(s.InitialHeight), //nolint:gosec // height is non-negative and falls in int64
+		LastBlockHeight:     int64(s.Height()),      //nolint:gosec // height is non-negative and falls in int64
+		ConsensusParams:     s.ConsensusParams,
+		LastResultsHash:     s.LastResultsHash[:],
+		LastHeaderHash:      s.LastHeaderHash[:],
+		AppHash:             s.AppHash[:],
+		RollappParams:       s.RollappParams,
+		Proposer:            proposerProto,
+		RevisionStartHeight: int64(s.RevisionStartHeight), //nolint:gosec // height is non-negative and falls in int64
 	}, nil
 }
 
 // FromProto fills State with data from its protobuf representation.
 func (s *State) FromProto(other *pb.State) error {
-	var err error
 	s.Version = *other.Version
 	s.ChainID = other.ChainId
-	s.InitialHeight = uint64(other.InitialHeight)
-	s.LastBlockHeight.Store(uint64(other.LastBlockHeight))
-	s.BaseHeight = other.BaseHeight
+	s.InitialHeight = uint64(other.InitialHeight)             //nolint:gosec // height is non-negative and falls in int64
+	s.SetHeight(uint64(other.LastBlockHeight))                //nolint:gosec // height is non-negative and falls in int64
+	s.RevisionStartHeight = uint64(other.RevisionStartHeight) //nolint:gosec // height is non-negative and falls in int64
+	if other.Proposer != nil {
+		proposer, err := SequencerFromProto(other.Proposer)
+		if err != nil {
+			return err
+		}
+		s.SetProposer(proposer)
+	} else {
+		// proposer may be nil in the state
+		s.SetProposer(nil)
+	}
 
-	s.NextValidators, err = types.ValidatorSetFromProto(other.NextValidators)
-	if err != nil {
-		return err
-	}
-	s.Validators, err = types.ValidatorSetFromProto(other.Validators)
-	if err != nil {
-		return err
-	}
-	s.LastHeightValidatorsChanged = other.LastHeightValidatorsChanged
 	s.ConsensusParams = other.ConsensusParams
-	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged
 	copy(s.LastResultsHash[:], other.LastResultsHash)
+	copy(s.LastHeaderHash[:], other.LastHeaderHash)
 	copy(s.AppHash[:], other.AppHash)
-
+	s.RollappParams = other.RollappParams
 	return nil
+}
+
+// ToProto converts Sequencer into protobuf representation and returns it.
+func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
+	if s == nil {
+		return nil, fmt.Errorf("nil sequencer")
+	}
+	protoVal, err := s.val.ToProto()
+	if err != nil {
+		return nil, fmt.Errorf("tendermint validator to proto: %w", err)
+	}
+	return &pb.Sequencer{
+		SettlementAddress:   s.SettlementAddress,
+		Validator:           *protoVal,
+		RewardAddr:          s.RewardAddr,
+		WhitelistedRelayers: s.WhitelistedRelayers,
+	}, nil
+}
+
+// SequencerFromProto fills Sequencer with data from its protobuf representation.
+func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
+	if seq == nil {
+		return nil, fmt.Errorf("nil sequencer")
+	}
+	val, err := types.ValidatorFromProto(&seq.Validator)
+	if err != nil {
+		return nil, fmt.Errorf("tendermint validator from proto: %w", err)
+	}
+	return &Sequencer{
+		SettlementAddress:   seq.SettlementAddress,
+		RewardAddr:          seq.RewardAddr,
+		WhitelistedRelayers: seq.WhitelistedRelayers,
+		val:                 *val,
+	}, nil
+}
+
+// ToProto converts Sequencers into protobuf representation and returns it.
+func (s Sequencers) ToProto() (*pb.SequencerSet, error) {
+	seqs := make([]pb.Sequencer, len(s))
+	for i, seq := range s {
+		seqProto, err := seq.ToProto()
+		if err != nil {
+			return nil, fmt.Errorf("sequencer to proto: %w", err)
+		}
+		seqs[i] = *seqProto
+	}
+	return &pb.SequencerSet{Sequencers: seqs}, nil
+}
+
+// SequencersFromProto fills Sequencers with data from its protobuf representation.
+func SequencersFromProto(s *pb.SequencerSet) (Sequencers, error) {
+	if s == nil {
+		return Sequencers{}, fmt.Errorf("nil sequencer set")
+	}
+	seqs := make([]Sequencer, len(s.Sequencers))
+	for i, seq := range s.Sequencers {
+		sequencer, err := SequencerFromProto(&seq)
+		if err != nil {
+			return Sequencers{}, fmt.Errorf("sequencer from proto: %w", err)
+		}
+		seqs[i] = *sequencer
+	}
+	return seqs, nil
 }
 
 func txsToByteSlices(txs Txs) [][]byte {
@@ -311,22 +389,6 @@ func byteSlicesToTxs(bytes [][]byte) Txs {
 		txs[i] = bytes[i]
 	}
 	return txs
-}
-
-func evidenceToProto(evidence EvidenceData) []*abci.Evidence {
-	var ret []*abci.Evidence
-	for _, e := range evidence.Evidence {
-		for _, ae := range e.ABCI() {
-			ret = append(ret, &ae) //#nosec
-		}
-	}
-	return ret
-}
-
-func evidenceFromProto(evidence []*abci.Evidence) EvidenceData {
-	var ret EvidenceData
-	// TODO(tzdybal): right now Evidence is just an interface without implementations
-	return ret
 }
 
 func signaturesToByteSlices(sigs []Signature) [][]byte {

@@ -9,8 +9,10 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/rand"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
@@ -34,7 +36,7 @@ func TestTxIndex(t *testing.T) {
 	}
 	hash := tx.Hash()
 
-	batch := txindex.NewBatch(1)
+	batch := txindex.NewBatch(1, txResult.Height)
 	if err := batch.Add(txResult); err != nil {
 		t.Error(err)
 	}
@@ -312,6 +314,52 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	require.Len(t, results, 3)
 }
 
+func TestTxIndexerPruning(t *testing.T) {
+
+	// init the block indexer
+	indexer := NewTxIndex(store.NewDefaultInMemoryKVStore())
+	numBlocks := uint64(100)
+
+	txsWithEvents := 0
+	numEvents := uint64(0)
+	// index tx event data
+	for i := uint64(1); i <= numBlocks; i++ {
+		events := getNEvents(rand.Intn(10))
+		txResult := getRandomTxResult(int64(i), events)
+		err := indexer.Index(txResult)
+		require.NoError(t, err)
+		if len(events) > 0 {
+			txsWithEvents++
+		}
+		numEvents += uint64(len(events))
+	}
+
+	q := query.MustParse("account.number = 1")
+	// query all blocks and receive events for all txs
+	results, err := indexer.Search(context.Background(), q)
+	require.NoError(t, err)
+	require.Equal(t, txsWithEvents, len(results))
+
+	// prune indexer for all heights
+	pruned, err := indexer.Prune(1, numBlocks+1, log.NewNopLogger())
+	require.NoError(t, err)
+	require.Equal(t, numBlocks+numEvents, pruned)
+
+	// check the query returns empty
+	results, err = indexer.Search(context.Background(), q)
+	require.NoError(t, err)
+	require.Equal(t, 0, len(results))
+
+	conditions, err := q.Conditions()
+	require.NoError(t, err)
+	// check there are no unlinked events matching the query that are not found with Search
+	for _, c := range conditions {
+		results := indexer.match(context.Background(), c, startKeyForCondition(c, 0), nil, true)
+		require.Equal(t, 0, len(results))
+	}
+
+}
+
 func txResultWithEvents(events []abci.Event) *abci.TxResult {
 	tx := types.Tx("HELLO WORLD")
 	return &abci.TxResult{
@@ -326,6 +374,48 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 		},
 	}
 }
+func getRandomTxResult(height int64, events []abci.Event) *abci.TxResult {
+	tx := types.Tx(randomTxHash())
+	return &abci.TxResult{
+		Height: height,
+		Index:  0,
+		Tx:     tx,
+		Result: abci.ResponseDeliverTx{
+			Data:   []byte{0},
+			Code:   abci.CodeTypeOK,
+			Log:    "",
+			Events: events,
+		},
+	}
+}
+
+func getNEvents(n int) []abci.Event {
+	events := []abci.Event{}
+	for i := 0; i < n; i++ {
+		event := abci.Event{
+			Type: "account",
+			Attributes: []abci.EventAttribute{
+				{
+					Key:   []byte("number"),
+					Value: []byte("1"),
+					Index: true,
+				},
+			},
+		}
+		events = append(events, event)
+	}
+	return events
+}
+
+func randomTxHash() string {
+	symbols := "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+	b := make([]byte, 64)
+	for i := range b {
+		b[i] = symbols[rand.Int63()%int64(len(symbols))]
+	}
+	return string(b)
+}
 
 func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	dir, err := os.MkdirTemp("", "tx_index_db")
@@ -339,7 +429,7 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	require.NoError(b, err)
 	indexer := NewTxIndex(store)
 
-	batch := txindex.NewBatch(txsCount)
+	batch := txindex.NewBatch(txsCount, int64(0))
 	txIndex := uint32(0)
 	for i := int64(0); i < txsCount; i++ {
 		tx := tmrand.Bytes(250)

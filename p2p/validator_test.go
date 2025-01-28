@@ -1,19 +1,18 @@
 package p2p_test
 
 import (
-	"encoding/hex"
 	"testing"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/types"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -22,12 +21,11 @@ import (
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/mempool"
 
+	p2pmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/p2p"
 	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
 
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	"github.com/dymensionxyz/dymint/p2p"
-	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/dymensionxyz/dymint/settlement/registry"
 )
 
 func TestValidator_TxValidator(t *testing.T) {
@@ -38,50 +36,50 @@ func TestValidator_TxValidator(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want bool
+		want pubsub.ValidationResult
 	}{
 		{
-			name: "valid: tx already in cache",
+			name: "want: tx already in cache",
 			args: args{
 				mp:      &mockMP{err: mempool.ErrTxInCache},
 				numMsgs: 3,
 			},
-			want: true,
+			want: pubsub.ValidationAccept,
 		}, {
-			name: "valid: mempool is full",
+			name: "want: mempool is full",
 			args: args{
 				mp:      &mockMP{err: mempool.ErrMempoolIsFull{}},
 				numMsgs: 3,
 			},
-			want: true,
+			want: pubsub.ValidationAccept,
 		}, {
 			name: "invalid: tx too large",
 			args: args{
 				mp:      &mockMP{err: mempool.ErrTxTooLarge{}},
 				numMsgs: 3,
 			},
-			want: false,
+			want: pubsub.ValidationReject,
 		}, {
 			name: "invalid: pre-check error",
 			args: args{
 				mp:      &mockMP{err: mempool.ErrPreCheck{}},
 				numMsgs: 3,
 			},
-			want: false,
+			want: pubsub.ValidationReject,
 		}, {
-			name: "valid: no error",
+			name: "want: no error",
 			args: args{
 				mp:      &mockMP{},
 				numMsgs: 3,
 			},
-			want: true,
+			want: pubsub.ValidationAccept,
 		}, {
 			name: "unknown error",
 			args: args{
 				mp:      &mockMP{err: assert.AnError},
 				numMsgs: 3,
 			},
-			want: false,
+			want: pubsub.ValidationReject,
 		},
 	}
 	for _, tt := range tests {
@@ -102,17 +100,17 @@ func TestValidator_BlockValidator(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		proposerKey *ed25519.PrivKey
-		valid       bool
+		proposerKey ed25519.PrivKey
+		want        pubsub.ValidationResult
 	}{
 		{
-			name:        "valid: block signed by proposer",
+			name:        "want: block signed by proposer",
 			proposerKey: proposerKey,
-			valid:       true,
+			want:        pubsub.ValidationAccept,
 		}, {
 			name:        "invalid: bad signer",
 			proposerKey: attackerKey,
-			valid:       false,
+			want:        pubsub.ValidationReject,
 		},
 	}
 	for _, tt := range tests {
@@ -127,35 +125,30 @@ func TestValidator_BlockValidator(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, clientCreator)
 			require.NotNil(t, abciClient)
-			namespaceId := "0102030405060708"
 			mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
-			executor, err := block.NewExecutor([]byte("test address"), namespaceId, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
+			executor, err := block.NewExecutor(proposerKey.PubKey().Address(), "test", mpool, proxy.NewAppConns(clientCreator), nil, block.NewConsensusMsgQueue(), logger)
 			assert.NoError(t, err)
 
 			// Create state
 			maxBytes := uint64(100)
-			state := types.State{}
-			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
+			state := &types.State{}
+			state.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)))
 			state.ConsensusParams.Block.MaxGas = 100000
-			state.Validators = tmtypes.NewValidatorSet(nil)
+			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 
 			// Create empty block
-			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, &state, maxBytes)
+			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
 
-			// Create slclient
-			client := registry.GetClient(registry.Local)
-			pubsubServer := pubsub.NewServer()
-			err = pubsubServer.Start()
-			require.NoError(t, err)
-			err = client.Init(settlement.Config{ProposerPubKey: hex.EncodeToString(proposerKey.PubKey().Bytes())}, pubsubServer, log.TestingLogger())
-			require.NoError(t, err)
+			getProposer := &p2pmock.MockStateGetter{}
+			getProposer.On("SafeProposerPubKey").Return(proposerKey.PubKey(), nil)
+			getProposer.On("GetRevision").Return(uint64(0))
 
 			// Create commit for the block
 			abciHeaderPb := types.ToABCIHeaderPB(&block.Header)
 			abciHeaderBytes, err := abciHeaderPb.Marshal()
 			require.NoError(t, err)
 			var signature []byte
-			if tt.valid {
+			if tt.want == pubsub.ValidationAccept {
 				signature, err = proposerKey.Sign(abciHeaderBytes)
 				require.NoError(t, err)
 			} else {
@@ -169,7 +162,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			}
 
 			// Create gossiped block
-			gossipedBlock := p2p.GossipedBlock{Block: *block, Commit: *commit}
+			gossipedBlock := p2p.BlockData{Block: *block, Commit: *commit}
 			gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 			require.NoError(t, err)
 			blockMsg := &p2p.GossipMessage{
@@ -178,9 +171,9 @@ func TestValidator_BlockValidator(t *testing.T) {
 			}
 
 			// Check block validity
-			validateBlock := p2p.NewValidator(logger, client).BlockValidator()
+			validateBlock := p2p.NewValidator(logger, getProposer).BlockValidator()
 			valid := validateBlock(blockMsg)
-			require.Equal(t, tt.valid, valid)
+			require.Equal(t, tt.want, valid)
 		})
 	}
 }

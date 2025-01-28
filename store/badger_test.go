@@ -4,9 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 func TestGetErrors(t *testing.T) {
@@ -18,7 +17,7 @@ func TestGetErrors(t *testing.T) {
 		err  error
 	}{
 		{"empty key", []byte{}, badger.ErrEmptyKey},
-		{"not found key", []byte("missing key"), gerr.ErrNotFound},
+		{"not found key", []byte("missing key"), gerrc.ErrNotFound},
 	}
 
 	for _, tt := range tc {

@@ -9,6 +9,7 @@ import "types/tendermint/types/types.proto";
 import "types/tendermint/types/validator.proto";
 import "types/tendermint/types/params.proto";
 import "types/tendermint/state/types.proto";
+import "types/dymint/dymint.proto";
 
 
 message State {
@@ -20,22 +21,42 @@ message State {
   int64 last_block_height = 4;
 
   tendermint.types.BlockID last_block_id = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
-  google.protobuf.Timestamp last_block_time = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
+  reserved 6;
   reserved 7;
+  reserved 8;
+  tendermint.types.ValidatorSet validators = 9 [deprecated = true]; 
+  reserved 10;
 
-  tendermint.types.ValidatorSet next_validators = 8;
-  tendermint.types.ValidatorSet validators = 9;
-  tendermint.types.ValidatorSet last_validators = 10;
+
   int64 last_height_validators_changed = 11;
+  
 
   tendermint.types.ConsensusParams consensus_params = 12 [(gogoproto.nullable) = false];
-  int64 last_height_consensus_params_changed = 13;
+  reserved 13;
 
   bytes last_results_hash = 14;
 
   bytes app_hash = 15;
 
   uint64 last_store_height = 16 [(gogoproto.customname) = "LastStoreHeight"];
-  uint64 base_height = 17;
+  reserved 17;
+
+  RollappParams rollapp_params = 18 [(gogoproto.nullable) = false];
+
+  bytes last_header_hash = 19;
+
+  // Proposer is a sequencer that acts as a proposer. Can be nil if no proposer is set.
+  Sequencer proposer = 20;
+
+  int64 revision_start_height = 21;
+
+}
+
+//rollapp params defined in genesis and updated via gov proposal
+message RollappParams {
+  //data availability type (e.g. celestia) used in the rollapp
+  string da = 1 ;
+  //drs version
+  uint32 drs_version = 2;
 }

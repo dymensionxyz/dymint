@@ -7,7 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"cosmossdk.io/math"
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/stub"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -16,6 +18,7 @@ import (
 // DataAvailabilityLayerClient is intended only for usage in tests.
 // It does actually ensures DA - it stores data in-memory.
 type DataAvailabilityLayerClient struct {
+	stub.Layer
 	logger   types.Logger
 	dalcKV   store.KV
 	daHeight atomic.Uint64
@@ -23,7 +26,10 @@ type DataAvailabilityLayerClient struct {
 	synced   chan struct{}
 }
 
-const defaultBlockTime = 3 * time.Second
+const (
+	defaultBlockTime = 3 * time.Second
+	maxBlobSize      = 2097152 // 2MB (equivalent to avail or celestia)
+)
 
 type config struct {
 	BlockTime time.Duration
@@ -73,9 +79,9 @@ func (m *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
-// Synced returns channel for on start event
-func (m *DataAvailabilityLayerClient) Synced() <-chan struct{} {
-	return m.synced
+// WaitForSyncing is used to check when the DA light client finished syncing
+func (m *DataAvailabilityLayerClient) WaitForSyncing() {
+	<-m.synced
 }
 
 // GetClientType returns client type.
@@ -89,14 +95,14 @@ func (m *DataAvailabilityLayerClient) GetClientType() da.Client {
 func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	daHeight := m.daHeight.Load()
 
-	m.logger.Debug("Submitting batch to DA layer", "start height", batch.StartHeight, "end height", batch.EndHeight, "da height", daHeight)
+	m.logger.Debug("Submitting batch to DA layer", "start height", batch.StartHeight(), "end height", batch.EndHeight(), "da height", daHeight)
 
 	blob, err := batch.MarshalBinary()
 	if err != nil {
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
-	hash := sha1.Sum(uint64ToBinary(batch.EndHeight)) //#nosec
-	err = m.dalcKV.Set(getKey(daHeight, batch.StartHeight), hash[:])
+	hash := sha1.Sum(uint64ToBinary(batch.EndHeight())) //#nosec
+	err = m.dalcKV.Set(getKey(daHeight, batch.StartHeight()), hash[:])
 	if err != nil {
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
@@ -172,4 +178,16 @@ func getKey(daHeight uint64, height uint64) []byte {
 func (m *DataAvailabilityLayerClient) updateDAHeight() {
 	blockStep := rand.Uint64()%10 + 1 //#nosec
 	m.daHeight.Add(blockStep)
+}
+
+// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+	return maxBlobSize
+}
+
+func (m *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	return da.Balance{
+		Amount: math.ZeroInt(),
+		Denom:  "adym",
+	}, nil
 }

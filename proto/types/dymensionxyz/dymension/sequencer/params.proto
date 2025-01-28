@@ -1,0 +1,47 @@
+syntax = "proto3";
+package dymensionxyz.dymension.sequencer;
+
+import "gogoproto/gogo.proto";
+import "types/cosmos/base/v1beta1/coin.proto";
+import "google/protobuf/duration.proto";
+
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer";
+
+// Params defines the parameters for the module.
+message Params {
+  option (gogoproto.equal) = true;
+  option (gogoproto.goproto_stringer) = false;
+
+  reserved 1;
+
+
+
+
+  reserved 5;
+  reserved 2;
+
+  // notice_period is the time duration of notice period.
+  // notice period is the duration between the unbond request and the actual
+  // unbonding starting. the proposer is still bonded during this period.
+  google.protobuf.Duration notice_period = 3
+      [ (gogoproto.nullable) = false, (gogoproto.stdduration) = true ];
+      
+  // liveness_slash_min_multiplier multiplies with the tokens of the slashed sequencer to compute the burn amount.
+  string liveness_slash_min_multiplier = 4 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
+    (gogoproto.moretags) = "yaml:\"liveness_slash_multiplier\"",
+    (gogoproto.nullable) = false
+  ];
+  // liveness_slash_min_absolute is the absolute minimum to slash for liveness
+  cosmos.base.v1beta1.Coin liveness_slash_min_absolute = 6 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag) = "liveness_slash_min_absolute,omitempty"
+  ];
+
+  // how much dishonor a sequencer gains on liveness events (+dishonor)
+  uint64 dishonor_liveness = 7;
+  // how much honor a sequencer gains on state updates (-dishonor)
+  uint64 dishonor_state_update = 8;
+  // the minimum dishonor at which a sequencer can be kicked (<=)
+  uint64 dishonor_kick_threshold = 9;
+}

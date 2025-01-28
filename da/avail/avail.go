@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/gogo/protobuf/proto"
+	"github.com/dymensionxyz/dymint/da/stub"
 
 	"github.com/dymensionxyz/dymint/types"
 
@@ -18,10 +19,11 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/v4/rpc/state"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	availtypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/store"
-	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
-	"github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/dymensionxyz/dymint/types/metrics"
 )
 
 const (
@@ -33,6 +35,7 @@ const (
 	DataCallMethod                  = "submit_data"
 	DataCallSectionIndex            = 29
 	DataCallMethodIndex             = 1
+	maxBlobSize                     = 2097152 // 2MB according to Avail docs https://docs.availproject.org/docs/build-with-avail/overview#expandable-blockspace
 )
 
 type SubstrateApiI interface {
@@ -55,6 +58,7 @@ type Config struct {
 }
 
 type DataAvailabilityLayerClient struct {
+	stub.Layer
 	client             SubstrateApiI
 	pubsubServer       *pubsub.Server
 	config             Config
@@ -101,7 +105,7 @@ func WithBatchRetryAttempts(attempts uint) da.Option {
 }
 
 // Init initializes DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
+func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 	c.synced = make(chan struct{}, 1)
 
@@ -114,6 +118,8 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 	// Set defaults
 	c.pubsubServer = pubsubServer
+
+	// TODO: Make configurable
 	c.txInclusionTimeout = defaultTxInculsionTimeout
 	c.batchRetryDelay = defaultBatchRetryDelay
 	c.batchRetryAttempts = defaultBatchRetryAttempts
@@ -123,6 +129,14 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		apply(c)
 	}
 
+	metrics.RollappConsecutiveFailedDASubmission.Set(0)
+	return nil
+}
+
+// Start starts DataAvailabilityLayerClient instance.
+func (c *DataAvailabilityLayerClient) Start() error {
+	c.logger.Info("Starting Avail Data Availability Layer Client.")
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// If client wasn't set, create a new one
 	if c.client == nil {
 		substrateApiClient, err := gsrpc.NewSubstrateAPI(c.config.ApiURL)
@@ -136,13 +150,9 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		}
 	}
 
-	c.ctx, c.cancel = context.WithCancel(context.Background())
-	return nil
-}
+	// check for synced client
+	go c.sync()
 
-// Start starts DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Start() error {
-	c.synced <- struct{}{}
 	return nil
 }
 
@@ -153,8 +163,9 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
-func (c *DataAvailabilityLayerClient) Synced() <-chan struct{} {
-	return c.synced
+// WaitForSyncing is used to check when the DA light client finished syncing
+func (m *DataAvailabilityLayerClient) WaitForSyncing() {
+	<-m.synced
 }
 
 // GetClientType returns client type.
@@ -171,7 +182,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
-				Error:   err,
+				Error:   errors.Join(da.ErrRetrieval, err),
 			},
 		}
 	}
@@ -181,7 +192,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
-				Error:   err,
+				Error:   errors.Join(da.ErrRetrieval, err),
 			},
 		}
 	}
@@ -195,25 +206,36 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 
 			data := ext.Method.Args
 			for 0 < len(data) {
-				var pbBatch pb.Batch
-				err := proto.Unmarshal(data, &pbBatch)
-				if err != nil {
-					c.logger.Error("unmarshal batch", "daHeight", daMetaData.Height, "error", err)
-					continue
-				}
-				// Convert the proto batch to a batch
 				batch := &types.Batch{}
-				err = batch.FromProto(&pbBatch)
+				err := batch.UnmarshalBinary(data)
 				if err != nil {
-					c.logger.Error("batch from proto", "daHeight", daMetaData.Height, "error", err)
+					// try to parse from the next byte on the next iteration
+					data = data[1:]
 					continue
 				}
+
 				// Add the batch to the list
 				batches = append(batches, batch)
 				// Remove the bytes we just decoded.
-				data = data[proto.Size(&pbBatch):]
+				size := batch.ToProto().Size()
+				if len(data) < size {
+					// not supposed to happen, additional safety check
+					break
+				}
 
+				data = data[size:]
 			}
+		}
+	}
+
+	// if no batches, return error
+	if len(batches) == 0 {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Blob not found",
+				Error:   da.ErrBlobNotFound,
+			},
 		}
 	}
 
@@ -251,13 +273,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 	for {
 		select {
 		case <-c.ctx.Done():
-			return da.ResultSubmitBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: "context done",
-					Error:   c.ctx.Err(),
-				},
-			}
+			return da.ResultSubmitBatch{}
 		default:
 			var daBlockHeight uint64
 			err := retry.Do(
@@ -265,6 +281,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					var err error
 					daBlockHeight, err = c.broadcastTx(dataBlob)
 					if err != nil {
+						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
 						if errors.Is(err, da.ErrTxBroadcastConfigError) {
 							err = retry.Unrecoverable(err)
@@ -295,6 +312,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				c.logger.Error(err.Error())
 				continue
 			}
+			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 
 			c.logger.Debug("Successfully submitted batch.")
 			return da.ResultSubmitBatch{
@@ -357,7 +375,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 		SpecVersion:        rv.SpecVersion,
 		Tip:                availtypes.NewUCompactFromUInt(c.config.Tip),
 		TransactionVersion: rv.TransactionVersion,
-		AppID:              availtypes.NewUCompactFromUInt(uint64(c.config.AppID)),
+		AppID:              availtypes.NewUCompactFromUInt(uint64(c.config.AppID)), //nolint:gosec // AppID should be always positive
 	}
 
 	// Sign the transaction using Alice's default account
@@ -371,10 +389,9 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
 	}
+	defer sub.Unsubscribe()
 
 	c.logger.Info("Submitted batch to avail. Waiting for inclusion event")
-
-	defer sub.Unsubscribe()
 
 	inclusionTimer := time.NewTimer(c.txInclusionTimeout)
 	defer inclusionTimer.Stop()
@@ -430,4 +447,81 @@ func (c *DataAvailabilityLayerClient) getHeightFromHash(hash availtypes.Hash) (u
 		return 0, fmt.Errorf("cannot get block by hash:%w", err)
 	}
 	return uint64(header.Number), nil
+}
+
+// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+	return maxBlobSize
+}
+
+// GetBalance returns the balance for a specific address
+func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	return da.Balance{}, nil
+}
+
+func (c *DataAvailabilityLayerClient) sync() {
+	// wrapper to get finalized height and current height from the client
+	getHeights := func() (uint64, uint64, error) {
+		finalizedHash, err := c.client.GetFinalizedHead()
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed to get finalized head: %w", err)
+		}
+
+		finalizedHeader, err := c.client.GetHeader(finalizedHash)
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed to get finalized header: %w", err)
+		}
+		finalizedHeight := uint64(finalizedHeader.Number)
+
+		currentBlock, err := c.client.GetBlockLatest()
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed to get current block: %w", err)
+		}
+		currentHeight := uint64(currentBlock.Block.Header.Number)
+
+		return finalizedHeight, currentHeight, nil
+	}
+
+	checkSync := func() error {
+		finalizedHeight, currentHeight, err := getHeights()
+		if err != nil {
+			return err
+		}
+
+		// Calculate blocks behind
+		blocksBehind := uint64(math.Abs(float64(currentHeight - finalizedHeight)))
+		defaultSyncThreshold := uint64(3)
+
+		// Check if within sync threshold
+		if blocksBehind <= defaultSyncThreshold && currentHeight > 0 {
+			c.logger.Info("Node is synced",
+				"current_height", currentHeight,
+				"finalized_height", finalizedHeight,
+				"blocks_behind", blocksBehind)
+			return nil
+		}
+
+		c.logger.Debug("Node is not yet synced",
+			"current_height", currentHeight,
+			"finalized_height", finalizedHeight,
+			"blocks_behind", blocksBehind)
+
+		return fmt.Errorf("node not synced: current=%d, finalized=%d, behind=%d",
+			currentHeight, finalizedHeight, blocksBehind)
+	}
+
+	// Start sync with retry mechanism
+	err := retry.Do(checkSync,
+		retry.Attempts(0), // try forever
+		retry.Context(c.ctx),
+		retry.Delay(5*time.Second), // TODO: make configurable
+		retry.LastErrorOnly(true),
+		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(n uint, err error) {
+			c.logger.Error("sync Avail DA", "attempt", n, "error", err)
+		}),
+	)
+
+	c.logger.Info("Avail-node sync completed.", "err", err)
+	c.synced <- struct{}{}
 }

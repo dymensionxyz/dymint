@@ -1,0 +1,44 @@
+// This file is a modified copy of the interchain-da module proto contract. Source:
+// https://github.com/dymensionxyz/interchain-da/blob/main/proto/dymension/interchain_da/tx.proto.
+// It contains only message definitions but without the Msg service.
+
+syntax = "proto3";
+package dymension.interchain_da;
+
+import "gogoproto/gogo.proto";
+import "types/cosmos/base/v1beta1/coin.proto";
+import "cosmos_proto/cosmos.proto";
+import "types/cosmos/msg/v1/msg.proto";
+import "types/interchain_da/da.proto";
+
+option go_package = "github.com/dymensionxyz/dymint/types/pb/interchain_da";
+
+// MsgUpdateParams allows to update module params.
+message MsgUpdateParams {
+  // Authority is the address that controls the module.
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+
+  // NewParams should be fully populated.
+  Params new_params = 2 [ (gogoproto.nullable) = false ];
+}
+
+message MsgUpdateParamsResponse {}
+
+// MsgSubmitBlob submits a new blob to the host chain.
+message MsgSubmitBlob {
+  // Creator is the bech32 encoded address of the sequencer sending the update.
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  // Blob that is sent.
+  bytes blob = 2;
+  // Fees defines the storage fees sent.
+  cosmos.base.v1beta1.Coin fees = 3 [ (gogoproto.nullable) = false ];
+}
+
+message MsgSubmitBlobResponse {
+  // BlobID is a unique sequential ID of the submitted blob.
+  uint64 blob_id = 1;
+  // BlobHash is the hash of the submitted blob.
+  string blob_hash = 2;
+}

@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
-	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+
+	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
 )
 
 // CosmosClient is an interface for interacting with cosmos client chains.
@@ -27,10 +27,12 @@ type CosmosClient interface {
 	StopEventListener() error
 	EventListenerQuit() <-chan struct{}
 	SubscribeToEvents(ctx context.Context, subscriber string, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error)
+	UnsubscribeAll(ctx context.Context, subscriber string) error
 	BroadcastTx(accountName string, msgs ...sdktypes.Msg) (cosmosclient.Response, error)
 	GetRollappClient() rollapptypes.QueryClient
 	GetSequencerClient() sequencertypes.QueryClient
 	GetAccount(accountName string) (cosmosaccount.Account, error)
+	GetBalance(ctx context.Context, accountName string, denom string) (*sdktypes.Coin, error)
 }
 
 type cosmosClient struct {
@@ -45,19 +47,23 @@ func NewCosmosClient(client cosmosclient.Client) CosmosClient {
 }
 
 func (c *cosmosClient) StartEventListener() error {
-	return c.Client.RPC.WSEvents.Start()
+	return c.Client.RPC.Start()
 }
 
 func (c *cosmosClient) StopEventListener() error {
-	return c.Client.RPC.WSEvents.Stop()
+	return c.Client.RPC.Stop()
 }
 
 func (c *cosmosClient) EventListenerQuit() <-chan struct{} {
-	return c.Client.RPC.GetWSClient().Quit()
+	return c.Client.RPC.Quit()
 }
 
 func (c *cosmosClient) SubscribeToEvents(ctx context.Context, subscriber string, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
-	return c.Client.RPC.WSEvents.Subscribe(ctx, subscriber, query, outCapacity...)
+	return c.Client.WSEvents.Subscribe(ctx, subscriber, query, outCapacity...)
+}
+
+func (c *cosmosClient) UnsubscribeAll(ctx context.Context, subscriber string) error {
+	return c.Client.WSEvents.UnsubscribeAll(ctx, subscriber)
 }
 
 func (c *cosmosClient) GetRollappClient() rollapptypes.QueryClient {
@@ -72,12 +78,21 @@ func (c *cosmosClient) GetAccount(accountName string) (cosmosaccount.Account, er
 	acc, err := c.AccountRegistry.GetByName(accountName)
 	if err != nil {
 		if strings.Contains(err.Error(), "too many failed passphrase attempts") {
-			return cosmosaccount.Account{}, fmt.Errorf("account registry get by name: %w:%w", gerr.ErrUnauthenticated, err)
+			return cosmosaccount.Account{}, fmt.Errorf("account registry get by name: %w:%w", gerrc.ErrUnauthenticated, err)
 		}
 		var accNotExistErr *cosmosaccount.AccountDoesNotExistError
 		if errors.As(err, &accNotExistErr) {
-			return cosmosaccount.Account{}, fmt.Errorf("account registry get by name: %w:%w", gerr.ErrNotFound, err)
+			return cosmosaccount.Account{}, fmt.Errorf("account registry get by name: %w:%w", gerrc.ErrNotFound, err)
 		}
 	}
 	return acc, err
+}
+
+func (c *cosmosClient) GetBalance(ctx context.Context, address string, denom string) (*sdktypes.Coin, error) {
+	balance, err := c.Client.Balance(ctx, address, denom)
+	if err != nil {
+		return &sdktypes.Coin{}, err
+	}
+
+	return balance.Balance, nil
 }

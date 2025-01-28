@@ -7,13 +7,12 @@ import (
 )
 
 const (
-	FlagDALayer                = "dymint.da_layer"
-	FlagDAConfig               = "dymint.da_config"
-	FlagBlockTime              = "dymint.block_time"
-	FlagMaxIdleTime            = "dymint.max_idle_time"
-	FlagBatchSubmitMaxTime     = "dymint.batch_submit_max_time"
-	FlagNamespaceID            = "dymint.namespace_id"
-	FlagBlockBatchMaxSizeBytes = "dymint.block_batch_max_size_bytes"
+	FlagDAConfig             = "dymint.da_config"
+	FlagBlockTime            = "dymint.block_time"
+	FlagMaxIdleTime          = "dymint.max_idle_time"
+	FlagBatchSubmitTime      = "dymint.batch_submit_time"
+	FlagBatchSubmitBytes     = "dymint.batch_submit_bytes"
+	FlagSkipValidationHeight = "dymint.skip_validation_height"
 )
 
 const (
@@ -25,7 +24,6 @@ const (
 	FlagSLGasLimit       = "dymint.settlement_config.gas_limit"
 	FlagSLGasPrices      = "dymint.settlement_config.gas_prices"
 	FlagSLGasFees        = "dymint.settlement_config.gas_fees"
-	FlagRollappID        = "dymint.settlement_config.rollapp_id"
 )
 
 const (
@@ -44,14 +42,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 
 	def := DefaultNodeConfig
 
-	cmd.Flags().String(FlagDALayer, def.DALayer, "Data Availability Layer Client name (mock or grpc")
 	cmd.Flags().String(FlagDAConfig, def.DAConfig, "Data Availability Layer Client config")
 	cmd.Flags().Duration(FlagBlockTime, def.BlockTime, "block time (for sequencer mode)")
 	cmd.Flags().Duration(FlagMaxIdleTime, def.MaxIdleTime, "max time for empty blocks (for sequencer mode)")
-	cmd.Flags().Duration(FlagBatchSubmitMaxTime, def.BatchSubmitMaxTime, "max time for batch submit (for sequencer mode)")
-	cmd.Flags().String(FlagNamespaceID, def.NamespaceID, "namespace identifies (8 bytes in hex)")
-	cmd.Flags().Uint64(FlagBlockBatchMaxSizeBytes, def.BlockBatchMaxSizeBytes, "block batch size in bytes")
-
+	cmd.Flags().Duration(FlagBatchSubmitTime, def.BatchSubmitTime, "max time for batch submit (for sequencer mode)")
+	cmd.Flags().Uint64(FlagBatchSubmitBytes, def.BatchSubmitBytes, "block batch size in bytes")
 	cmd.Flags().String(FlagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name")
 	cmd.Flags().String(FlagSLNodeAddress, def.SettlementConfig.NodeAddress, "Settlement Layer RPC node address")
 	cmd.Flags().String(FlagSLKeyringBackend, def.SettlementConfig.KeyringBackend, "Sequencer keyring backend")
@@ -60,18 +55,14 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(FlagSLGasFees, def.SettlementConfig.GasFees, "Settlement Layer gas fees")
 	cmd.Flags().String(FlagSLGasPrices, def.SettlementConfig.GasPrices, "Settlement Layer gas prices")
 	cmd.Flags().Uint64(FlagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer batch submit gas limit")
-	cmd.Flags().String(FlagRollappID, def.SettlementConfig.RollappID, "The chainID of the rollapp")
-
 	cmd.Flags().String(FlagP2PListenAddress, def.P2PConfig.ListenAddress, "P2P listen address")
 	cmd.Flags().String(FlagP2PBootstrapNodes, def.P2PConfig.BootstrapNodes, "P2P bootstrap nodes")
 	cmd.Flags().Duration(FlagP2PBootstrapRetryTime, def.P2PConfig.BootstrapRetryTime, "P2P bootstrap time")
-	cmd.Flags().Uint64(FlagP2PGossipCacheSize, uint64(def.P2PConfig.GossipedBlocksCacheSize), "P2P Gossiped blocks cache size")
+	cmd.Flags().Uint64(FlagP2PGossipCacheSize, uint64(def.P2PConfig.GossipSubCacheSize), "P2P Gossiped blocks cache size") //nolint:gosec // GossipSubCacheSize should be always positive
+	cmd.Flags().Uint64(FlagSkipValidationHeight, def.SkipValidationHeight, "Full-node validation will be skipped for the specified height")
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
-	if err := v.BindPFlag("da_layer", cmd.Flags().Lookup(FlagDALayer)); err != nil {
-		return err
-	}
 	if err := v.BindPFlag("da_config", cmd.Flags().Lookup(FlagDAConfig)); err != nil {
 		return err
 	}
@@ -81,13 +72,13 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 	if err := v.BindPFlag("max_idle_time", cmd.Flags().Lookup(FlagMaxIdleTime)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("batch_submit_max_time", cmd.Flags().Lookup(FlagBatchSubmitMaxTime)); err != nil {
+	if err := v.BindPFlag("batch_submit_time", cmd.Flags().Lookup(FlagBatchSubmitTime)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("namespace_id", cmd.Flags().Lookup(FlagNamespaceID)); err != nil {
+	if err := v.BindPFlag("batch_submit_bytes", cmd.Flags().Lookup(FlagBatchSubmitBytes)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("block_batch_max_size_bytes", cmd.Flags().Lookup(FlagBlockBatchMaxSizeBytes)); err != nil {
+	if err := v.BindPFlag("skip_validation_height", cmd.Flags().Lookup(FlagSkipValidationHeight)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("settlement_layer", cmd.Flags().Lookup(FlagSettlementLayer)); err != nil {
@@ -112,9 +103,6 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 		return err
 	}
 	if err := v.BindPFlag("gas_limit", cmd.Flags().Lookup(FlagSLGasLimit)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("rollapp_id", cmd.Flags().Lookup(FlagRollappID)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("p2p_listen_address", cmd.Flags().Lookup(FlagP2PListenAddress)); err != nil {

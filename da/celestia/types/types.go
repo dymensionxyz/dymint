@@ -75,23 +75,3 @@ const (
 	// Default maximum bytes per blob allowed
 	DefaultMaxBytes = DefaultGovMaxSquareSize * DefaultGovMaxSquareSize * ContinuationSparseShareContentSize
 )
-
-// SparseSharesNeeded returns the number of shares needed to store a sequence of
-// length sequenceLen.
-func SparseSharesNeeded(sequenceLen uint32) (sharesNeeded int) {
-	if sequenceLen == 0 {
-		return 0
-	}
-
-	if sequenceLen < FirstSparseShareContentSize {
-		return 1
-	}
-
-	bytesAvailable := FirstSparseShareContentSize
-	sharesNeeded++
-	for uint32(bytesAvailable) < sequenceLen {
-		bytesAvailable += ContinuationSparseShareContentSize
-		sharesNeeded++
-	}
-	return sharesNeeded
-}

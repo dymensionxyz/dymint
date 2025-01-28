@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/dymensionxyz/dymint/indexers/txindex"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
@@ -31,4 +33,8 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 
 func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
 	return []*abci.TxResult{}, nil
+}
+
+func (txi *TxIndex) Prune(from, to uint64, logger log.Logger) (uint64, error) {
+	return 0, nil
 }

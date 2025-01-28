@@ -45,15 +45,15 @@ func getStore(directory string) *store.PrefixKV {
 }
 
 func newBlockStore(kvstore store.KV, baseHeight uint64) *BlockStore {
-	store, _ := store.New(kvstore).(*store.DefaultStore)
-	state, err := store.LoadState()
+	s := store.New(kvstore)
+	state, err := s.LoadState()
 	if err != nil {
 		log.Fatalf("loading state %s", err)
 	}
 	return &BlockStore{
-		DefaultStore: store,
-		base:         state.BaseHeight,
-		height:       state.LastBlockHeight.Load(),
+		DefaultStore: s,
+		base:         baseHeight,
+		height:       state.Height(),
 	}
 }
 
@@ -129,9 +129,9 @@ func toCSVRecords(rs []report.Report) [][]string {
 	offset := 1
 	for _, r := range rs {
 		idStr := r.ID.String()
-		connStr := strconv.FormatInt(int64(r.Connections), 10)
-		rateStr := strconv.FormatInt(int64(r.Rate), 10)
-		sizeStr := strconv.FormatInt(int64(r.Size), 10)
+		connStr := strconv.FormatUint(r.Connections, 10)
+		rateStr := strconv.FormatUint(r.Rate, 10)
+		sizeStr := strconv.FormatUint(r.Size, 10)
 		for i, v := range r.All {
 			res[offset+i] = []string{idStr, strconv.FormatInt(v.BlockTime.UnixNano(), 10), strconv.FormatInt(int64(v.Duration), 10), fmt.Sprintf("%X", v.Hash), connStr, rateStr, sizeStr}
 		}

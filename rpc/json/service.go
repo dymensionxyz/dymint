@@ -109,6 +109,7 @@ func newService(c *client.Client, l types.Logger, opts ...option) *service {
 		"abci_query":           newMethod(s.ABCIQuery),
 		"abci_info":            newMethod(s.ABCIInfo),
 		"broadcast_evidence":   newMethod(s.BroadcastEvidence),
+		"block_validated":      newMethod(s.BlockValidated),
 	}
 
 	for _, opt := range opts {
@@ -201,7 +202,7 @@ func (s *service) Genesis(req *http.Request, args *genesisArgs) (*ctypes.ResultG
 }
 
 func (s *service) GenesisChunked(req *http.Request, args *genesisChunkedArgs) (*ctypes.ResultGenesisChunk, error) {
-	return s.client.GenesisChunked(req.Context(), uint(args.ID))
+	return s.client.GenesisChunked(req.Context(), uint(args.ID)) //nolint:gosec // id is always positive
 }
 
 func (s *service) Block(req *http.Request, args *blockArgs) (*ctypes.ResultBlock, error) {
@@ -288,4 +289,9 @@ func (s *service) ABCIInfo(req *http.Request, args *ABCIInfoArgs) (*ctypes.Resul
 // evidence API
 func (s *service) BroadcastEvidence(req *http.Request, args *broadcastEvidenceArgs) (*ctypes.ResultBroadcastEvidence, error) {
 	return s.client.BroadcastEvidence(req.Context(), args.Evidence)
+}
+
+func (s *service) BlockValidated(req *http.Request, args *blockArgs) (*client.ResultBlockValidated, error) {
+	fmt.Println(args)
+	return s.client.BlockValidated((*int64)(&args.Height))
 }

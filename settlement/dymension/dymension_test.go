@@ -6,36 +6,32 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/grpc/codes"
-
-	"google.golang.org/grpc/status"
-
-	"github.com/tendermint/tendermint/libs/log"
-
+	sdkcodectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/types"
+	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
-	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
-	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	"github.com/dymensionxyz/dymint/da"
-	rollapptypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymension/v3/x/rollapp/types"
-	sequencertypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	dymensionmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement/dymension"
+	rollapptypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	sequencertypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/testutil"
-
-	sdkcodectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 )
 
 func TestGetSequencers(t *testing.T) {
@@ -45,7 +41,7 @@ func TestGetSequencers(t *testing.T) {
 
 	sequencerQueryClientMock := sequencertypesmock.NewMockQueryClient(t)
 	count := 5
-	sequencersRollappResponse, _ := generateSequencerByRollappResponse(t, count)
+	sequencersRollappResponse := generateSequencerByRollappResponse(t, count)
 	sequencerQueryClientMock.On("SequencersByRollappByStatus", mock.Anything, mock.Anything).Return(sequencersRollappResponse, nil)
 
 	cosmosClientMock.On("GetRollappClient").Return(rollapptypesmock.NewMockQueryClient(t))
@@ -60,82 +56,12 @@ func TestGetSequencers(t *testing.T) {
 	require.NoError(err)
 
 	hubClient := dymension.Client{}
-	err = hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	err = hubClient.Init(settlement.Config{}, "rollappTest", pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
-	sequencers, err := hubClient.GetSequencers()
+	sequencers, err := hubClient.GetBondedSequencers()
 	require.NoError(err)
 	require.Len(sequencers, count)
-}
-
-// TestPostBatchRPCError should tests the scenario where batch submitted but the acceptance signal failed.
-// we expect an attempt to broadcast the batch again, and receive "already submitted" error response.
-func TestPostBatchRPCError(t *testing.T) {
-	require := require.New(t)
-	pubsubServer := pubsub.NewServer()
-	err := pubsubServer.Start()
-	require.NoError(err)
-
-	// Create a mock cosmos client
-	cosmosClientMock := dymensionmock.NewMockCosmosClient(t)
-	sequencerQueryClientMock := sequencertypesmock.NewMockQueryClient(t)
-	rollappQueryClientMock := rollapptypesmock.NewMockQueryClient(t)
-	cosmosClientMock.On("GetRollappClient").Return(rollappQueryClientMock)
-	cosmosClientMock.On("GetSequencerClient").Return(sequencerQueryClientMock)
-	accountPubkey, err := sdkcodectypes.NewAnyWithValue(secp256k1.GenPrivKey().PubKey())
-	require.NoError(err)
-	cosmosClientMock.On("GetAccount", mock.Anything).Return(cosmosaccount.Account{Record: &keyring.Record{PubKey: accountPubkey}}, nil)
-
-	options := []settlement.Option{
-		dymension.WithCosmosClient(cosmosClientMock),
-		dymension.WithBatchAcceptanceTimeout(time.Millisecond * 300),
-		dymension.WithBatchAcceptanceAttempts(2),
-	}
-
-	// Create a batch which will be submitted
-	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
-	require.NoError(err)
-	batch, err := testutil.GenerateBatch(2, 2, proposerKey)
-	require.NoError(err)
-
-	hubClient := dymension.Client{}
-	err = hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
-	require.NoError(err)
-
-	// submit passes
-	cosmosClientMock.On("BroadcastTx", mock.Anything, mock.Anything).Return(cosmosclient.Response{TxResponse: &types.TxResponse{Code: 0}}, nil).Once()
-
-	// return old batch for inclusion check
-	daMetaData := &da.DASubmitMetaData{
-		Height: 1,
-		Client: da.Mock,
-	}
-	rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(
-		&rollapptypes.QueryGetStateInfoResponse{StateInfo: rollapptypes.StateInfo{
-			StartHeight: 1, StateInfoIndex: rollapptypes.StateInfoIndex{Index: 1}, DAPath: daMetaData.ToPath(), NumBlocks: 1,
-		}},
-		nil).Times(2)
-
-	// submit returns already exists error
-	submitBatchError := errors.New("rpc error: code = Unknown desc = rpc error: code = Unknown desc = failed to execute message; message index: 0: expected height (5), but received (4): start-height does not match rollapps state")
-	cosmosClientMock.On("BroadcastTx", mock.Anything, mock.Anything).Return(cosmosclient.Response{TxResponse: &types.TxResponse{Code: 1}}, submitBatchError).Once()
-
-	resultSubmitBatch := &da.ResultSubmitBatch{}
-	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
-	errChan := make(chan error, 1) // Create a channel to receive an error from the goroutine
-	// Post the batch in a goroutine and capture any error.
-	go func() {
-		err := hubClient.SubmitBatch(batch, da.Mock, resultSubmitBatch)
-		errChan <- err // Send any error to the errChan
-	}()
-
-	// Use a select statement to wait for a potential error or a timeout.
-	select {
-	case err = <-errChan:
-	case <-time.After(3 * time.Second):
-		err = errors.New("timeout")
-	}
-	assert.NoError(t, err)
 }
 
 // TestPostBatch should test the following:
@@ -176,9 +102,9 @@ func TestPostBatch(t *testing.T) {
 	}
 
 	// Create a batch which will be submitted
-	propserKey, _, err := crypto.GenerateEd25519Key(nil)
+	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	require.NoError(err)
-	batch, err := testutil.GenerateBatch(1, 1, propserKey)
+	batch, err := testutil.GenerateBatch(1, 1, proposerKey, [32]byte{})
 	require.NoError(err)
 
 	cases := []struct {
@@ -221,7 +147,6 @@ func TestPostBatch(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			// Reset the mock functions
 			testutil.UnsetMockFn(cosmosClientMock.On("BroadcastTx"))
-			testutil.UnsetMockFn(rollappQueryClientMock.On("StateInfo"))
 			// Set the mock logic based on the test case
 			if !c.isBatchSubmitSuccess {
 				cosmosClientMock.On("BroadcastTx", mock.Anything, mock.Anything).Return(cosmosclient.Response{TxResponse: &types.TxResponse{Code: 1}}, submitBatchError)
@@ -236,7 +161,7 @@ func TestPostBatch(t *testing.T) {
 					}
 					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(
 						&rollapptypes.QueryGetStateInfoResponse{StateInfo: rollapptypes.StateInfo{
-							StartHeight: batch.StartHeight, StateInfoIndex: rollapptypes.StateInfoIndex{Index: 1}, DAPath: daMetaData.ToPath(), NumBlocks: 1,
+							StartHeight: batch.StartHeight(), StateInfoIndex: rollapptypes.StateInfoIndex{Index: 1}, DAPath: daMetaData.ToPath(), NumBlocks: 1,
 						}},
 						nil)
 				} else {
@@ -244,7 +169,7 @@ func TestPostBatch(t *testing.T) {
 				}
 			}
 			hubClient := dymension.Client{}
-			err := hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+			err := hubClient.Init(settlement.Config{}, "rollappTest", pubsubServer, log.TestingLogger(), options...)
 			require.NoError(err)
 			err = hubClient.Start()
 			require.NoError(err)
@@ -290,29 +215,20 @@ func TestPostBatch(t *testing.T) {
 /*                                    Utils                                   */
 /* -------------------------------------------------------------------------- */
 
-func generateSequencerByRollappResponse(t *testing.T, count int) (*sequencertypes.QueryGetSequencersByRollappByStatusResponse, sequencertypes.Sequencer) {
-	// Generate the proposer sequencer
-	proposerPubKeyAny, err := sdkcodectypes.NewAnyWithValue(ed25519.GenPrivKey().PubKey())
-	require.NoError(t, err)
-	proposer := sequencertypes.Sequencer{
-		DymintPubKey: proposerPubKeyAny,
-		Status:       sequencertypes.Bonded,
-		Proposer:     true,
-	}
-	squencerInfoList := []sequencertypes.Sequencer{proposer}
-	// Generate the inactive sequencers
-	for i := 0; i < count-1; i++ {
-		nonProposerPubKeyAny, err := sdkcodectypes.NewAnyWithValue(secp256k1.GenPrivKey().PubKey())
+func generateSequencerByRollappResponse(t *testing.T, count int) *sequencertypes.QueryGetSequencersByRollappByStatusResponse {
+	sequencerInfoList := []sequencertypes.Sequencer{}
+	for i := 0; i < count; i++ {
+		pk, err := sdkcodectypes.NewAnyWithValue(secp256k1.GenPrivKey().PubKey())
 		require.NoError(t, err)
 
-		nonProposer := sequencertypes.Sequencer{
-			DymintPubKey: nonProposerPubKeyAny,
+		seq := sequencertypes.Sequencer{
+			DymintPubKey: protoutils.CosmosToGogo(pk),
 			Status:       sequencertypes.Bonded,
 		}
-		squencerInfoList = append(squencerInfoList, nonProposer)
+		sequencerInfoList = append(sequencerInfoList, seq)
 	}
 	response := &sequencertypes.QueryGetSequencersByRollappByStatusResponse{
-		Sequencers: squencerInfoList,
+		Sequencers: sequencerInfoList,
 	}
-	return response, proposer
+	return response
 }

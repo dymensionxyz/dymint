@@ -28,17 +28,18 @@ func TestGetSequencers(t *testing.T) {
 
 	sllayer := local.Client{}
 	cfg := settlement.Config{ProposerPubKey: hex.EncodeToString(pubKeybytes)}
-	err = sllayer.Init(cfg, nil, log.TestingLogger())
+	err = sllayer.Init(cfg, "rollappTest", nil, log.TestingLogger())
 	require.NoError(err)
 
-	sequencers, err := sllayer.GetSequencers()
+	sequencers, err := sllayer.GetBondedSequencers()
 	require.NoError(err)
 	assert.Equal(1, len(sequencers))
-	assert.Equal(pubKeybytes, sequencers[0].PublicKey.Bytes())
+	assert.Equal(pubKeybytes, sequencers[0].PubKey().Bytes())
 
-	proposer := sllayer.GetProposer()
+	proposer, err := sllayer.GetProposerAtHeight(-1)
+	require.NoError(err)
 	require.NotNil(proposer)
-	assert.Equal(pubKeybytes, proposer.PublicKey.Bytes())
+	assert.Equal(pubKeybytes, proposer.PubKey().Bytes())
 }
 
 func TestSubmitBatch(t *testing.T) {
@@ -51,17 +52,17 @@ func TestSubmitBatch(t *testing.T) {
 	require.NoError(err)
 
 	sllayer := local.Client{}
-	err = sllayer.Init(settlement.Config{}, pubsubServer, logger)
+	err = sllayer.Init(settlement.Config{}, "rollappTest", pubsubServer, logger)
 	require.NoError(err)
 	_, err = sllayer.GetLatestBatch()
 	require.Error(err) // no batch should be present
 
 	// Create a batches which will be submitted
-	propserKey, _, err := crypto.GenerateEd25519Key(nil)
+	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	require.NoError(err)
-	batch1, err := testutil.GenerateBatch(1, 1, propserKey)
+	batch1, err := testutil.GenerateBatch(1, 1, proposerKey, [32]byte{})
 	require.NoError(err)
-	batch2, err := testutil.GenerateBatch(2, 2, propserKey)
+	batch2, err := testutil.GenerateBatch(2, 2, proposerKey, [32]byte{})
 	require.NoError(err)
 	resultSubmitBatch := &da.ResultSubmitBatch{}
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
@@ -74,15 +75,15 @@ func TestSubmitBatch(t *testing.T) {
 	// Check if the batch was submitted
 	queriedBatch, err := sllayer.GetLatestBatch()
 	require.NoError(err)
-	assert.Equal(batch1.EndHeight, queriedBatch.Batch.EndHeight)
+	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 
-	state, err := sllayer.GetHeightState(1)
+	queriedBatchAtState, err := sllayer.GetBatchAtHeight(1)
 	require.NoError(err)
-	assert.Equal(queriedBatch.StateIndex, state.State.StateIndex)
+	assert.Equal(queriedBatch.StateIndex, queriedBatchAtState.StateIndex)
 
-	queriedBatch, err = sllayer.GetBatchAtIndex(state.State.StateIndex)
+	queriedBatch, err = sllayer.GetBatchAtIndex(queriedBatchAtState.StateIndex)
 	require.NoError(err)
-	assert.Equal(batch1.EndHeight, queriedBatch.Batch.EndHeight)
+	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 
 	// Submit the 2nd batch and check if it was successful
 	err = sllayer.SubmitBatch(batch2, da.Mock, resultSubmitBatch)
@@ -92,15 +93,15 @@ func TestSubmitBatch(t *testing.T) {
 	// Check if the batch was submitted
 	queriedBatch, err = sllayer.GetLatestBatch()
 	require.NoError(err)
-	assert.Equal(batch2.EndHeight, queriedBatch.Batch.EndHeight)
+	assert.Equal(batch2.EndHeight(), queriedBatch.Batch.EndHeight)
 
-	state, err = sllayer.GetHeightState(2)
+	queriedBatchAtState, err = sllayer.GetBatchAtHeight(2)
 	require.NoError(err)
-	assert.Equal(queriedBatch.StateIndex, state.State.StateIndex)
+	assert.Equal(queriedBatch.StateIndex, queriedBatchAtState.StateIndex)
 
-	queriedBatch, err = sllayer.GetBatchAtIndex(state.State.StateIndex)
+	queriedBatch, err = sllayer.GetBatchAtIndex(queriedBatchAtState.StateIndex)
 	require.NoError(err)
-	assert.Equal(batch2.EndHeight, queriedBatch.Batch.EndHeight)
+	assert.Equal(batch2.EndHeight(), queriedBatch.Batch.EndHeight)
 
 	// TODO: test event emitted
 }
@@ -126,14 +127,14 @@ func TestPersistency(t *testing.T) {
 	require.NoError(err)
 
 	cfg := settlement.Config{KeyringHomeDir: tmpdir, ProposerPubKey: hex.EncodeToString(pubKeybytes)}
-	err = sllayer.Init(cfg, pubsubServer, logger)
+	err = sllayer.Init(cfg, "rollappTest", pubsubServer, logger)
 	require.NoError(err)
 
 	_, err = sllayer.GetLatestBatch()
 	assert.Error(err) // no batch should be present
 
 	// Create a batches which will be submitted
-	batch1, err := testutil.GenerateBatch(1, 1, proposerKey)
+	batch1, err := testutil.GenerateBatch(1, 1, proposerKey, [32]byte{})
 	require.NoError(err)
 	resultSubmitBatch := &da.ResultSubmitBatch{}
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
@@ -145,14 +146,14 @@ func TestPersistency(t *testing.T) {
 
 	queriedBatch, err := sllayer.GetLatestBatch()
 	require.NoError(err)
-	assert.Equal(batch1.EndHeight, queriedBatch.Batch.EndHeight)
+	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 
 	// Restart the layer and check if the batch is still present
 	err = sllayer.Stop()
 	require.NoError(err)
 	sllayer = local.Client{}
-	_ = sllayer.Init(cfg, pubsubServer, logger)
+	_ = sllayer.Init(cfg, "rollappTest", pubsubServer, logger)
 	queriedBatch, err = sllayer.GetLatestBatch()
 	require.NoError(err)
-	assert.Equal(batch1.EndHeight, queriedBatch.Batch.EndHeight)
+	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 }

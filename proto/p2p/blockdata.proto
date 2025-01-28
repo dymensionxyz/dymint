@@ -1,0 +1,11 @@
+syntax = "proto3";
+package p2p.events;
+
+option go_package = "github.com/dymensionxyz/dymint/p2p/pb";
+
+import "types/dymint/dymint.proto";
+
+message BlockData {
+	dymint.Block block = 1;
+	dymint.Commit commit = 2;
+}

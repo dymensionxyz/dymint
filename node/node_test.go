@@ -9,31 +9,37 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
+
+	tmcfg "github.com/tendermint/tendermint/config"
 
 	"github.com/dymensionxyz/dymint/config"
 	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
-	tmcfg "github.com/tendermint/tendermint/config"
 )
 
 // simply check that node is starting and stopping without panicking
 func TestStartup(t *testing.T) {
+
+	version.DRS = "0"
 	assert := assert.New(t)
 	require := require.New(t)
 
 	// TODO(omritoptix): Test with and without sequencer mode.
-	node, err := testutil.CreateNode(false, nil)
+	node, err := testutil.CreateNode(false, nil, testutil.GenerateGenesis(0))
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -53,37 +59,36 @@ func TestMempoolDirectly(t *testing.T) {
 	require := require.New(t)
 
 	app := &tmmocks.MockApplication{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{})
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
 		RootDir: "",
 		DBPath:  "",
 		P2PConfig: config.P2PConfig{
-			ListenAddress:           config.DefaultListenAddress,
-			GossipedBlocksCacheSize: 50,
-			BootstrapRetryTime:      30 * time.Second,
-			BootstrapNodes:          "",
+			ListenAddress:                config.DefaultListenAddress,
+			GossipSubCacheSize:           50,
+			BootstrapRetryTime:           30 * time.Second,
+			BootstrapNodes:               "",
+			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:              1 * time.Second,
-			BatchSubmitMaxTime:     60 * time.Second,
-			BlockBatchMaxSizeBytes: 100000,
-			MaxSupportedBatchSkew:  10,
+			BlockTime:                  1 * time.Second,
+			BatchSubmitTime:            60 * time.Second,
+			BatchSubmitBytes:           100000,
+			MaxSkewTime:                24 * 7 * time.Hour,
+			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
-		DALayer:         "mock",
-		DAConfig:        "",
-		SettlementLayer: "mock",
-		SettlementConfig: settlement.Config{
-			RollappID: rollappID,
-		},
+		DAConfig:         "",
+		SettlementLayer:  "mock",
+		SettlementConfig: settlement.Config{},
 	}
 	node, err := node.NewNode(
 		context.Background(),
@@ -91,7 +96,8 @@ func TestMempoolDirectly(t *testing.T) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&types.GenesisDoc{ChainID: rollappID},
+		testutil.GenerateGenesis(0),
+		"",
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

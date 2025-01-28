@@ -3,6 +3,7 @@ package indexer
 import (
 	"context"
 
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 )
@@ -19,4 +20,7 @@ type BlockIndexer interface {
 	// Search performs a query for block heights that match a given BeginBlock
 	// and Endblock event search criteria.
 	Search(ctx context.Context, q *query.Query) ([]int64, error)
+
+	// Delete indexed block entries  up to (but not including) a height. It returns number of entries pruned.
+	Prune(from, to uint64, logger log.Logger) (uint64, error)
 }

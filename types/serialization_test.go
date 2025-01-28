@@ -6,15 +6,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
-	tmtypes "github.com/tendermint/tendermint/types"
 
+	"github.com/dymensionxyz/dymint/block"
+	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 )
 
 func TestBlockSerializationRoundTrip(t *testing.T) {
@@ -32,6 +33,10 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 		h = append(h, h1)
 	}
 
+	sequencers := []types.Sequencer{testutil.GenerateSequencer()}
+	consensusMsgs, err := block.ConsensusMsgsOnSequencerSetUpdate(sequencers)
+	require.NoError(err)
+
 	cases := []struct {
 		name  string
 		input *types.Block
@@ -43,23 +48,21 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 					Block: 1,
 					App:   2,
 				},
-				NamespaceID:     [8]byte{0, 1, 2, 3, 4, 5, 6, 7},
-				Height:          3,
-				Time:            4567,
-				LastHeaderHash:  h[0],
-				LastCommitHash:  h[1],
-				DataHash:        h[2],
-				ConsensusHash:   h[3],
-				AppHash:         h[4],
-				LastResultsHash: h[5],
-				ProposerAddress: []byte{4, 3, 2, 1},
-				SequencersHash:  h[6],
+				Height:                3,
+				Time:                  4567,
+				LastHeaderHash:        h[0],
+				LastCommitHash:        h[1],
+				DataHash:              h[2],
+				ConsensusHash:         h[3],
+				AppHash:               h[4],
+				LastResultsHash:       h[5],
+				ProposerAddress:       []byte{4, 3, 2, 1},
+				NextSequencersHash:    h[6],
+				ConsensusMessagesHash: types.ConsMessagesHash(nil),
 			},
 			Data: types.Data{
-				Txs:                    nil,
-				IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: [][]byte{{0x1}}},
-				// TODO(tzdybal): update when we have actual evidence types
-				Evidence: types.EvidenceData{Evidence: nil},
+				Txs:               nil,
+				ConsensusMessages: protoutils.FromProtoMsgSliceToAnySlice(consensusMsgs...),
 			},
 			LastCommit: types.Commit{
 				Height:     8,
@@ -88,17 +91,13 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 func TestStateRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	valSet := getRandomValidatorSet()
-
 	cases := []struct {
 		name  string
 		state types.State
 	}{
 		{
-			"with max bytes",
-			types.State{
-				Validators:     valSet,
-				NextValidators: valSet,
+			name: "with max bytes",
+			state: types.State{
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
 						MaxBytes:   123,
@@ -118,11 +117,8 @@ func TestStateRoundTrip(t *testing.T) {
 					},
 					Software: "dymint",
 				},
-				ChainID:                     "testchain",
-				InitialHeight:               987,
-				NextValidators:              valSet,
-				Validators:                  valSet,
-				LastHeightValidatorsChanged: 8272,
+				ChainID:       "testchain",
+				InitialHeight: 987,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
 						MaxBytes:   12345,
@@ -141,9 +137,12 @@ func TestStateRoundTrip(t *testing.T) {
 						AppVersion: 42,
 					},
 				},
-				LastHeightConsensusParamsChanged: 12345,
-				LastResultsHash:                  [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2},
-				AppHash:                          [32]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1},
+				RollappParams: pb.RollappParams{
+					Da:         "mock",
+					DrsVersion: 0,
+				},
+				LastResultsHash: [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2},
+				AppHash:         [32]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1},
 			},
 		},
 	}
@@ -154,7 +153,7 @@ func TestStateRoundTrip(t *testing.T) {
 			assert := assert.New(t)
 
 			if c.state.InitialHeight != 0 {
-				c.state.LastBlockHeight.Store(986321)
+				c.state.SetHeight(986321)
 			}
 
 			pState, err := c.state.ToProto()
@@ -178,13 +177,81 @@ func TestStateRoundTrip(t *testing.T) {
 	}
 }
 
-// copied from store_test.go
-func getRandomValidatorSet() *tmtypes.ValidatorSet {
-	pubKey := ed25519.GenPrivKey().PubKey()
-	return &tmtypes.ValidatorSet{
-		Proposer: &tmtypes.Validator{PubKey: pubKey, Address: pubKey.Address()},
-		Validators: []*tmtypes.Validator{
-			{PubKey: pubKey, Address: pubKey.Address()},
+func TestStateWithProposer(t *testing.T) {
+	t.Parallel()
+
+	proposer := testutil.GenerateSequencer()
+
+	cases := []struct {
+		name     string
+		proposer *types.Sequencer
+	}{
+		{
+			name:     "nil proposer",
+			proposer: nil,
+		},
+		{
+			name:     "non-nil proposer",
+			proposer: &proposer,
 		},
 	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			state := new(types.State)
+
+			state.SetProposer(c.proposer)
+
+			pState, err := state.ToProto()
+			require.NoError(t, err)
+			require.NotNil(t, pState)
+
+			bytes, err := pState.Marshal()
+			require.NoError(t, err)
+			require.NotEmpty(t, bytes)
+
+			newProtoState := new(pb.State)
+			err = newProtoState.Unmarshal(bytes)
+			require.NoError(t, err)
+
+			newState := new(types.State)
+			err = newState.FromProto(newProtoState)
+			require.NoError(t, err)
+
+			assert.Equal(t, state.GetProposer(), newState.GetProposer())
+		})
+	}
+}
+
+func TestSequencersProtoSerialization(t *testing.T) {
+	t.Parallel()
+
+	// Create a sample Sequencer
+	pubKey := ed25519.GenPrivKey().PubKey()
+	sequencer := types.NewSequencer(pubKey, "settlementAddress", "rewardAddr", []string{"relayer1", "relayer2"})
+
+	// Create a Sequencers slice
+	sequencers := types.Sequencers{*sequencer}
+
+	// Convert Sequencers to protobuf
+	protoSet, err := sequencers.ToProto()
+	require.NoError(t, err)
+	require.NotNil(t, protoSet)
+
+	// Marshal the protobuf to bytes
+	bytes, err := protoSet.Marshal()
+	require.NoError(t, err)
+	require.NotEmpty(t, bytes)
+
+	// Unmarshal the bytes back to protobuf
+	var newProtoSet pb.SequencerSet
+	err = newProtoSet.Unmarshal(bytes)
+	require.NoError(t, err)
+
+	// Convert protobuf back to Sequencers
+	newSequencers, err := types.SequencersFromProto(&newProtoSet)
+	require.NoError(t, err)
+
+	// Assert that the original and new Sequencers are equal
+	assert.Equal(t, sequencers, newSequencers)
 }

@@ -5,8 +5,10 @@ package dymint
 
 import (
 	fmt "fmt"
+	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
-	types1 "github.com/tendermint/tendermint/abci/types"
+	types1 "github.com/gogo/protobuf/types"
+	_ "github.com/tendermint/tendermint/abci/types"
 	types "github.com/tendermint/tendermint/proto/tendermint/types"
 	io "io"
 	math "math"
@@ -84,11 +86,11 @@ type Header struct {
 	// Block and App version
 	Version *Version `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
 	// NamespaceID identifies this chain e.g. when connected to other rollups via IBC.
-	NamespaceId []byte `protobuf:"bytes,2,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	NamespaceId []byte `protobuf:"bytes,2,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"` // Deprecated: Do not use.
 	// Block height
 	Height uint64 `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
-	// Block creation time
-	Time uint64 `protobuf:"varint,4,opt,name=time,proto3" json:"time,omitempty"`
+	// Block creation time in nanoseconds. Use int64 as Golang stores UNIX nanoseconds in int64.
+	Time int64 `protobuf:"varint,4,opt,name=time,proto3" json:"time,omitempty"`
 	// Previous block info
 	LastHeaderHash []byte `protobuf:"bytes,5,opt,name=last_header_hash,json=lastHeaderHash,proto3" json:"last_header_hash,omitempty"`
 	// Commit from sequencers(s) from the last block
@@ -109,10 +111,15 @@ type Header struct {
 	// We keep this in case users choose another signature format where the
 	// pubkey can't be recovered by the signature (e.g. ed25519).
 	ProposerAddress []byte `protobuf:"bytes,11,opt,name=proposer_address,json=proposerAddress,proto3" json:"proposer_address,omitempty"`
-	// Hash of block sequencer set, at a time of block creation
-	SequencersHash []byte `protobuf:"bytes,12,opt,name=sequencers_hash,json=sequencersHash,proto3" json:"sequencers_hash,omitempty"`
+	// Hash of proposer validatorSet (compatible with tendermint)
+	SequencerHash []byte `protobuf:"bytes,12,opt,name=sequencer_hash,json=sequencerHash,proto3" json:"sequencer_hash,omitempty"`
+	// Hash of the next proposer validatorSet (compatible with tendermint)
+	NextSequencerHash []byte `protobuf:"bytes,14,opt,name=next_sequencer_hash,json=nextSequencerHash,proto3" json:"next_sequencer_hash,omitempty"`
 	// Chain ID the block belongs to
 	ChainId string `protobuf:"bytes,13,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
+	// The following fields are added on top of the normal TM header, for dymension purposes
+	// Note: LOSSY when converted to tendermint (squashed into a single hash)
+	ConsensusMessagesHash []byte `protobuf:"bytes,15,opt,name=consensus_messages_hash,json=consensusMessagesHash,proto3" json:"consensus_messages_hash,omitempty"`
 }
 
 func (m *Header) Reset()         { *m = Header{} }
@@ -155,6 +162,7 @@ func (m *Header) GetVersion() *Version {
 	return nil
 }
 
+// Deprecated: Do not use.
 func (m *Header) GetNamespaceId() []byte {
 	if m != nil {
 		return m.NamespaceId
@@ -169,7 +177,7 @@ func (m *Header) GetHeight() uint64 {
 	return 0
 }
 
-func (m *Header) GetTime() uint64 {
+func (m *Header) GetTime() int64 {
 	if m != nil {
 		return m.Time
 	}
@@ -225,9 +233,16 @@ func (m *Header) GetProposerAddress() []byte {
 	return nil
 }
 
-func (m *Header) GetSequencersHash() []byte {
+func (m *Header) GetSequencerHash() []byte {
 	if m != nil {
-		return m.SequencersHash
+		return m.SequencerHash
+	}
+	return nil
+}
+
+func (m *Header) GetNextSequencerHash() []byte {
+	if m != nil {
+		return m.NextSequencerHash
 	}
 	return nil
 }
@@ -237,6 +252,13 @@ func (m *Header) GetChainId() string {
 		return m.ChainId
 	}
 	return ""
+}
+
+func (m *Header) GetConsensusMessagesHash() []byte {
+	if m != nil {
+		return m.ConsensusMessagesHash
+	}
+	return nil
 }
 
 type Commit struct {
@@ -309,9 +331,8 @@ func (m *Commit) GetTmSignature() *types.CommitSig {
 }
 
 type Data struct {
-	Txs                    [][]byte           `protobuf:"bytes,1,rep,name=txs,proto3" json:"txs,omitempty"`
-	IntermediateStateRoots [][]byte           `protobuf:"bytes,2,rep,name=intermediate_state_roots,json=intermediateStateRoots,proto3" json:"intermediate_state_roots,omitempty"`
-	Evidence               []*types1.Evidence `protobuf:"bytes,3,rep,name=evidence,proto3" json:"evidence,omitempty"`
+	Txs               [][]byte      `protobuf:"bytes,1,rep,name=txs,proto3" json:"txs,omitempty"`
+	ConsensusMessages []*types1.Any `protobuf:"bytes,4,rep,name=consensus_messages,json=consensusMessages,proto3" json:"consensus_messages,omitempty"`
 }
 
 func (m *Data) Reset()         { *m = Data{} }
@@ -354,16 +375,9 @@ func (m *Data) GetTxs() [][]byte {
 	return nil
 }
 
-func (m *Data) GetIntermediateStateRoots() [][]byte {
+func (m *Data) GetConsensusMessages() []*types1.Any {
 	if m != nil {
-		return m.IntermediateStateRoots
-	}
-	return nil
-}
-
-func (m *Data) GetEvidence() []*types1.Evidence {
-	if m != nil {
-		return m.Evidence
+		return m.ConsensusMessages
 	}
 	return nil
 }
@@ -496,6 +510,171 @@ func (m *Batch) GetCommits() []*Commit {
 	return nil
 }
 
+// Sequencer is a struct that holds the sequencer's information and tendermint validator.
+// It is populated from the Hub on start and is periodically updated from the Hub polling.
+// Uses tendermint's validator types for compatibility.
+type Sequencer struct {
+	// SettlementAddress is the address of the sequencer in the settlement layer (bech32 string)
+	SettlementAddress string `protobuf:"bytes,1,opt,name=settlement_address,json=settlementAddress,proto3" json:"settlement_address,omitempty"`
+	// Validator is a tendermint validator type for compatibility. Holds the public key and cons address.
+	Validator types.Validator `protobuf:"bytes,2,opt,name=validator,proto3" json:"validator"`
+	// RewardAddr is the bech32-encoded sequencer's reward address.
+	RewardAddr string `protobuf:"bytes,3,opt,name=reward_addr,json=rewardAddr,proto3" json:"reward_addr,omitempty"`
+	// Relayers is an array of the whitelisted relayer addresses. Addresses are bech32-encoded strings.
+	WhitelistedRelayers []string `protobuf:"bytes,4,rep,name=whitelisted_relayers,json=whitelistedRelayers,proto3" json:"whitelisted_relayers,omitempty"`
+}
+
+func (m *Sequencer) Reset()         { *m = Sequencer{} }
+func (m *Sequencer) String() string { return proto.CompactTextString(m) }
+func (*Sequencer) ProtoMessage()    {}
+func (*Sequencer) Descriptor() ([]byte, []int) {
+	return fileDescriptor_fe69c538ded4b87f, []int{6}
+}
+func (m *Sequencer) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Sequencer) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Sequencer.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Sequencer) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Sequencer.Merge(m, src)
+}
+func (m *Sequencer) XXX_Size() int {
+	return m.Size()
+}
+func (m *Sequencer) XXX_DiscardUnknown() {
+	xxx_messageInfo_Sequencer.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Sequencer proto.InternalMessageInfo
+
+func (m *Sequencer) GetSettlementAddress() string {
+	if m != nil {
+		return m.SettlementAddress
+	}
+	return ""
+}
+
+func (m *Sequencer) GetValidator() types.Validator {
+	if m != nil {
+		return m.Validator
+	}
+	return types.Validator{}
+}
+
+func (m *Sequencer) GetRewardAddr() string {
+	if m != nil {
+		return m.RewardAddr
+	}
+	return ""
+}
+
+func (m *Sequencer) GetWhitelistedRelayers() []string {
+	if m != nil {
+		return m.WhitelistedRelayers
+	}
+	return nil
+}
+
+// SequencerSet is a struct that holds the sequencers set. This type is used to persist the latest
+// applied sequencers set in the store.
+type SequencerSet struct {
+	Sequencers []Sequencer `protobuf:"bytes,1,rep,name=sequencers,proto3" json:"sequencers"`
+}
+
+func (m *SequencerSet) Reset()         { *m = SequencerSet{} }
+func (m *SequencerSet) String() string { return proto.CompactTextString(m) }
+func (*SequencerSet) ProtoMessage()    {}
+func (*SequencerSet) Descriptor() ([]byte, []int) {
+	return fileDescriptor_fe69c538ded4b87f, []int{7}
+}
+func (m *SequencerSet) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SequencerSet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SequencerSet.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *SequencerSet) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SequencerSet.Merge(m, src)
+}
+func (m *SequencerSet) XXX_Size() int {
+	return m.Size()
+}
+func (m *SequencerSet) XXX_DiscardUnknown() {
+	xxx_messageInfo_SequencerSet.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SequencerSet proto.InternalMessageInfo
+
+func (m *SequencerSet) GetSequencers() []Sequencer {
+	if m != nil {
+		return m.Sequencers
+	}
+	return nil
+}
+
+type EventKeys struct {
+	Keys [][]byte `protobuf:"bytes,1,rep,name=keys,proto3" json:"keys,omitempty"`
+}
+
+func (m *EventKeys) Reset()         { *m = EventKeys{} }
+func (m *EventKeys) String() string { return proto.CompactTextString(m) }
+func (*EventKeys) ProtoMessage()    {}
+func (*EventKeys) Descriptor() ([]byte, []int) {
+	return fileDescriptor_fe69c538ded4b87f, []int{8}
+}
+func (m *EventKeys) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventKeys) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventKeys.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventKeys) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventKeys.Merge(m, src)
+}
+func (m *EventKeys) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventKeys) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventKeys.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventKeys proto.InternalMessageInfo
+
+func (m *EventKeys) GetKeys() [][]byte {
+	if m != nil {
+		return m.Keys
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*Version)(nil), "dymint.Version")
 	proto.RegisterType((*Header)(nil), "dymint.Header")
@@ -503,55 +682,71 @@ func init() {
 	proto.RegisterType((*Data)(nil), "dymint.Data")
 	proto.RegisterType((*Block)(nil), "dymint.Block")
 	proto.RegisterType((*Batch)(nil), "dymint.Batch")
+	proto.RegisterType((*Sequencer)(nil), "dymint.Sequencer")
+	proto.RegisterType((*SequencerSet)(nil), "dymint.SequencerSet")
+	proto.RegisterType((*EventKeys)(nil), "dymint.EventKeys")
 }
 
 func init() { proto.RegisterFile("types/dymint/dymint.proto", fileDescriptor_fe69c538ded4b87f) }
 
 var fileDescriptor_fe69c538ded4b87f = []byte{
-	// 686 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x94, 0xbd, 0x6f, 0xd3, 0x4e,
-	0x18, 0xc7, 0xeb, 0x26, 0x75, 0x92, 0xc7, 0xe9, 0xcb, 0xef, 0xf4, 0x53, 0xe5, 0xb6, 0xc2, 0xa4,
-	0x96, 0x0a, 0x29, 0x83, 0x2b, 0x82, 0x90, 0x98, 0x90, 0x28, 0x20, 0xa5, 0xab, 0x2b, 0x31, 0xb0,
-	0x44, 0x17, 0xfb, 0x14, 0x9f, 0xa8, 0x5f, 0xb8, 0xbb, 0x54, 0x2d, 0x23, 0x1b, 0x1b, 0x33, 0x1b,
-	0xff, 0x0d, 0x63, 0x47, 0x46, 0xd4, 0xfc, 0x23, 0xe8, 0x9e, 0x3b, 0xc7, 0x06, 0x96, 0xc4, 0xf7,
-	0xfd, 0x7e, 0x7c, 0x7e, 0xee, 0x79, 0x39, 0x38, 0x50, 0xb7, 0x15, 0x93, 0x67, 0xe9, 0x6d, 0xce,
-	0x0b, 0x65, 0xff, 0xa2, 0x4a, 0x94, 0xaa, 0x24, 0xae, 0x59, 0x1d, 0x1e, 0x1b, 0x44, 0xb1, 0x22,
-	0x65, 0x02, 0x31, 0x3a, 0x4f, 0xf8, 0x19, 0xaa, 0x06, 0x3d, 0x0c, 0xff, 0x41, 0xac, 0xd0, 0x30,
-	0xe1, 0x53, 0xe8, 0xbd, 0x63, 0x42, 0xf2, 0xb2, 0x20, 0xff, 0xc3, 0xd6, 0xfc, 0xaa, 0x4c, 0x3e,
-	0xf8, 0xce, 0xc8, 0x19, 0x77, 0x63, 0xb3, 0x20, 0x7b, 0xd0, 0xa1, 0x55, 0xe5, 0x6f, 0xa2, 0xa6,
-	0x1f, 0xc3, 0xbb, 0x0e, 0xb8, 0x53, 0x46, 0x53, 0x26, 0xc8, 0x29, 0xf4, 0xae, 0xcd, 0xdb, 0xf8,
-	0x92, 0x37, 0xd9, 0x8d, 0x6c, 0xb0, 0x76, 0xd3, 0xb8, 0xf6, 0xc9, 0x31, 0x0c, 0x0b, 0x9a, 0x33,
-	0x59, 0xd1, 0x84, 0xcd, 0x78, 0x8a, 0x1b, 0x0e, 0x63, 0x6f, 0xad, 0x5d, 0xa4, 0x64, 0x1f, 0xdc,
-	0x8c, 0xf1, 0x45, 0xa6, 0xfc, 0x0e, 0x7e, 0xcd, 0xae, 0x08, 0x81, 0xae, 0xe2, 0x39, 0xf3, 0xbb,
-	0xa8, 0xe2, 0x33, 0x19, 0xc3, 0xde, 0x15, 0x95, 0x6a, 0x96, 0x61, 0x20, 0xb3, 0x8c, 0xca, 0xcc,
-	0xdf, 0xc2, 0x2d, 0x77, 0xb4, 0x6e, 0xe2, 0x9b, 0x52, 0x99, 0xad, 0xc9, 0xa4, 0xcc, 0x73, 0xae,
-	0x0c, 0xe9, 0x36, 0xe4, 0x6b, 0x94, 0x91, 0x3c, 0x82, 0x41, 0x4a, 0x15, 0x35, 0x48, 0x0f, 0x91,
-	0xbe, 0x16, 0xd0, 0x3c, 0x81, 0x9d, 0xa4, 0x2c, 0x24, 0x2b, 0xe4, 0x52, 0x1a, 0xa2, 0x8f, 0xc4,
-	0xf6, 0x5a, 0x45, 0xec, 0x00, 0xfa, 0xb4, 0xaa, 0x0c, 0x30, 0x40, 0xa0, 0x47, 0xab, 0x0a, 0xad,
-	0x27, 0xf0, 0x1f, 0x06, 0x22, 0x98, 0x5c, 0x5e, 0x29, 0xbb, 0x09, 0x20, 0xb3, 0xab, 0x8d, 0xd8,
-	0xe8, 0xc8, 0x9e, 0xc2, 0x5e, 0x25, 0xca, 0xaa, 0x94, 0x4c, 0xcc, 0x68, 0x9a, 0x0a, 0x26, 0xa5,
-	0xef, 0x19, 0xb4, 0xd6, 0x5f, 0x19, 0x99, 0x3c, 0x86, 0x5d, 0xc9, 0x3e, 0x2e, 0x59, 0x91, 0x30,
-	0x61, 0x37, 0x1d, 0x9a, 0xe3, 0x35, 0x72, 0x1d, 0x5a, 0x92, 0x51, 0x5e, 0xe8, 0xec, 0x6f, 0x8f,
-	0x9c, 0xf1, 0x20, 0xee, 0xe1, 0xfa, 0x22, 0x0d, 0xbf, 0x3b, 0xe0, 0x9a, 0x44, 0xb4, 0x8a, 0xe0,
-	0xfc, 0x51, 0x84, 0x87, 0xe0, 0xb5, 0x73, 0x6d, 0xca, 0x07, 0x59, 0x93, 0xe7, 0x00, 0x40, 0xf2,
-	0x45, 0x41, 0xd5, 0x52, 0x30, 0xe9, 0x77, 0x46, 0x1d, 0xed, 0x37, 0x0a, 0x79, 0x09, 0x43, 0x95,
-	0xcf, 0xd6, 0x02, 0x56, 0xd3, 0x9b, 0x1c, 0x45, 0x4d, 0x7b, 0x46, 0xa6, 0x31, 0x4d, 0x20, 0x97,
-	0x7c, 0x11, 0x7b, 0x2a, 0xbf, 0xac, 0xf9, 0xf0, 0x8b, 0x03, 0xdd, 0x37, 0x54, 0x51, 0xdd, 0x91,
-	0xea, 0x46, 0xfa, 0x0e, 0x7e, 0x41, 0x3f, 0x92, 0x17, 0xe0, 0xf3, 0x42, 0x31, 0x91, 0xb3, 0x94,
-	0x53, 0xc5, 0x66, 0x52, 0xe9, 0x5f, 0x51, 0x96, 0x4a, 0xfa, 0x9b, 0x88, 0xed, 0xb7, 0xfd, 0x4b,
-	0x6d, 0xc7, 0xda, 0x25, 0xcf, 0xa1, 0xcf, 0xae, 0x79, 0xaa, 0xb3, 0x84, 0x21, 0x7b, 0x93, 0x83,
-	0x76, 0x40, 0x7a, 0xa4, 0xa2, 0xb7, 0x16, 0x88, 0xd7, 0x68, 0xf8, 0xd9, 0x81, 0xad, 0x73, 0x1c,
-	0x8f, 0x47, 0x3a, 0x5d, 0x3a, 0x07, 0x76, 0x00, 0x76, 0xea, 0x01, 0x30, 0x1d, 0x18, 0x5b, 0x97,
-	0x8c, 0xa0, 0xab, 0x5b, 0x09, 0xf3, 0xe6, 0x4d, 0x86, 0x35, 0xa5, 0x0f, 0x14, 0xa3, 0x43, 0xce,
-	0xc0, 0x6b, 0xf5, 0x29, 0x8e, 0x40, 0x6b, 0x3b, 0x93, 0x94, 0x18, 0x9a, 0x96, 0x0d, 0xbf, 0xe9,
-	0x20, 0xa8, 0x4a, 0x32, 0x3d, 0x5b, 0x52, 0x51, 0xa1, 0xa7, 0xa1, 0x55, 0x39, 0x0f, 0xb5, 0xa9,
-	0x29, 0xdf, 0x03, 0x00, 0x56, 0xa4, 0x35, 0x60, 0xa6, 0x79, 0xc0, 0x8a, 0xd4, 0xda, 0x27, 0xe0,
-	0xe2, 0xb8, 0x4b, 0x9b, 0x85, 0xed, 0xfa, 0xbb, 0x78, 0xca, 0xd8, 0x9a, 0x64, 0x0c, 0x3d, 0x13,
-	0x9e, 0xf4, 0xbb, 0xc8, 0xfd, 0x1d, 0x5f, 0x6d, 0x9f, 0x4f, 0x7f, 0xdc, 0x07, 0xce, 0xdd, 0x7d,
-	0xe0, 0xfc, 0xba, 0x0f, 0x9c, 0xaf, 0xab, 0x60, 0xe3, 0x6e, 0x15, 0x6c, 0xfc, 0x5c, 0x05, 0x1b,
-	0xef, 0xa3, 0x05, 0x57, 0xd9, 0x72, 0x1e, 0x25, 0x65, 0xae, 0x6f, 0x36, 0x56, 0xe8, 0xeb, 0xe1,
-	0xe6, 0xf6, 0x53, 0x7d, 0xdb, 0x99, 0x3b, 0xaa, 0x9a, 0xdb, 0xf5, 0xdc, 0xc5, 0x8b, 0xea, 0xd9,
-	0xef, 0x00, 0x00, 0x00, 0xff, 0xff, 0x0d, 0x81, 0x13, 0x49, 0x14, 0x05, 0x00, 0x00,
+	// 895 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x55, 0x4d, 0x6f, 0x1b, 0x45,
+	0x18, 0xce, 0xc6, 0x1b, 0x7f, 0xbc, 0xeb, 0x7c, 0x78, 0x1a, 0x60, 0xd3, 0x0a, 0xc7, 0x5d, 0x29,
+	0x95, 0x8b, 0xc4, 0x5a, 0x35, 0x12, 0xdc, 0x40, 0x4d, 0x41, 0xa4, 0x45, 0x5c, 0x26, 0x52, 0x0f,
+	0x5c, 0xac, 0xb1, 0xf7, 0x65, 0x77, 0x55, 0xef, 0x07, 0x3b, 0xe3, 0x34, 0xe6, 0xc8, 0x2f, 0xe0,
+	0xcc, 0x8d, 0xbf, 0xc1, 0x2f, 0xe8, 0x8d, 0x1e, 0x39, 0x21, 0x94, 0xfc, 0x11, 0x34, 0xef, 0xcc,
+	0xae, 0xdd, 0x06, 0x4e, 0x3b, 0xf3, 0x3c, 0xcf, 0xbc, 0xf3, 0x7e, 0xce, 0xc2, 0x89, 0x5a, 0x97,
+	0x28, 0x27, 0xd1, 0x3a, 0x4b, 0x73, 0x65, 0x3f, 0x61, 0x59, 0x15, 0xaa, 0x60, 0x6d, 0xb3, 0xbb,
+	0x7f, 0x1c, 0x17, 0x71, 0x41, 0xd0, 0x44, 0xaf, 0x0c, 0x7b, 0xff, 0xa1, 0x39, 0xa8, 0x30, 0x8f,
+	0xb0, 0xa2, 0xc3, 0x62, 0xbe, 0x48, 0x27, 0x84, 0x5a, 0x49, 0x70, 0x47, 0x62, 0x81, 0x2d, 0xcd,
+	0xa3, 0xff, 0xd1, 0x5c, 0x89, 0x65, 0x1a, 0x09, 0x55, 0x54, 0x56, 0x77, 0x12, 0x17, 0x45, 0xbc,
+	0xc4, 0x09, 0xed, 0xe6, 0xab, 0x1f, 0x27, 0x22, 0x5f, 0x1b, 0x2a, 0x78, 0x02, 0x9d, 0x97, 0x58,
+	0xc9, 0xb4, 0xc8, 0xd9, 0x31, 0xec, 0xcd, 0x97, 0xc5, 0xe2, 0x95, 0xef, 0x8c, 0x9c, 0xb1, 0xcb,
+	0xcd, 0x86, 0x1d, 0x41, 0x4b, 0x94, 0xa5, 0xbf, 0x4b, 0x98, 0x5e, 0x06, 0x7f, 0xb8, 0xd0, 0xbe,
+	0x40, 0x11, 0x61, 0xc5, 0x1e, 0x43, 0xe7, 0xca, 0x9c, 0xa6, 0x43, 0xde, 0xf4, 0x30, 0xb4, 0x59,
+	0xb0, 0x46, 0x79, 0xcd, 0xb3, 0x33, 0xe8, 0xe7, 0x22, 0x43, 0x59, 0x8a, 0x05, 0xce, 0xd2, 0x88,
+	0x0c, 0xf6, 0xcf, 0x77, 0x7d, 0x87, 0x7b, 0x0d, 0xfe, 0x3c, 0x62, 0x1f, 0x42, 0x3b, 0xc1, 0x34,
+	0x4e, 0x94, 0xdf, 0xa2, 0x1b, 0xed, 0x8e, 0x31, 0x70, 0x55, 0x9a, 0xa1, 0xef, 0x8e, 0x9c, 0x71,
+	0x8b, 0xd3, 0x9a, 0x8d, 0xe1, 0x68, 0x29, 0xa4, 0x9a, 0x25, 0xe4, 0xcc, 0x2c, 0x11, 0x32, 0xf1,
+	0xf7, 0xb4, 0x59, 0x7e, 0xa0, 0x71, 0xe3, 0xe3, 0x85, 0x90, 0x49, 0xa3, 0x5c, 0x14, 0x59, 0x96,
+	0x2a, 0xa3, 0x6c, 0x6f, 0x94, 0xcf, 0x08, 0x26, 0xe5, 0x03, 0xe8, 0x45, 0x42, 0x09, 0x23, 0xe9,
+	0x90, 0xa4, 0xab, 0x01, 0x22, 0xcf, 0xe0, 0x60, 0x51, 0xe4, 0x12, 0x73, 0xb9, 0x92, 0x46, 0xd1,
+	0x25, 0xc5, 0x7e, 0x83, 0x92, 0xec, 0x04, 0xba, 0xa2, 0x2c, 0x8d, 0xa0, 0x47, 0x82, 0x8e, 0x28,
+	0x4b, 0xa2, 0x3e, 0x81, 0x01, 0x39, 0x52, 0xa1, 0x5c, 0x2d, 0x95, 0x35, 0x02, 0xa4, 0x39, 0xd4,
+	0x04, 0x37, 0x38, 0x69, 0x1f, 0xc3, 0x51, 0x59, 0x15, 0x65, 0x21, 0xb1, 0x9a, 0x89, 0x28, 0xaa,
+	0x50, 0x4a, 0xdf, 0x33, 0xd2, 0x1a, 0x7f, 0x6a, 0x60, 0xed, 0x98, 0xc4, 0x9f, 0x56, 0x98, 0x2f,
+	0xea, 0x3c, 0xf4, 0x8d, 0x63, 0x0d, 0x4a, 0x16, 0x43, 0xb8, 0x97, 0xe3, 0xb5, 0x9a, 0xbd, 0xa7,
+	0x3d, 0x20, 0xed, 0x40, 0x53, 0x97, 0xef, 0xe8, 0x4f, 0xa0, 0xbb, 0x48, 0x44, 0x9a, 0xeb, 0x7a,
+	0xed, 0x8f, 0x9c, 0x71, 0x8f, 0x77, 0x68, 0xff, 0x3c, 0x62, 0x9f, 0xc3, 0x47, 0x9b, 0x54, 0x64,
+	0x28, 0xa5, 0x88, 0xd1, 0x86, 0x73, 0x48, 0xe6, 0x3e, 0x68, 0xe8, 0xef, 0x2d, 0xab, 0x4d, 0x06,
+	0xbf, 0x3b, 0xd0, 0x36, 0xe9, 0xde, 0x2a, 0xb5, 0xf3, 0x4e, 0xa9, 0x4f, 0xc1, 0xdb, 0xae, 0x28,
+	0x35, 0x0a, 0x87, 0x64, 0x53, 0xcd, 0x21, 0x80, 0x4c, 0xe3, 0x5c, 0xa8, 0x55, 0x85, 0xd2, 0x6f,
+	0x8d, 0x5a, 0x9a, 0xdf, 0x20, 0xec, 0x4b, 0xe8, 0xab, 0x6c, 0xd6, 0x00, 0xd4, 0x33, 0xde, 0xf4,
+	0x41, 0xb8, 0x99, 0x93, 0xd0, 0x4c, 0x91, 0x71, 0xe4, 0x32, 0x8d, 0xb9, 0xa7, 0xb2, 0xcb, 0x5a,
+	0x1f, 0xa4, 0xe0, 0x7e, 0x2d, 0x94, 0xd0, 0xad, 0xaf, 0xae, 0xa5, 0xef, 0xd0, 0x05, 0x7a, 0xc9,
+	0x9e, 0x01, 0xbb, 0x1b, 0xb5, 0xef, 0x8e, 0x5a, 0x63, 0x6f, 0x7a, 0x1c, 0x9a, 0x29, 0x0b, 0xeb,
+	0x29, 0x0b, 0x9f, 0xe6, 0x6b, 0x3e, 0xb8, 0x93, 0x86, 0x17, 0x6e, 0x77, 0xf7, 0xa8, 0xf5, 0xc2,
+	0xed, 0xb6, 0x8e, 0xdc, 0xe0, 0x17, 0x07, 0xf6, 0xce, 0x69, 0xce, 0x1e, 0xe9, 0x6c, 0xe8, 0x10,
+	0xed, 0x24, 0x1d, 0xd4, 0x93, 0x64, 0xda, 0x98, 0x5b, 0x96, 0x8d, 0xc0, 0xd5, 0xfd, 0x48, 0x69,
+	0xf1, 0xa6, 0xfd, 0x5a, 0xa5, 0x1d, 0xe6, 0xc4, 0xb0, 0x09, 0x78, 0x5b, 0xcd, 0x4e, 0x73, 0xb4,
+	0x65, 0xce, 0xc4, 0xcc, 0x61, 0xd3, 0xf7, 0xc1, 0x6f, 0xda, 0x09, 0xa1, 0x16, 0x09, 0x7b, 0x08,
+	0x7d, 0xa9, 0x44, 0xa5, 0x47, 0x6a, 0xab, 0x30, 0x1e, 0x61, 0x17, 0xa6, 0x3a, 0x1f, 0x03, 0x60,
+	0x1e, 0xd5, 0x02, 0xf3, 0x2c, 0xf4, 0x30, 0x8f, 0x2c, 0x7d, 0x06, 0x6d, 0x7a, 0x37, 0x4c, 0x5d,
+	0xbc, 0xe9, 0x7e, 0x7d, 0x2f, 0x45, 0xc9, 0x2d, 0xc9, 0xc6, 0xd0, 0x31, 0xee, 0xd5, 0xd9, 0x7b,
+	0xdf, 0xbf, 0x9a, 0x0e, 0xfe, 0x74, 0xa0, 0xd7, 0x74, 0x25, 0xfb, 0x14, 0x98, 0x44, 0xa5, 0x96,
+	0x98, 0x61, 0xae, 0x9a, 0xa9, 0x70, 0xa8, 0x37, 0x07, 0x1b, 0xa6, 0x9e, 0x8b, 0xaf, 0xa0, 0xd7,
+	0xbc, 0x85, 0x36, 0x63, 0xff, 0xd1, 0x06, 0x2f, 0x6b, 0xc9, 0xb9, 0xfb, 0xe6, 0xef, 0xd3, 0x1d,
+	0xbe, 0x39, 0xa3, 0x7b, 0xb1, 0xc2, 0xd7, 0xa2, 0x8a, 0xe8, 0x2e, 0xca, 0x65, 0x8f, 0x83, 0x81,
+	0xf4, 0x25, 0xec, 0x09, 0x1c, 0xbf, 0x4e, 0x52, 0x85, 0xcb, 0x54, 0x2a, 0x8c, 0x66, 0x15, 0x2e,
+	0xc5, 0x1a, 0x2b, 0x13, 0x55, 0x8f, 0xdf, 0xdb, 0xe2, 0xb8, 0xa5, 0x82, 0x6f, 0xa1, 0xdf, 0x04,
+	0x74, 0x89, 0x8a, 0x7d, 0x01, 0xd0, 0x0c, 0xa4, 0xe9, 0x36, 0x6f, 0x3a, 0xa8, 0xd3, 0xd1, 0x28,
+	0xad, 0x6f, 0x5b, 0xd2, 0xe0, 0x14, 0x7a, 0xdf, 0x5c, 0x61, 0xae, 0xbe, 0xc3, 0xb5, 0xd4, 0x0f,
+	0xe4, 0x2b, 0x5c, 0xd7, 0xdd, 0x4a, 0xeb, 0xf3, 0x8b, 0x37, 0x37, 0x43, 0xe7, 0xed, 0xcd, 0xd0,
+	0xf9, 0xe7, 0x66, 0xe8, 0xfc, 0x7a, 0x3b, 0xdc, 0x79, 0x7b, 0x3b, 0xdc, 0xf9, 0xeb, 0x76, 0xb8,
+	0xf3, 0x43, 0x18, 0xa7, 0x2a, 0x59, 0xcd, 0xc3, 0x45, 0x91, 0xe9, 0xff, 0x16, 0xe6, 0xfa, 0x8d,
+	0xbe, 0x5e, 0xff, 0x5c, 0xff, 0xcb, 0xcc, 0x7f, 0xa4, 0x9c, 0xdb, 0xfd, 0xbc, 0x4d, 0x4d, 0xfd,
+	0xd9, 0xbf, 0x01, 0x00, 0x00, 0xff, 0xff, 0x16, 0x93, 0xc5, 0x37, 0xf2, 0x06, 0x00, 0x00,
 }
 
 func (m *Version) Marshal() (dAtA []byte, err error) {
@@ -607,6 +802,20 @@ func (m *Header) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.ConsensusMessagesHash) > 0 {
+		i -= len(m.ConsensusMessagesHash)
+		copy(dAtA[i:], m.ConsensusMessagesHash)
+		i = encodeVarintDymint(dAtA, i, uint64(len(m.ConsensusMessagesHash)))
+		i--
+		dAtA[i] = 0x7a
+	}
+	if len(m.NextSequencerHash) > 0 {
+		i -= len(m.NextSequencerHash)
+		copy(dAtA[i:], m.NextSequencerHash)
+		i = encodeVarintDymint(dAtA, i, uint64(len(m.NextSequencerHash)))
+		i--
+		dAtA[i] = 0x72
+	}
 	if len(m.ChainId) > 0 {
 		i -= len(m.ChainId)
 		copy(dAtA[i:], m.ChainId)
@@ -614,10 +823,10 @@ func (m *Header) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x6a
 	}
-	if len(m.SequencersHash) > 0 {
-		i -= len(m.SequencersHash)
-		copy(dAtA[i:], m.SequencersHash)
-		i = encodeVarintDymint(dAtA, i, uint64(len(m.SequencersHash)))
+	if len(m.SequencerHash) > 0 {
+		i -= len(m.SequencerHash)
+		copy(dAtA[i:], m.SequencerHash)
+		i = encodeVarintDymint(dAtA, i, uint64(len(m.SequencerHash)))
 		i--
 		dAtA[i] = 0x62
 	}
@@ -778,10 +987,10 @@ func (m *Data) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.Evidence) > 0 {
-		for iNdEx := len(m.Evidence) - 1; iNdEx >= 0; iNdEx-- {
+	if len(m.ConsensusMessages) > 0 {
+		for iNdEx := len(m.ConsensusMessages) - 1; iNdEx >= 0; iNdEx-- {
 			{
-				size, err := m.Evidence[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				size, err := m.ConsensusMessages[iNdEx].MarshalToSizedBuffer(dAtA[:i])
 				if err != nil {
 					return 0, err
 				}
@@ -789,16 +998,7 @@ func (m *Data) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 				i = encodeVarintDymint(dAtA, i, uint64(size))
 			}
 			i--
-			dAtA[i] = 0x1a
-		}
-	}
-	if len(m.IntermediateStateRoots) > 0 {
-		for iNdEx := len(m.IntermediateStateRoots) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.IntermediateStateRoots[iNdEx])
-			copy(dAtA[i:], m.IntermediateStateRoots[iNdEx])
-			i = encodeVarintDymint(dAtA, i, uint64(len(m.IntermediateStateRoots[iNdEx])))
-			i--
-			dAtA[i] = 0x12
+			dAtA[i] = 0x22
 		}
 	}
 	if len(m.Txs) > 0 {
@@ -933,6 +1133,131 @@ func (m *Batch) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *Sequencer) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Sequencer) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Sequencer) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.WhitelistedRelayers) > 0 {
+		for iNdEx := len(m.WhitelistedRelayers) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.WhitelistedRelayers[iNdEx])
+			copy(dAtA[i:], m.WhitelistedRelayers[iNdEx])
+			i = encodeVarintDymint(dAtA, i, uint64(len(m.WhitelistedRelayers[iNdEx])))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if len(m.RewardAddr) > 0 {
+		i -= len(m.RewardAddr)
+		copy(dAtA[i:], m.RewardAddr)
+		i = encodeVarintDymint(dAtA, i, uint64(len(m.RewardAddr)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	{
+		size, err := m.Validator.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintDymint(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
+	if len(m.SettlementAddress) > 0 {
+		i -= len(m.SettlementAddress)
+		copy(dAtA[i:], m.SettlementAddress)
+		i = encodeVarintDymint(dAtA, i, uint64(len(m.SettlementAddress)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SequencerSet) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SequencerSet) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *SequencerSet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Sequencers) > 0 {
+		for iNdEx := len(m.Sequencers) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Sequencers[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintDymint(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EventKeys) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventKeys) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventKeys) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Keys) > 0 {
+		for iNdEx := len(m.Keys) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Keys[iNdEx])
+			copy(dAtA[i:], m.Keys[iNdEx])
+			i = encodeVarintDymint(dAtA, i, uint64(len(m.Keys[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintDymint(dAtA []byte, offset int, v uint64) int {
 	offset -= sovDymint(v)
 	base := offset
@@ -1007,11 +1332,19 @@ func (m *Header) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovDymint(uint64(l))
 	}
-	l = len(m.SequencersHash)
+	l = len(m.SequencerHash)
 	if l > 0 {
 		n += 1 + l + sovDymint(uint64(l))
 	}
 	l = len(m.ChainId)
+	if l > 0 {
+		n += 1 + l + sovDymint(uint64(l))
+	}
+	l = len(m.NextSequencerHash)
+	if l > 0 {
+		n += 1 + l + sovDymint(uint64(l))
+	}
+	l = len(m.ConsensusMessagesHash)
 	if l > 0 {
 		n += 1 + l + sovDymint(uint64(l))
 	}
@@ -1056,14 +1389,8 @@ func (m *Data) Size() (n int) {
 			n += 1 + l + sovDymint(uint64(l))
 		}
 	}
-	if len(m.IntermediateStateRoots) > 0 {
-		for _, b := range m.IntermediateStateRoots {
-			l = len(b)
-			n += 1 + l + sovDymint(uint64(l))
-		}
-	}
-	if len(m.Evidence) > 0 {
-		for _, e := range m.Evidence {
+	if len(m.ConsensusMessages) > 0 {
+		for _, e := range m.ConsensusMessages {
 			l = e.Size()
 			n += 1 + l + sovDymint(uint64(l))
 		}
@@ -1113,6 +1440,61 @@ func (m *Batch) Size() (n int) {
 	if len(m.Commits) > 0 {
 		for _, e := range m.Commits {
 			l = e.Size()
+			n += 1 + l + sovDymint(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *Sequencer) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.SettlementAddress)
+	if l > 0 {
+		n += 1 + l + sovDymint(uint64(l))
+	}
+	l = m.Validator.Size()
+	n += 1 + l + sovDymint(uint64(l))
+	l = len(m.RewardAddr)
+	if l > 0 {
+		n += 1 + l + sovDymint(uint64(l))
+	}
+	if len(m.WhitelistedRelayers) > 0 {
+		for _, s := range m.WhitelistedRelayers {
+			l = len(s)
+			n += 1 + l + sovDymint(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *SequencerSet) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Sequencers) > 0 {
+		for _, e := range m.Sequencers {
+			l = e.Size()
+			n += 1 + l + sovDymint(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *EventKeys) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Keys) > 0 {
+		for _, b := range m.Keys {
+			l = len(b)
 			n += 1 + l + sovDymint(uint64(l))
 		}
 	}
@@ -1345,7 +1727,7 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Time |= uint64(b&0x7F) << shift
+				m.Time |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1590,7 +1972,7 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 12:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SequencersHash", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field SequencerHash", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
@@ -1617,9 +1999,9 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SequencersHash = append(m.SequencersHash[:0], dAtA[iNdEx:postIndex]...)
-			if m.SequencersHash == nil {
-				m.SequencersHash = []byte{}
+			m.SequencerHash = append(m.SequencerHash[:0], dAtA[iNdEx:postIndex]...)
+			if m.SequencerHash == nil {
+				m.SequencerHash = []byte{}
 			}
 			iNdEx = postIndex
 		case 13:
@@ -1653,6 +2035,74 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ChainId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NextSequencerHash", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDymint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthDymint
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDymint
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NextSequencerHash = append(m.NextSequencerHash[:0], dAtA[iNdEx:postIndex]...)
+			if m.NextSequencerHash == nil {
+				m.NextSequencerHash = []byte{}
+			}
+			iNdEx = postIndex
+		case 15:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ConsensusMessagesHash", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDymint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthDymint
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDymint
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ConsensusMessagesHash = append(m.ConsensusMessagesHash[:0], dAtA[iNdEx:postIndex]...)
+			if m.ConsensusMessagesHash == nil {
+				m.ConsensusMessagesHash = []byte{}
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1907,41 +2357,9 @@ func (m *Data) Unmarshal(dAtA []byte) error {
 			m.Txs = append(m.Txs, make([]byte, postIndex-iNdEx))
 			copy(m.Txs[len(m.Txs)-1], dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 2:
+		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field IntermediateStateRoots", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDymint
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthDymint
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthDymint
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.IntermediateStateRoots = append(m.IntermediateStateRoots, make([]byte, postIndex-iNdEx))
-			copy(m.IntermediateStateRoots[len(m.IntermediateStateRoots)-1], dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Evidence", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ConsensusMessages", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1968,8 +2386,8 @@ func (m *Data) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Evidence = append(m.Evidence, &types1.Evidence{})
-			if err := m.Evidence[len(m.Evidence)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			m.ConsensusMessages = append(m.ConsensusMessages, &types1.Any{})
+			if err := m.ConsensusMessages[len(m.ConsensusMessages)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2286,6 +2704,351 @@ func (m *Batch) Unmarshal(dAtA []byte) error {
 			if err := m.Commits[len(m.Commits)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDymint(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthDymint
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Sequencer) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDymint
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Sequencer: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Sequencer: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SettlementAddress", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDymint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDymint
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDymint
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SettlementAddress = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Validator", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDymint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthDymint
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthDymint
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Validator.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RewardAddr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDymint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDymint
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDymint
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RewardAddr = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field WhitelistedRelayers", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDymint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDymint
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDymint
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.WhitelistedRelayers = append(m.WhitelistedRelayers, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDymint(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthDymint
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SequencerSet) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDymint
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SequencerSet: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SequencerSet: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sequencers", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDymint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthDymint
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthDymint
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Sequencers = append(m.Sequencers, Sequencer{})
+			if err := m.Sequencers[len(m.Sequencers)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDymint(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthDymint
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EventKeys) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDymint
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: EventKeys: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: EventKeys: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Keys", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDymint
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthDymint
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDymint
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Keys = append(m.Keys, make([]byte, postIndex-iNdEx))
+			copy(m.Keys[len(m.Keys)-1], dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

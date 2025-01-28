@@ -1,138 +1,102 @@
 package block
 
 import (
-	"context"
 	"fmt"
 
-	"code.cloudfoundry.org/go-diodes"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/types"
 )
 
-// RetrieveLoop listens for new target sync heights and then syncs the chain by
-// fetching batches from the settlement layer and then fetching the actual blocks
-// from the DA.
-func (m *Manager) RetrieveLoop(ctx context.Context) {
-	m.logger.Info("Started retrieve loop.")
-	p := diodes.NewPoller(m.targetSyncHeight, diodes.WithPollingContext(ctx))
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			targetHeight := p.Next() // We only care about the latest one
-			err := m.syncToTargetHeight(*(*uint64)(targetHeight))
-			if err != nil {
-				panic(fmt.Errorf("sync until target: %w", err))
-			}
-		}
-	}
-}
-
-// syncToTargetHeight syncs blocks until the target height is reached.
-// It fetches the batches from the settlement, gets the DA height and gets
-// the actual blocks from the DA.
-func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
-	for currH := m.State.NextHeight(); currH <= targetHeight; currH = m.State.NextHeight() {
-		// if we have the block locally, we don't need to fetch it from the DA
-		err := m.processLocalBlock(currH)
-		if err == nil {
-			m.logger.Info("Synced from local", "store height", currH, "target height", targetHeight)
-			continue
-		}
-
-		err = m.syncFromDABatch()
-		if err != nil {
-			return fmt.Errorf("process next DA batch: %w", err)
-		}
-		m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", targetHeight)
-	}
-
-	err := m.attemptApplyCachedBlocks()
-	if err != nil {
-		m.logger.Error("Attempt apply cached blocks.", "err", err)
-	}
-
-	return nil
-}
-
-func (m *Manager) syncFromDABatch() error {
-	// It's important that we query the state index before fetching the batch, rather
-	// than e.g. keep it and increment it, because we might be concurrently applying blocks
-	// and may require a higher index than expected.
-	res, err := m.SLClient.GetHeightState(m.State.NextHeight())
-	if err != nil {
-		return fmt.Errorf("retrieve state: %w", err)
-	}
-	stateIndex := res.State.StateIndex
-
-	settlementBatch, err := m.SLClient.GetBatchAtIndex(stateIndex)
-	if err != nil {
-		return fmt.Errorf("retrieve batch: %w", err)
-	}
-
-	m.logger.Info("Retrieved batch.", "state_index", stateIndex)
-
-	err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
-	if err != nil {
-		return fmt.Errorf("process next DA batch: %w", err)
-	}
-	return nil
-}
-
-func (m *Manager) processLocalBlock(height uint64) error {
-	block, err := m.Store.LoadBlock(height)
-	if err != nil {
-		return err
-	}
-	commit, err := m.Store.LoadCommit(height)
-	if err != nil {
-		return err
-	}
-	if err := m.validateBlock(block, commit); err != nil {
-		return fmt.Errorf("validate block from local store: height: %d: %w", height, err)
-	}
-
-	m.retrieverMu.Lock()
-	err = m.applyBlock(block, commit, blockMetaData{source: localDbBlock})
-	if err != nil {
-		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
-	}
-	m.retrieverMu.Unlock()
-
-	return nil
-}
-
-func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
-	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
-	batchResp := m.fetchBatch(daMetaData)
+func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
+	m.logger.Debug("trying to retrieve batch from DA", "daHeight", slBatch.MetaData.DA.Height)
+	batchResp := m.fetchBatch(slBatch.MetaData.DA)
 	if batchResp.Code != da.StatusSuccess {
-		m.logger.Error("fetching batch from DA", batchResp.Message)
 		return batchResp.Error
 	}
 
-	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
+	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", slBatch.MetaData.DA.Height)
 
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
 
+	// if batch blocks have already been applied skip, otherwise it will fail in endheight validation (it can happen when syncing from blocksync in parallel).
+	if m.State.Height() > slBatch.EndHeight {
+		return nil
+	}
+
+	blockIndex := 0
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
+			// We dont apply a block if not included in the block descriptor (adds support for rollback)
+			if blockIndex >= len(slBatch.BlockDescriptors) {
+				break
+			}
+			blockIndex++
+
 			if block.Header.Height != m.State.NextHeight() {
 				continue
 			}
-			if err := m.validateBlock(block, batch.Commits[i]); err != nil {
-				m.logger.Error("validate block from DA - someone is behaving badly", "height", block.Header.Height, "err", err)
-				continue
+
+			if block.GetRevision() != m.State.GetRevision() {
+				err := m.checkForkUpdate(fmt.Sprintf("syncing to fork height. received block revision: %d node revision: %d. please restart the node.", block.GetRevision(), m.State.GetRevision()))
+				return err
 			}
-			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
+
+			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
+			err := m.validateAndApplyBlock(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.MetaData.DA.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
 
-			delete(m.blockCache, block.Header.Height)
+			m.blockCache.Delete(block.Header.Height)
 		}
 	}
+
+	// validate the batch applied successfully and we are at the end height
+	if m.State.Height() != slBatch.EndHeight {
+		return fmt.Errorf("state height mismatch: state height: %d: batch end height: %d", m.State.Height(), slBatch.EndHeight)
+	}
+
+	return nil
+}
+
+// Used it when doing local rollback, and applying same blocks (instead of producing new ones)
+// it was used for an edge case, eg:
+// seq produced block H and gossiped
+// bug in code produces app mismatch across nodes
+// bug fixed, state rolled back to H-1
+// if seq produces new block H, it can lead to double signing, as the old block can still be in the p2p network
+// ----
+// when this scenario encountered previously, we wanted to apply same block instead of producing new one
+func (m *Manager) applyLocalBlock() error {
+	defer m.retrieverMu.Unlock()
+	m.retrieverMu.Lock()
+
+	height := m.State.NextHeight()
+
+	block, err := m.Store.LoadBlock(height)
+	if err != nil {
+		return fmt.Errorf("load block: %w", gerrc.ErrNotFound)
+	}
+
+	commit, err := m.Store.LoadCommit(height)
+	if err != nil {
+		return fmt.Errorf("load commit: %w", gerrc.ErrNotFound)
+	}
+
+	source, err := m.Store.LoadBlockSource(height)
+	if err != nil {
+		return fmt.Errorf("load source: %w", gerrc.ErrNotFound)
+	}
+
+	err = m.validateAndApplyBlock(block, commit, types.BlockMetaData{Source: source})
+	if err != nil {
+		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
+	}
+
 	return nil
 }
 
@@ -143,7 +107,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("DA client for the batch does not match node config: DA client batch: %s: DA client config: %s", daMetaData.Client, m.DAClient.GetClientType()),
-				Error:   ErrWrongDA,
+				Error:   da.ErrDAMismatch,
 			},
 		}
 	}

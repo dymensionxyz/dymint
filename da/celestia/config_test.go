@@ -17,14 +17,17 @@ func TestCreateConfig(t *testing.T) {
 		bz, _ := json.Marshal(v)
 		return bz
 	}
+
 	t.Run("simple", func(t *testing.T) {
+		retryAttempts := 10
+
 		c := Config{
 			BaseURL:       TestConfig.BaseURL,
 			AppNodeURL:    TestConfig.AppNodeURL,
 			Timeout:       TestConfig.Timeout,
 			GasPrices:     42,
 			Backoff:       uretry.NewBackoffConfig(uretry.WithGrowthFactor(1.65)),
-			RetryAttempts: 10,
+			RetryAttempts: &retryAttempts,
 			RetryDelay:    10 * time.Second,
 		}
 		bz := mustMarshal(c)
@@ -47,6 +50,8 @@ func TestCreateConfig(t *testing.T) {
 		assert.Equal(t, defaultSubmitBackoff, gotC.Backoff)
 	})
 	t.Run("generate example", func(t *testing.T) {
+		retryAttempts := 4
+
 		c := Config{
 			BaseURL:       TestConfig.BaseURL,
 			AppNodeURL:    TestConfig.AppNodeURL,
@@ -54,7 +59,7 @@ func TestCreateConfig(t *testing.T) {
 			GasPrices:     0.1,
 			AuthToken:     "TOKEN",
 			Backoff:       defaultSubmitBackoff,
-			RetryAttempts: 4,
+			RetryAttempts: &retryAttempts,
 			RetryDelay:    3 * time.Second,
 		}
 		bz := mustMarshal(c)

@@ -2,7 +2,9 @@ package types
 
 import (
 	"encoding"
+	"time"
 
+	proto "github.com/gogo/protobuf/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
@@ -10,13 +12,9 @@ import (
 type Header struct {
 	// Block and App version
 	Version Version
-	// NamespaceID identifies this chain e.g. when connected to other rollups via IBC.
-	// TODO(ismail): figure out if we want to use namespace.ID here instead (downside is that it isn't fixed size)
-	// at least extract the used constants (32, 8) as package variables though.
-	NamespaceID [8]byte
 
 	Height uint64
-	Time   uint64 // time in tai64 format
+	Time   int64 // UNIX time in nanoseconds. Use int64 as Golang stores UNIX nanoseconds in int64.
 
 	// prev block info
 	LastHeaderHash [32]byte
@@ -25,7 +23,7 @@ type Header struct {
 	LastCommitHash [32]byte // commit from sequencer(s) from the last block
 	DataHash       [32]byte // Block.Data root aka Transactions
 	ConsensusHash  [32]byte // consensus params for current block
-	AppHash        [32]byte // state after applying txs from the current block
+	AppHash        [32]byte // state after applying txs from height-1
 
 	// Root hash of all results from the txs from the previous block.
 	// This is ABCI specific but smart-contract chains require some way of committing
@@ -38,11 +36,21 @@ type Header struct {
 	// pubkey can't be recovered by the signature (e.g. ed25519).
 	ProposerAddress []byte // original proposer of the block
 
-	// Hash of block sequencer set, at a time of block creation
-	SequencersHash [32]byte
+	// Hash of proposer validatorSet (compatible with tendermint)
+	SequencerHash [32]byte
+	// Hash of the next proposer validatorSet (compatible with tendermint)
+	NextSequencersHash [32]byte
 
 	// The Chain ID
 	ChainID string
+
+	// The following fields are added on top of the normal TM header, for dymension purposes
+	// Note: LOSSY when converted to tendermint (squashed into a single hash)
+	ConsensusMessagesHash [32]byte // must be the hash of the (merkle root) of the consensus messages
+}
+
+func (h Header) GetTimestamp() time.Time {
+	return time.Unix(0, h.Time)
 }
 
 var (
@@ -66,6 +74,14 @@ type Block struct {
 	LastCommit Commit
 }
 
+func (b Block) SizeBytes() int {
+	return b.ToProto().Size()
+}
+
+func (b *Block) GetRevision() uint64 {
+	return b.Header.Version.App
+}
+
 var (
 	_ encoding.BinaryMarshaler   = &Block{}
 	_ encoding.BinaryUnmarshaler = &Block{}
@@ -73,9 +89,8 @@ var (
 
 // Data defines Dymint block data.
 type Data struct {
-	Txs                    Txs
-	IntermediateStateRoots IntermediateStateRoots
-	Evidence               EvidenceData
+	Txs               Txs
+	ConsensusMessages []*proto.Any
 }
 
 // EvidenceData defines how evidence is stored in block.
@@ -92,6 +107,10 @@ type Commit struct {
 	TMSignature tmtypes.CommitSig
 }
 
+func (c Commit) SizeBytes() int {
+	return c.ToProto().Size()
+}
+
 // Signature represents signature of block creator.
 type Signature []byte
 
@@ -99,4 +118,20 @@ type Signature []byte
 // They are required for fraud proofs.
 type IntermediateStateRoots struct {
 	RawRootsList [][]byte
+}
+
+func GetLastCommitHash(lastCommit *Commit) []byte {
+	lastABCICommit := ToABCICommit(lastCommit)
+	// Note: hash only depends on the signature
+	return lastABCICommit.Hash()
+}
+
+// GetDataHash returns the hash of the block data to be set in the block header.
+// Doesn't include consensus messages because we want to avoid touching
+// fundamental primitive and allow tx inclusion proofs.
+func GetDataHash(block *Block) []byte {
+	abciData := tmtypes.Data{
+		Txs: ToABCIBlockDataTxs(&block.Data),
+	}
+	return abciData.Hash()
 }

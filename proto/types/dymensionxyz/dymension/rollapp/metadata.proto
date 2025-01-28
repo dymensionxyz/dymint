@@ -1,0 +1,33 @@
+syntax = "proto3";
+package dymensionxyz.dymension.rollapp;
+
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp";
+
+message RollappMetadata {
+  // website is the rollapp website
+  string website = 1;
+  // description is the rollapp description. should be limited to 512 chars
+  string description = 2;
+  // logo_url is the rollapp logo url
+  string logo_url = 3;
+  // telegram is the rollapp telegram link
+  string telegram = 4;
+  // x is the rollapp twitter link
+  string x = 5;
+  // genesis_url has the genesis file
+  string genesis_url = 6;
+  // display_name is a non semantic name for displaying on gui etc. Size limited.
+  string display_name = 7;
+  // tagline is a non semantic tagline/catch-phrase. Size limited.
+  string tagline = 8;
+  // explorer_url is the rollapp's block explorer link
+  string explorer_url = 9;
+  // fee_denom is the base denom for fees
+  DenomMetadata fee_denom = 10;
+}
+
+message DenomMetadata {
+  string display = 1;
+  string base = 2;
+  uint32 exponent = 3;
+}

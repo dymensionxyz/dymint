@@ -4,17 +4,17 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/ipfs/go-cid"
+	mh "github.com/multiformats/go-multihash"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 
 	"github.com/dymensionxyz/dymint/store"
-
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestStoreLoad(t *testing.T) {
@@ -90,16 +90,12 @@ func TestLoadState(t *testing.T) {
 
 	assert := assert.New(t)
 
-	validatorSet := testutil.GetRandomValidatorSet()
-
 	kv := store.NewDefaultInMemoryKVStore()
 	s1 := store.New(kv)
 	expectedHeight := uint64(10)
-	s := &types.State{
-		NextValidators: validatorSet,
-		Validators:     validatorSet,
-	}
-	s.LastBlockHeight.Store(expectedHeight)
+	s := &types.State{}
+
+	s.SetHeight(expectedHeight)
 	_, err := s1.SaveState(s, nil)
 	assert.NoError(err)
 
@@ -107,7 +103,7 @@ func TestLoadState(t *testing.T) {
 	state, err := s2.LoadState()
 	assert.NoError(err)
 
-	assert.Equal(expectedHeight, state.LastBlockHeight.Load())
+	assert.Equal(expectedHeight, state.Height())
 }
 
 func TestBlockResponses(t *testing.T) {
@@ -188,7 +184,7 @@ func TestBatch(t *testing.T) {
 	assert.NoError(err)
 
 	resp, err := s.LoadBlockResponses(1)
-	assert.Error(err, gerr.ErrNotFound)
+	assert.Error(err, gerrc.ErrNotFound)
 	assert.Nil(resp)
 
 	err = batch.Commit()
@@ -198,4 +194,97 @@ func TestBatch(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(resp)
 	assert.Equal(expected, resp)
+}
+
+// test for saving and loading cids for specific block heights in the store with and w/out batches
+func TestBlockId(t *testing.T) {
+	require := require.New(t)
+
+	kv := store.NewDefaultInMemoryKVStore()
+	s := store.New(kv)
+
+	// Create a cid manually by specifying the 'prefix' parameters
+	pref := &cid.Prefix{
+		Codec:    cid.DagProtobuf,
+		MhLength: -1,
+		MhType:   mh.SHA2_256,
+		Version:  1,
+	}
+
+	// And then feed it some data
+	expectedCid, err := pref.Sum([]byte("test"))
+	require.NoError(err)
+
+	// store cid for height 1
+	_, err = s.SaveBlockCid(1, expectedCid, nil)
+	require.NoError(err)
+
+	// retrieve cid for height 1
+	resultCid, err := s.LoadBlockCid(1)
+	require.NoError(err)
+
+	require.Equal(expectedCid, resultCid)
+
+	// repeat test using batch
+	batch := s.NewBatch()
+
+	// store cid for height 2
+	batch, err = s.SaveBlockCid(2, expectedCid, batch)
+	require.NoError(err)
+
+	// retrieve cid for height 2
+	_, err = s.LoadBlockCid(2)
+	require.Error(err, gerrc.ErrNotFound)
+
+	// commit
+	batch.Commit()
+
+	// retrieve cid for height 2
+	resultCid, err = s.LoadBlockCid(2)
+	require.NoError(err)
+	require.Equal(expectedCid, resultCid)
+}
+
+func TestProposer(t *testing.T) {
+	t.Parallel()
+
+	expected := testutil.GenerateSequencer()
+
+	t.Run("happy path", func(t *testing.T) {
+		t.Parallel()
+
+		s := store.New(store.NewDefaultInMemoryKVStore())
+
+		_, err := s.SaveProposer(1, expected, nil)
+		require.NoError(t, err)
+
+		resp, err := s.LoadProposer(1)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, expected, resp)
+	})
+
+	t.Run("proposer not found", func(t *testing.T) {
+		t.Parallel()
+
+		s := store.New(store.NewDefaultInMemoryKVStore())
+
+		_, err := s.SaveProposer(2, expected, nil)
+		require.NoError(t, err)
+
+		_, err = s.LoadProposer(2000)
+		require.Error(t, err)
+	})
+
+	t.Run("empty proposer is invalid", func(t *testing.T) {
+		t.Parallel()
+
+		s := store.New(store.NewDefaultInMemoryKVStore())
+
+		_, err := s.SaveProposer(3, types.Sequencer{}, nil)
+		require.Error(t, err)
+
+		_, err = s.LoadProposer(3)
+		require.Error(t, err)
+	})
 }

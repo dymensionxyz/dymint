@@ -1,0 +1,123 @@
+syntax = "proto3";
+package dymensionxyz.dymension.sequencer;
+
+import "gogoproto/gogo.proto";
+import "types/cosmos/base/query/v1beta1/pagination.proto";
+import "types/dymensionxyz/dymension/sequencer/params.proto";
+import "types/dymensionxyz/dymension/sequencer/sequencer.proto";
+import "types/dymensionxyz/dymension/sequencer/operating_status.proto";
+
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer";
+
+// Query defines the gRPC querier service.
+service Query {
+  // Parameters queries the parameters of the module.
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {}
+
+  // Queries a Sequencer by address.
+  rpc Sequencer(QueryGetSequencerRequest) returns (QueryGetSequencerResponse) {
+
+  }
+
+  // Queries a list of Sequencer items.
+  rpc Sequencers(QuerySequencersRequest) returns (QuerySequencersResponse) {
+  }
+
+  // Queries a SequencersByRollapp by rollappId.
+  rpc SequencersByRollapp(QueryGetSequencersByRollappRequest)
+      returns (QueryGetSequencersByRollappResponse) {
+  }
+
+  // Queries a SequencersByRollappByStatus
+  rpc SequencersByRollappByStatus(QueryGetSequencersByRollappByStatusRequest)
+      returns (QueryGetSequencersByRollappByStatusResponse) {
+  }
+
+  // Queries the current proposer by rollappId.
+  rpc GetProposerByRollapp(QueryGetProposerByRollappRequest)
+      returns (QueryGetProposerByRollappResponse) {
+  }
+
+  // Queries the next proposer by rollappId.
+  rpc GetNextProposerByRollapp(QueryGetNextProposerByRollappRequest)
+      returns (QueryGetNextProposerByRollappResponse) {
+  }
+
+  // Queries a list of proposers.
+  rpc Proposers(QueryProposersRequest) returns (QueryProposersResponse) {
+  }
+}
+
+// QueryParamsRequest is request type for the Query/Params RPC method.
+message QueryParamsRequest {}
+
+// QueryParamsResponse is response type for the Query/Params RPC method.
+message QueryParamsResponse {
+  // params holds all the parameters of this module.
+  Params params = 1 [ (gogoproto.nullable) = false ];
+}
+
+message QueryGetSequencerRequest { string sequencerAddress = 1; }
+
+message QueryGetSequencerResponse {
+  Sequencer sequencer = 1 [ (gogoproto.nullable) = false ];
+}
+
+message QuerySequencersRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+message QuerySequencersResponse {
+  repeated Sequencer sequencers = 1 [ (gogoproto.nullable) = false ];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+message QueryGetSequencersByRollappRequest {
+  string rollappId = 1;
+  cosmos.base.query.v1beta1.PageRequest pagination = 2;
+}
+
+message QueryGetSequencersByRollappResponse {
+  repeated Sequencer sequencers = 1 [ (gogoproto.nullable) = false ];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+message QueryGetSequencersByRollappByStatusRequest {
+  string rollappId = 1;
+  OperatingStatus status = 2;
+  cosmos.base.query.v1beta1.PageRequest pagination = 3;
+}
+
+message QueryGetSequencersByRollappByStatusResponse {
+  repeated Sequencer sequencers = 1 [ (gogoproto.nullable) = false ];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+// Request type for the GetProposerByRollapp RPC method.
+message QueryGetProposerByRollappRequest { string rollappId = 1; }
+
+// Response type for the GetProposerByRollapp RPC method.
+message QueryGetProposerByRollappResponse { string proposerAddr = 1; }
+
+// Request type for the GetNextProposerByRollapp RPC method.
+message QueryGetNextProposerByRollappRequest { string rollappId = 1; }
+
+// Response type for the GetNextProposerByRollapp RPC method.
+message QueryGetNextProposerByRollappResponse {
+  // nextProposerAddr is the address of the next proposer.
+  // can be empty if no sequencer is available to be the next proposer. 
+  string nextProposerAddr = 1;
+  // rotationInProgress is true if the proposer rotation is in progress.
+  bool rotationInProgress = 2;
+}
+
+// Request type for the Proposers RPC method.
+message QueryProposersRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+// Response type for the Proposers RPC method.
+message QueryProposersResponse {
+  repeated Sequencer proposers = 1 [ (gogoproto.nullable) = false ];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}

@@ -1,8 +1,12 @@
 syntax = "proto3";
 package dymint;
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dymint";
+
+import "gogoproto/gogo.proto";
 import "types/tendermint/abci/types.proto";
 import "types/tendermint/types/types.proto";
+import "types/tendermint/types/validator.proto";
+import "google/protobuf/any.proto";
 
 // Version captures the consensus rules for processing a block in the blockchain,
 // including all blockchain data structures and the rules of the application's
@@ -17,13 +21,13 @@ message Header {
 	// Block and App version
 	Version version = 1;
 	// NamespaceID identifies this chain e.g. when connected to other rollups via IBC.
-	bytes namespace_id = 2;
-
+    bytes namespace_id = 2 [deprecated=true];
+	
 	// Block height
 	uint64 height = 3;
 
-	// Block creation time
-	uint64 time = 4;
+	// Block creation time in nanoseconds. Use int64 as Golang stores UNIX nanoseconds in int64.
+	int64 time = 4;
 
 	// Previous block info
 	bytes last_header_hash = 5;
@@ -52,11 +56,17 @@ message Header {
 	// pubkey can't be recovered by the signature (e.g. ed25519).
 	bytes proposer_address = 11;
 
-	// Hash of block sequencer set, at a time of block creation
-	bytes sequencers_hash = 12;
+	// Hash of proposer validatorSet (compatible with tendermint)
+	bytes sequencer_hash = 12;
+	// Hash of the next proposer validatorSet (compatible with tendermint)
+	bytes next_sequencer_hash = 14;
 
 	// Chain ID the block belongs to
 	string chain_id = 13;
+
+	// The following fields are added on top of the normal TM header, for dymension purposes
+  // Note: LOSSY when converted to tendermint (squashed into a single hash)
+	bytes consensus_messages_hash = 15;
 }
 
 message Commit {
@@ -69,8 +79,8 @@ message Commit {
 
 message Data {
 	repeated bytes txs = 1;
-	repeated bytes intermediate_state_roots = 2;
-	repeated tendermint.abci.Evidence evidence = 3;
+	reserved 2,3;
+	repeated google.protobuf.Any consensus_messages = 4;
 }
 
 message Block {	
@@ -85,4 +95,28 @@ message Batch {
 	repeated Block blocks = 3;
 	repeated Commit commits = 4;
 
+}
+
+// Sequencer is a struct that holds the sequencer's information and tendermint validator.
+// It is populated from the Hub on start and is periodically updated from the Hub polling.
+// Uses tendermint's validator types for compatibility.
+message Sequencer {
+	// SettlementAddress is the address of the sequencer in the settlement layer (bech32 string)
+	string settlement_address = 1;
+	// Validator is a tendermint validator type for compatibility. Holds the public key and cons address.
+	tendermint.types.Validator validator = 2 [(gogoproto.nullable) = false];
+	// RewardAddr is the bech32-encoded sequencer's reward address.
+	string reward_addr = 3;
+	// Relayers is an array of the whitelisted relayer addresses. Addresses are bech32-encoded strings.
+	repeated string whitelisted_relayers = 4;
+}
+
+// SequencerSet is a struct that holds the sequencers set. This type is used to persist the latest
+// applied sequencers set in the store.
+message SequencerSet {
+	repeated Sequencer sequencers = 1 [(gogoproto.nullable) = false];
+}
+
+message EventKeys {
+	repeated bytes keys = 1;
 }

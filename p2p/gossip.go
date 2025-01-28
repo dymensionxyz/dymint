@@ -13,6 +13,9 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+// buffer size used by gossipSub router to consume received packets (blocks or txs). packets are dropped in case buffer overflows. in case of blocks, it can buffer up to 5 minutes (assuming 200ms block rate)
+const pubsubBufferSize = 3000
+
 // GossipMessage represents message gossiped via P2P network (e.g. transaction, Block etc).
 type GossipMessage struct {
 	Data []byte
@@ -22,7 +25,7 @@ type GossipMessage struct {
 // GossiperOption sets optional parameters of Gossiper.
 type GossiperOption func(*Gossiper) error
 
-type GossipMessageHandler func(msg *GossipMessage)
+type GossipMessageHandler func(ctx context.Context, gossipedBlock []byte)
 
 // WithValidator options registers topic validator for Gossiper.
 func WithValidator(validator GossipValidator) GossiperOption {
@@ -50,8 +53,7 @@ func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgHandler 
 	if err != nil {
 		return nil, err
 	}
-
-	subscription, err := topic.Subscribe()
+	subscription, err := topic.Subscribe(pubsub.WithBufferSize(max(pubsub.GossipSubHistoryGossip, pubsubBufferSize)))
 	if err != nil {
 		return nil, err
 	}
@@ -101,20 +103,17 @@ func (g *Gossiper) ProcessMessages(ctx context.Context) {
 			return
 		}
 		if g.msgHandler != nil {
-			g.msgHandler(&GossipMessage{
-				Data: msg.Data,
-				From: msg.GetFrom(),
-			})
+			g.msgHandler(ctx, msg.Data)
 		}
 	}
 }
 
-func wrapValidator(gossiper *Gossiper, validator GossipValidator) pubsub.Validator {
-	return func(_ context.Context, _ peer.ID, msg *pubsub.Message) bool {
+func wrapValidator(gossiper *Gossiper, validator GossipValidator) pubsub.ValidatorEx {
+	return func(_ context.Context, _ peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
 		// Make sure we don't process our own messages.
 		// In this case we'll want to return true but not to actually handle the message.
 		if msg.GetFrom() == gossiper.ownID {
-			return true
+			return pubsub.ValidationAccept
 		}
 		return validator(&GossipMessage{
 			Data: msg.Data,

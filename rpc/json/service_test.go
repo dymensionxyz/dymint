@@ -17,9 +17,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 
 	"github.com/gorilla/rpc/v2/json2"
 	"github.com/libp2p/go-libp2p/core/crypto"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
@@ -28,6 +30,7 @@ import (
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/mempool"
 	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/rpc/client"
@@ -277,9 +280,21 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	t.Helper()
 	require := require.New(t)
 	app := &tmmocks.MockApplication{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:         "mock",
+			DrsVersion: 0,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   100,
+				MaxBytes: 100,
+			},
+		},
+	})
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{
 		GasWanted: 1000,
@@ -300,23 +315,23 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	rollappID := "rollapp_1234-1"
 
 	config := config.NodeConfig{
-		DALayer: "mock", SettlementLayer: "mock",
+		SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:              1 * time.Second,
-			MaxIdleTime:            0,
-			MaxSupportedBatchSkew:  10,
-			BatchSubmitMaxTime:     30 * time.Minute,
-			NamespaceID:            "0102030405060708",
-			BlockBatchMaxSizeBytes: 1000,
+			BlockTime:                  1 * time.Second,
+			MaxIdleTime:                0,
+			MaxSkewTime:                24 * time.Hour,
+			BatchSubmitTime:            30 * time.Minute,
+			BatchSubmitBytes:           1000,
+			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
-			RollappID:      rollappID,
 		},
 		P2PConfig: config.P2PConfig{
-			ListenAddress:           config.DefaultListenAddress,
-			GossipedBlocksCacheSize: 50,
-			BootstrapRetryTime:      30 * time.Second,
+			ListenAddress:                config.DefaultListenAddress,
+			GossipSubCacheSize:           50,
+			BootstrapRetryTime:           30 * time.Second,
+			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 	}
 	node, err := node.NewNode(
@@ -325,7 +340,8 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&types.GenesisDoc{ChainID: rollappID},
+		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": 1}}}")},
+		"",
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

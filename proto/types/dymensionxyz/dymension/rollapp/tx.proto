@@ -1,0 +1,172 @@
+syntax = "proto3";
+package dymensionxyz.dymension.rollapp;
+
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp";
+
+import "types/cosmos/msg/v1/msg.proto";
+import "types/dymensionxyz/dymension/rollapp/block_descriptor.proto";
+import "types/dymensionxyz/dymension/rollapp/rollapp.proto";
+import "types/dymensionxyz/dymension/rollapp/metadata.proto";
+import "types/dymensionxyz/dymension/rollapp/genesis_info.proto";
+import "gogoproto/gogo.proto";
+
+// MsgCreateRollapp creates a new rollapp chain on the hub.
+message MsgCreateRollapp {
+  option (cosmos.msg.v1.signer) = "creator";
+  // creator is the bech32-encoded address of the rollapp creator
+  string creator = 1;
+  // rollappId is the unique identifier of the rollapp chain.
+  // The rollapp_id follows the same standard as cosmos chain_id
+  string rollapp_id = 2;
+  reserved 3 to 10;
+  // initial_sequencer takes one or more coma-separated bech32-encoded addresses of the
+  // sequencer(s) that are allowed to initially serve this rollappId.
+  string initial_sequencer = 11;
+  // alias is the chain alias used for display and namespace system
+  string alias = 12;
+  // metadata is the rollapp metadata
+  RollappMetadata metadata = 13;
+  // genesis_info is the genesis information
+  GenesisInfo genesis_info = 14 [(gogoproto.nullable) = true ];
+  // vm_type is the type of rollapp machine: EVM or WASM
+  Rollapp.VMType vm_type = 15;
+}
+
+message MsgCreateRollappResponse {
+}
+
+// MsgUpdateRollappInformation updates the rollapp information.
+message MsgUpdateRollappInformation {
+  option (cosmos.msg.v1.signer) = "owner";
+  // owner is the bech32-encoded address of the rollapp owner
+  string owner = 1;
+  // rollapp_id is the unique identifier of the rollapp chain.
+  string rollapp_id = 2;
+  // initial_sequencer is one or more bech32-encoded address of the
+  // sequencer that are allowed to initially serve this rollappId.
+  // wildcard '*' means any sequencer is allowed to be the first proposer.
+  string initial_sequencer = 3;
+  // metadata is the rollapp metadata
+  RollappMetadata metadata = 5 [(gogoproto.nullable) = true ];
+  // genesis_info is the genesis information
+  GenesisInfo genesis_info = 6 [(gogoproto.nullable) = true ];
+}
+
+message MsgUpdateRollappInformationResponse {
+}
+
+// MsgUpdateState updates a rollapp state with a block batch.
+// a block batch is a list of ordered blocks (by height)
+message MsgUpdateState {
+  option (cosmos.msg.v1.signer) = "creator";
+  // creator is the bech32-encoded address of the sequencer sending the update
+  string creator = 1;
+  // rollappId is the rollapp that the sequencer belongs to and asking to update
+  // The rollappId follows the same standard as cosmos chain_id
+  string rollappId = 2;
+  // startHeight is the block height of the first block in the batch
+  uint64 startHeight = 3;
+  // numBlocks is the number of blocks included in this batch update
+  uint64 numBlocks = 4;
+  // DAPath is the description of the location on the DA layer
+  string DAPath = 5;
+
+  reserved 6;
+  // BDs is a list of block description objects (one per block)
+  // the list must be ordered by height, starting from startHeight to startHeight+numBlocks-1
+  BlockDescriptors BDs = 7 [(gogoproto.nullable) = false];
+  // last is true if this is the last batch of the sequencer
+  bool last = 8;
+  // rollapp_revision is the revision of the rollapp chain. increases after hard fork  
+  uint64 rollapp_revision = 9;
+}
+
+message MsgUpdateStateResponse {
+}
+
+// MsgTransferOwnership transfers the ownership of a rollapp chain to a new owner.
+message MsgTransferOwnership {
+  option (cosmos.msg.v1.signer) = "current_owner";
+  // current_owner is the bech32-encoded address of the current owner
+  string current_owner = 1;
+  // new_owner is the bech32-encoded address of the new owner
+  string new_owner = 2;
+  // rollapp_id is the unique identifier of the rollapp chain.
+  string rollapp_id = 3;
+}
+
+message MsgTransferOwnershipResponse {
+}
+
+// MsgAddApp adds an app to the rollapp.
+message MsgAddApp {
+  option (cosmos.msg.v1.signer) = "creator";
+  // creator is the bech32-encoded address of the app creator
+  string creator = 1;
+  // name is the unique App's name
+  string name = 2;
+  // rollapp_id is the id of the Rollapp the App belongs to
+  string rollapp_id = 3;
+  // description is the description of the App
+  string description = 4;
+  // image is the url to the App image
+  string image = 5;
+  // url is the URL to the App's website
+  string url = 6;
+  // order is the order of the App in the Rollapp
+  int32 order = 7;
+}
+
+message MsgAddAppResponse {
+}
+
+// MsgUpdateApp updates the app information.
+message MsgUpdateApp {
+  option (cosmos.msg.v1.signer) = "creator";
+  // creator is the bech32-encoded address of the app owner
+  string creator = 1;
+  // id is the unique App's id in the Rollapp
+  uint64 id = 2;
+  // name is the unique App's name (immutable)
+  string name = 3;
+  // rollapp_id is the id of the Rollapp the App belongs to
+  string rollapp_id = 4;
+  // description is the description of the App
+  string description = 5;
+  // image is the url to the App image
+  string image = 6;
+  // url is the URL to the App's website
+  string url = 7;
+  // order is the order of the App in the Rollapp
+  int32 order = 8;
+}
+
+message MsgUpdateAppResponse {
+}
+
+// MsgRemoveApp removes an app from the rollapp.
+message MsgRemoveApp {
+  option (cosmos.msg.v1.signer) = "creator";
+  // creator is the bech32-encoded address of the app owner
+  string creator = 1;
+  // id is the unique App's id in the Rollapp
+  uint64 id = 2;
+  // rollapp_id is the id of the Rollapp the App belongs to
+  string rollapp_id = 3;
+}
+
+message MsgRemoveAppResponse {
+}
+
+// MsgMarkObsoleteRollapps marks specified versions as obsolete as well as
+// all corresponding rollapps. Must be called by the governance.
+message MsgMarkObsoleteRollapps {
+  option (cosmos.msg.v1.signer) = "authority";
+
+  // Authority is the authority address.
+  string authority = 1;
+  // DrsVersions is a list of DRS versions that will be marked obsolete.
+  repeated uint32 drs_versions = 2;
+}
+
+message MsgMarkObsoleteRollappsResponse {}

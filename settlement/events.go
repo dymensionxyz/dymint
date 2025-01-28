@@ -3,48 +3,62 @@ package settlement
 import (
 	"fmt"
 
-	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
-
-// Type keys
 
 const (
 	// EventTypeKey is a reserved composite key for event name.
 	EventTypeKey = "settlement.event"
-)
 
-// Types
-
-const (
-	// EventNewBatchAccepted should be emitted internally in order to communicate between the settlement layer and the hub client
-	EventNewBatchAccepted      = "EventNewBatchAccepted"
-	EventSequencersListUpdated = "SequencersListUpdated"
+	// Event types
+	EventNewBatchAccepted   = "NewBatchAccepted"
+	EventNewBondedSequencer = "NewBondedSequencer"
+	EventRotationStarted    = "RotationStarted"
+	EventNewBatchFinalized  = "NewBatchFinalized"
 )
 
 // Convenience objects
+var (
+	EventNewBatchAcceptedList   = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
+	EventNewBondedSequencerList = map[string][]string{EventTypeKey: {EventNewBondedSequencer}}
+	EventRotationStartedList    = map[string][]string{EventTypeKey: {EventRotationStarted}}
+	EventNewBatchFinalizedList  = map[string][]string{EventTypeKey: {EventNewBatchFinalized}}
+)
 
-var EventNewBatchAcceptedList = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
+// Queries
+var (
+	EventQueryNewSettlementBatchAccepted  = uevent.QueryFor(EventTypeKey, EventNewBatchAccepted)
+	EventQueryNewSettlementBatchFinalized = uevent.QueryFor(EventTypeKey, EventNewBatchFinalized)
+	EventQueryNewBondedSequencer          = uevent.QueryFor(EventTypeKey, EventNewBondedSequencer)
+	EventQueryRotationStarted             = uevent.QueryFor(EventTypeKey, EventRotationStarted)
+)
 
 // Data
 
-type EventDataNewBatchAccepted struct {
+type EventDataNewBatch struct {
+	StartHeight uint64
 	// EndHeight is the height of the last accepted batch
 	EndHeight uint64
 	// StateIndex is the rollapp-specific index the batch was saved in the SL
 	StateIndex uint64
 }
 
-func (e EventDataNewBatchAccepted) String() string {
+func (e EventDataNewBatch) String() string {
 	return fmt.Sprintf("EndHeight: %d, StateIndex: %d", e.EndHeight, e.StateIndex)
 }
 
-type EventDataSequencersListUpdated struct {
-	// Sequencers is the list of new sequencers
-	Sequencers []types.Sequencer
+type EventDataNewBondedSequencer struct {
+	SeqAddr string
 }
 
-// Queries
-var (
-	EventQueryNewSettlementBatchAccepted = uevent.QueryFor(EventTypeKey, EventNewBatchAccepted)
-)
+func (e EventDataNewBondedSequencer) String() string {
+	return fmt.Sprintf("SeqAddr: %s", e.SeqAddr)
+}
+
+type EventDataRotationStarted struct {
+	NextSeqAddr string
+}
+
+func (e EventDataRotationStarted) String() string {
+	return fmt.Sprintf("NextSeqAddr: %s", e.NextSeqAddr)
+}

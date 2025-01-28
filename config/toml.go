@@ -69,22 +69,31 @@ const defaultConfigTemplate = `
 block_time = "{{ .BlockManagerConfig.BlockTime }}"
 # block production interval in case of no transactions ("0s" produces empty blocks)
 max_idle_time = "{{ .BlockManagerConfig.MaxIdleTime }}"
+# block production interval after block with no transactions
 max_proof_time = "{{ .BlockManagerConfig.MaxProofTime }}"
-max_supported_batch_skew = {{ .BlockManagerConfig.MaxSupportedBatchSkew }}
+# maximum time the node will produce blocks without submitting to SL before stopping block production
+max_skew_time = "{{ .BlockManagerConfig.MaxSkewTime }}"
 
 
 # triggers to submit batch to DA and settlement (both required)
-batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitMaxTime }}"
+# max time between two batch submissions. submission will be triggered if there is no previous submission in batch_submit_time
+batch_submit_time = "{{ .BlockManagerConfig.BatchSubmitTime }}"
 
-# max size of batch in bytes that can be accepted by DA
-block_batch_max_size_bytes = {{ .BlockManagerConfig.BlockBatchMaxSizeBytes }}
+# max size of batch in bytes. submission will be triggered after accumulating blocks for batch_submit_bytes
+batch_submit_bytes = {{ .BlockManagerConfig.BatchSubmitBytes }}
 
 ### da config ###
-da_layer = "{{ .DALayer }}" # mock, celestia, avail
-namespace_id = "{{ .BlockManagerConfig.NamespaceID }}"
 # this should be json matching the celestia.Config type
 da_config = "{{ .DAConfig }}"
 
+# Celestia config example:
+# da_config = "{\"base_url\":\"http:\/\/127.0.0.1:26658\",\"timeout\":30000000000,\"gas_prices\":0.1,\"auth_token\":\"TOKEN\",\"backoff\":{\"initial_delay\":6000000000,\"max_delay\":6000000000,\"growth_factor\":2},\"retry_attempts\":4,\"retry_delay\":3000000000}"
+# Avail config example:
+# da_config = "{\"seed\": \"MNEMONIC\", \"api_url\": \"wss://kate.avail.tools/ws\", \"app_id\": 0, \"tip\":10}"
+# WeaveVM config example:
+# da_config = "{\"endpoint\":\"https://testnet-rpc.wvm.dev\",\"chain_id\":9496,\"timeout\":\"30s\",\"private_key_hex\":\"PRIVATE_KEY_HEX\"}"
+# Or with web3signer:
+# da_config = "{\"endpoint\":\"https://testnet-rpc.wvm.dev\",\"chain_id\":9496,\"timeout\":\"30s\",\"web3_signer_endpoint\":\"http://localhost:9000\"}"
 
 ### p2p config ###
 
@@ -94,8 +103,11 @@ p2p_listen_address = "{{ .P2PConfig.ListenAddress }}"
 # list of nodes used for P2P bootstrapping in the format of /ip4/ip_address/tcp/port/p2p/ID
 p2p_bootstrap_nodes = "{{ .P2PConfig.BootstrapNodes }}"
 
+# list of persistent peers in the format of /ip4/ip_address/tcp/port/p2p/ID
+p2p_persistent_nodes = "{{ .P2PConfig.PersistentNodes }}"
+
 # max number of cached messages by gossipsub protocol
-p2p_gossiped_blocks_cache_size = {{ .P2PConfig.GossipedBlocksCacheSize }}
+p2p_gossip_cache_size = {{ .P2PConfig.GossipSubCacheSize }}
 
 # time interval to check if no p2p nodes are connected to bootstrap again
 p2p_bootstrap_retry_time = "{{ .P2PConfig.BootstrapRetryTime }}"
@@ -103,16 +115,16 @@ p2p_bootstrap_retry_time = "{{ .P2PConfig.BootstrapRetryTime }}"
 # set to false to disable advertising the node to the P2P network
 p2p_advertising_enabled= "{{ .P2PConfig.AdvertisingEnabled }}"
 
-#celestia config example:
-# da_config = "{\"base_url\":\"http:\/\/127.0.0.1:26658\",\"timeout\":5000000000,\"gas_prices\":0.1,\"auth_token\":\"TOKEN\",\"backoff\":{\"initial_delay\":6000000000,\"max_delay\":6000000000,\"growth_factor\":2},\"retry_attempts\":4,\"retry_delay\":3000000000}"
-# Avail config example:
-# da_config = "{\"seed\": \"MNEMONIC\", \"api_url\": \"wss://kate.avail.tools/ws\", \"app_id\": 0, \"tip\":10}"
+# set to false to disable block syncing from p2p
+p2p_blocksync_enabled= "{{ .P2PConfig.BlockSyncEnabled }}"
+
+# time interval used to periodically check for missing blocks and retrieve it from other peers on demand using P2P
+p2p_blocksync_block_request_interval= "{{ .P2PConfig.BlockSyncRequestIntervalTime }}"
 
 ### settlement config ###
 settlement_layer = "{{ .SettlementLayer }}" # mock, dymension
 
 # dymension config
-rollapp_id = "{{ .SettlementConfig.RollappID }}"
 settlement_node_address = "{{ .SettlementConfig.NodeAddress }}"
 settlement_gas_limit = {{ .SettlementConfig.GasLimit }}
 settlement_gas_prices = "{{ .SettlementConfig.GasPrices }}"
@@ -128,6 +140,21 @@ keyring_backend = "{{ .SettlementConfig.KeyringBackend }}"
 keyring_home_dir = "{{ .SettlementConfig.KeyringHomeDir }}"
 dym_account_name = "{{ .SettlementConfig.DymAccountName }}"
 
+
+############################
+###       DB options     ###
+############################
+[db]
+
+# When true, the database will write synchronously.
+# should be set to true for sequencer node
+sync_writes = {{ .DBConfig.SyncWrites }}
+
+# When true, the database will run in-memory only (FOR EXPERIMENTAL USE ONLY)
+in_memory = {{ .DBConfig.InMemory }}
+
+# When zero/empty, uses default
+badger_num_compactors = {{ .DBConfig.BadgerCompactors }}
 
 #######################################################
 ###       Instrumentation Configuration Options     ###

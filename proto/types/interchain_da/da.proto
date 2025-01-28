@@ -1,0 +1,45 @@
+// This file is a modified copy of the interchain-da module proto contract. Source:
+// https://github.com/dymensionxyz/interchain-da/blob/main/proto/dymension/interchain_da/da.proto.
+
+syntax = "proto3";
+package dymension.interchain_da;
+
+import "gogoproto/gogo.proto";
+import "types/cosmos/base/v1beta1/coin.proto";
+import "types/tendermint/crypto/proof.proto";
+
+option go_package = "github.com/dymensionxyz/dymint/types/pb/interchain_da";
+
+message Params {
+  // CostPerByte defines the coin cost to store each byte of the blob. This
+  // allows for multidimensional gas pricing on different resources of the
+  // network.
+  cosmos.base.v1beta1.Coin cost_per_byte = 1 [ (gogoproto.nullable) = false ];
+  // MaxBlobSize is the hard cap of how many bytes a blob can be.
+  uint32 max_blob_size = 2;
+  // DisputePeriod is the number of blocks the blob is stored for. In the
+  // current implementation, the dispute period equals the store time. Meaning,
+  // a dispute can't be submitted after the dispute period is over because both
+  // the blob and the metadata are pruned.
+  uint64 dispute_period = 3;
+}
+
+// BlobMetadata holds blob metadata, which is stored in the state.
+message BlobMetadata {
+  // BlobHash is the hash of the submitted blob.
+  string blob_hash = 1;
+}
+
+// Commitment defines the commitment type used by the InterchainDALayer.
+message Commitment {
+  // ClientID identifies the client_id of the DA chain where the blob was posted.
+  string client_id = 1;
+  // BlobHeight identifies the height at which the blob was posted.
+  uint64 blob_height = 2;
+  // BlobHash is the hash of the submitted blob.
+  string blob_hash = 3;
+  // BlobID is the unique ID of the blob.
+  uint64 blob_id = 4;
+  // MerkleProof is a merkle inclusion proof of the blob.
+  tendermint.crypto.ProofOps merkle_proof = 5;
+}

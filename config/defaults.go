@@ -13,36 +13,43 @@ const (
 	DefaultListenAddress = "/ip4/0.0.0.0/tcp/26656"
 
 	DefaultHomeDir = "sequencer_keys"
-	DefaultChainID = "dymint-testnet"
+
+	DefaultSequencerSetUpdateInterval = 3 * time.Minute
 )
 
 // DefaultNodeConfig keeps default values of NodeConfig
-var DefaultNodeConfig = *DefaultConfig("", "")
+var DefaultNodeConfig = *DefaultConfig("")
 
 // DefaultConfig returns a default configuration for dymint node.
-func DefaultConfig(home, chainId string) *NodeConfig {
+func DefaultConfig(home string) *NodeConfig {
 	cfg := &NodeConfig{
 		BlockManagerConfig: BlockManagerConfig{
-			BlockTime:              200 * time.Millisecond,
-			MaxIdleTime:            3600 * time.Second,
-			MaxProofTime:           100 * time.Second,
-			BatchSubmitMaxTime:     3600 * time.Second,
-			MaxSupportedBatchSkew:  20,
-			NamespaceID:            "0000000000000000ffff",
-			BlockBatchMaxSizeBytes: 500000,
+			BlockTime:                  200 * time.Millisecond,
+			MaxIdleTime:                3600 * time.Second,
+			MaxProofTime:               5 * time.Second,
+			BatchSubmitTime:            3600 * time.Second,
+			MaxSkewTime:                24 * 7 * time.Hour,
+			BatchSubmitBytes:           500000,
+			SequencerSetUpdateInterval: DefaultSequencerSetUpdateInterval,
+			SkipValidationHeight:       0,
 		},
-		DALayer:         "mock",
 		SettlementLayer: "mock",
 		Instrumentation: &InstrumentationConfig{
 			Prometheus:           false,
 			PrometheusListenAddr: ":2112",
 		},
 		P2PConfig: P2PConfig{
-			GossipedBlocksCacheSize: 50,
-			BootstrapRetryTime:      30 * time.Second,
-			ListenAddress:           DefaultListenAddress,
-			BootstrapNodes:          "",
-			AdvertisingEnabled:      true,
+			GossipSubCacheSize:           50,
+			BootstrapRetryTime:           30 * time.Second,
+			BlockSyncRequestIntervalTime: 30 * time.Second,
+			ListenAddress:                DefaultListenAddress,
+			BootstrapNodes:               "",
+			AdvertisingEnabled:           true,
+			BlockSyncEnabled:             true,
+		},
+		DBConfig: DBConfig{
+			SyncWrites: true,
+			InMemory:   false,
 		},
 	}
 
@@ -50,9 +57,6 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		home = "/tmp"
 	}
 	keyringDir := filepath.Join(home, DefaultHomeDir)
-	if chainId == "" {
-		chainId = DefaultChainID
-	}
 
 	// Setting default params for sl grpc mock
 	defaultSlGrpcConfig := settlement.GrpcConfig{
@@ -64,7 +68,6 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 	defaultSLconfig := settlement.Config{
 		KeyringBackend:          "test",
 		NodeAddress:             "http://127.0.0.1:36657",
-		RollappID:               chainId,
 		KeyringHomeDir:          keyringDir,
 		DymAccountName:          "sequencer",
 		GasPrices:               "1000000000adym",

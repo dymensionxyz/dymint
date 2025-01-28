@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/tendermint/tendermint/libs/log"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
@@ -18,6 +19,8 @@ import (
 	"github.com/dymensionxyz/dymint/indexers/txindex"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
+	dmtypes "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
 const (
@@ -70,15 +73,16 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	storeBatch := txi.store.NewBatch()
 	defer storeBatch.Discard()
 
+	var eventKeysBatch dmtypes.EventKeys
 	for _, result := range b.Ops {
 		hash := types.Tx(result.Tx).Hash()
 
 		// index tx by events
-		err := txi.indexEvents(result, hash, storeBatch)
+		eventKeys, err := txi.indexEvents(result, hash, storeBatch)
 		if err != nil {
 			return err
 		}
-
+		eventKeysBatch.Keys = append(eventKeysBatch.Keys, eventKeys.Keys...)
 		// index by height (always)
 		err = storeBatch.Set(keyForHeight(result), hash)
 		if err != nil {
@@ -96,6 +100,11 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		}
 	}
 
+	err := txi.addEventKeys(b.Height, &eventKeysBatch, storeBatch)
+	if err != nil {
+		return err
+	}
+
 	return storeBatch.Commit()
 }
 
@@ -110,9 +119,15 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	hash := types.Tx(result.Tx).Hash()
 
 	// index tx by events
-	err := txi.indexEvents(result, hash, b)
+	eventKeys, err := txi.indexEvents(result, hash, b)
 	if err != nil {
 		return err
+	}
+
+	// add event keys height index
+	err = txi.addEventKeys(result.Height, &eventKeys, b)
+	if err != nil {
+		return nil
 	}
 
 	// index by height (always)
@@ -134,7 +149,8 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	return b.Commit()
 }
 
-func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.KVBatch) error {
+func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.KVBatch) (dmtypes.EventKeys, error) {
+	eventKeys := dmtypes.EventKeys{}
 	for _, event := range result.Result.Events {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
@@ -151,13 +167,14 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.
 			if attr.GetIndex() {
 				err := store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
 				if err != nil {
-					return err
+					return dmtypes.EventKeys{}, err
 				}
+				eventKeys.Keys = append(eventKeys.Keys, keyForEvent(compositeTag, attr.Value, result))
 			}
 		}
 	}
 
-	return nil
+	return eventKeys, nil
 }
 
 // Search performs a search using the given query.
@@ -553,6 +570,120 @@ LOOP:
 	return filteredHashes
 }
 
+func (txi *TxIndex) Prune(from, to uint64, logger log.Logger) (uint64, error) {
+	pruned, err := txi.pruneTxsAndEvents(from, to, logger)
+	if err != nil {
+		return 0, err
+	}
+	return pruned, nil
+}
+
+func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint64, error) {
+	pruned := uint64(0)
+	toFlush := uint64(0)
+	batch := txi.store.NewBatch()
+	defer batch.Discard()
+
+	flush := func(batch store.KVBatch, height int64) error {
+		err := batch.Commit()
+		if err != nil {
+			return fmt.Errorf("flush batch to disk: height %d: %w", height, err)
+		}
+		return nil
+	}
+
+	for h := int64(from); h < int64(to); h++ { //nolint:gosec // heights (from and to) are always positive and fall in int64
+
+		// flush every 1000 txs to avoid batches becoming too large
+		if toFlush > 1000 {
+			err := flush(batch, h)
+			if err != nil {
+				return 0, err
+			}
+			batch.Discard()
+			batch = txi.store.NewBatch()
+			toFlush = 0
+		}
+
+		// first all events are pruned associated to the same height
+		prunedEvents, err := txi.pruneEvents(h, batch)
+		pruned += prunedEvents
+		toFlush += prunedEvents
+		if err != nil {
+			logger.Error("pruning txs indexer events by height", "height", h, "error", err)
+			continue
+		}
+
+		// then all txs indexed are iterated by height
+		it := txi.store.PrefixIterator(prefixForHeight(h))
+
+		// and deleted all indexed (by hash and by keyheight)
+		for ; it.Valid(); it.Next() {
+			toFlush++
+			if err := batch.Delete(it.Key()); err != nil {
+				logger.Error("pruning txs indexer event key", "height", h, "error", err)
+				continue
+			}
+			if err := batch.Delete(it.Value()); err != nil {
+				logger.Error("pruning txs indexer event val", "height", h, "error", err)
+				continue
+			}
+			pruned++
+		}
+
+		it.Discard()
+
+	}
+
+	err := flush(batch, int64(to)) //nolint:gosec // height is non-negative and falls in int64
+	if err != nil {
+		return 0, err
+	}
+
+	return pruned, nil
+}
+
+func (txi *TxIndex) pruneEvents(height int64, batch store.KVBatch) (uint64, error) {
+	pruned := uint64(0)
+	eventKey, err := eventHeightKey(height)
+	if err != nil {
+		return pruned, err
+	}
+	keysList, err := txi.store.Get(eventKey)
+	if err != nil {
+		return pruned, err
+	}
+	eventKeys := &dymint.EventKeys{}
+	err = eventKeys.Unmarshal(keysList)
+	if err != nil {
+		return pruned, err
+	}
+	for _, key := range eventKeys.Keys {
+		pruned++
+		err := batch.Delete(key)
+		if err != nil {
+			return pruned, err
+		}
+	}
+	return pruned, nil
+}
+
+func (txi *TxIndex) addEventKeys(height int64, eventKeys *dymint.EventKeys, batch store.KVBatch) error {
+	// index event keys by height
+	eventKeyHeight, err := eventHeightKey(height)
+	if err != nil {
+		return err
+	}
+	eventKeysBytes, err := eventKeys.Marshal()
+	if err != nil {
+		return err
+	}
+	if err := batch.Set(eventKeyHeight, eventKeysBytes); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Keys
 
 func isTagKey(key []byte) bool {
@@ -574,9 +705,8 @@ func keyForEvent(key string, value []byte, result *abci.TxResult) []byte {
 }
 
 func keyForHeight(result *abci.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%d/%d/%d",
+	return []byte(fmt.Sprintf("%s/%d/%d",
 		tmtypes.TxHeightKey,
-		result.Height,
 		result.Height,
 		result.Index,
 	))
@@ -595,4 +725,11 @@ func startKey(fields ...interface{}) []byte {
 		b.Write([]byte(fmt.Sprintf("%v", f) + tagKeySeparator))
 	}
 	return b.Bytes()
+}
+
+func prefixForHeight(height int64) []byte {
+	return []byte(fmt.Sprintf("%s/%d/",
+		tmtypes.TxHeightKey,
+		height,
+	))
 }

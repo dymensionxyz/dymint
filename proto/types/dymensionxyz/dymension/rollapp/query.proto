@@ -1,0 +1,139 @@
+syntax = "proto3";
+package dymensionxyz.dymension.rollapp;
+
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp";
+
+import "gogoproto/gogo.proto";
+import "types/cosmos/base/query/v1beta1/pagination.proto";
+import "types/dymensionxyz/dymension/rollapp/params.proto";
+import "types/dymensionxyz/dymension/rollapp/rollapp.proto";
+import "types/dymensionxyz/dymension/rollapp/state_info.proto";
+import "types/dymensionxyz/dymension/rollapp/app.proto";
+import "types/dymensionxyz/dymension/rollapp/genesis_bridge_data.proto";
+
+// Query defines the gRPC querier service.
+service Query {
+  // Parameters queries the parameters of the module.
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {}
+  // Queries a Rollapp by index.
+  rpc Rollapp(QueryGetRollappRequest) returns (QueryGetRollappResponse) { }
+
+  // Queries a Rollapp by index.
+  rpc RollappByEIP155(QueryGetRollappByEIP155Request)
+      returns (QueryGetRollappResponse) {}
+
+  // Queries a list of Rollapp items.
+  rpc RollappAll(QueryAllRollappRequest) returns (QueryAllRollappResponse) {}
+
+  // Queries a LatestHeight by rollapp-id.
+  rpc LatestHeight(QueryGetLatestHeightRequest)
+      returns (QueryGetLatestHeightResponse) {}
+
+  // Queries a LatestStateIndex by rollapp-id.
+  rpc LatestStateIndex(QueryGetLatestStateIndexRequest)
+      returns (QueryGetLatestStateIndexResponse) {}
+
+  // Queries a StateInfo by index.
+  rpc StateInfo(QueryGetStateInfoRequest) returns (QueryGetStateInfoResponse) {}
+
+  // Queries a list of registered denoms for the rollapp.
+  rpc RegisteredDenoms(QueryRegisteredDenomsRequest) returns (QueryRegisteredDenomsResponse) {}
+
+  // Queries a list of obsolete DRS versions.
+  rpc ObsoleteDRSVersions(QueryObsoleteDRSVersionsRequest) returns (QueryObsoleteDRSVersionsResponse) {}
+
+  // Validates provided genesis bridge data against the hub.
+  rpc ValidateGenesisBridge(QueryValidateGenesisBridgeRequest) returns (QueryValidateGenesisBridgeResponse) {}
+}
+
+// QueryParamsRequest is request type for the Query/Params RPC method.
+message QueryParamsRequest {}
+
+// QueryParamsResponse is response type for the Query/Params RPC method.
+message QueryParamsResponse {
+  // params holds all the parameters of this module.
+  Params params = 1 [ (gogoproto.nullable) = false ];
+}
+
+message QueryGetRollappRequest {
+  string rollappId = 1;
+  // omit_apps is an optional flag to omit the list of apps in the response
+  bool omit_apps = 2;
+}
+
+message QueryGetRollappByEIP155Request {
+  uint64 eip155 = 1;
+  // omit_apps is an optional flag to omit the list of apps in the response
+  bool omit_apps = 2;
+}
+
+message QueryGetLatestHeightRequest {
+  string rollappId = 1;
+  bool finalized = 2;
+}
+
+message QueryGetLatestHeightResponse { uint64 height = 1; }
+
+message QueryGetLatestStateIndexRequest {
+  string rollappId = 1;
+  bool finalized = 2;
+}
+
+message QueryGetLatestStateIndexResponse {
+  StateInfoIndex stateIndex = 1 [ (gogoproto.nullable) = false ];
+}
+
+message QueryGetRollappResponse {
+  Rollapp rollapp = 1 [ (gogoproto.nullable) = false ];
+  reserved 2 to 5;
+  RollappSummary summary = 6 [ (gogoproto.nullable) = false ];
+  // apps is the list of (lazy-loaded) apps in the rollapp
+  repeated App apps = 7 [ (gogoproto.nullable) = true ];
+}
+
+message QueryAllRollappRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+  // omit_apps is an optional flag to omit the list of apps in the response
+  bool omit_apps = 2;
+}
+
+message QueryAllRollappResponse {
+  reserved 1;
+  repeated QueryGetRollappResponse rollapp = 3 [ (gogoproto.nullable) = false ];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+message QueryGetStateInfoRequest {
+  string rollappId = 1;
+  uint64 index = 2;
+  uint64 height = 3;
+  bool finalized = 4;
+}
+
+message QueryGetStateInfoResponse {
+  StateInfo stateInfo = 1 [ (gogoproto.nullable) = false ];
+}
+
+message QueryRegisteredDenomsRequest {
+  string rollappId = 1;
+}
+
+message QueryRegisteredDenomsResponse {
+  repeated string denoms = 1;
+}
+
+message QueryObsoleteDRSVersionsRequest {}
+
+message QueryObsoleteDRSVersionsResponse {
+  repeated uint32 drs_versions = 1;
+}
+
+message QueryValidateGenesisBridgeRequest {
+  string rollappId = 1;
+  GenesisBridgeData data = 2 [ (gogoproto.nullable) = false ];
+}
+
+message QueryValidateGenesisBridgeResponse {
+  bool valid = 1;
+  string err = 2;
+}

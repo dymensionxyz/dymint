@@ -4,7 +4,8 @@ version: v1beta1
 plugins:
   # The name of the plugin.
   - name: gogofaster
-     # The the relative output directory.
+     # The relative output directory.
     out: proto/pb
     # Any options to provide to the plugin.
-    opt: plugins=grpc,paths=source_relative
+    opt: plugins=grpc,Mgoogle/protobuf/any.proto=github.com/gogo/protobuf/types,paths=source_relative
+

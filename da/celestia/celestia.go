@@ -8,22 +8,21 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
 	"github.com/avast/retry-go/v4"
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/nmt"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
 	openrpc "github.com/celestiaorg/celestia-openrpc"
-	"github.com/celestiaorg/celestia-openrpc/types/share"
 
 	"github.com/dymensionxyz/dymint/da"
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/metrics"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 )
@@ -62,7 +61,7 @@ func WithRPCRetryDelay(delay time.Duration) da.Option {
 // WithRPCAttempts sets failed rpc calls retry attempts.
 func WithRPCAttempts(attempts int) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = attempts
+		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = &attempts
 	}
 }
 
@@ -74,13 +73,13 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 }
 
 // Init initializes DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
+func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 	c.synced = make(chan struct{}, 1)
 	var err error
 	c.config, err = createConfig(config)
 	if err != nil {
-		return fmt.Errorf("create config: %w: %w", err, gerr.ErrInvalidArgument)
+		return fmt.Errorf("create config: %w: %w", err, gerrc.ErrInvalidArgument)
 	}
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
@@ -92,7 +91,13 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		apply(c)
 	}
 
+	metrics.RollappConsecutiveFailedDASubmission.Set(0)
+
 	return nil
+}
+
+func (c DataAvailabilityLayerClient) DAPath() string {
+	return c.config.NamespaceIDStr
 }
 
 func createConfig(bz []byte) (c Config, err error) {
@@ -103,7 +108,6 @@ func createConfig(bz []byte) (c Config, err error) {
 	if err != nil {
 		return c, fmt.Errorf("json unmarshal: %w", err)
 	}
-
 	err = c.InitNamespaceID()
 	if err != nil {
 		return c, fmt.Errorf("init namespace id: %w", err)
@@ -120,6 +124,10 @@ func createConfig(bz []byte) (c Config, err error) {
 	}
 	if c.Backoff == (uretry.BackoffConfig{}) {
 		c.Backoff = defaultSubmitBackoff
+	}
+	if c.RetryAttempts == nil {
+		attempts := defaultRpcRetryAttempts
+		c.RetryAttempts = &attempts
 	}
 	return c, nil
 }
@@ -149,18 +157,14 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.logger.Info("Stopping Celestia Data Availability Layer Client.")
-	err := c.pubsubServer.Stop()
-	if err != nil {
-		return err
-	}
 	c.cancel()
 	close(c.synced)
 	return nil
 }
 
-// Started returns channel for on start event
-func (c *DataAvailabilityLayerClient) Synced() <-chan struct{} {
-	return c.synced
+// WaitForSyncing is used to check when the DA light client finished syncing
+func (m *DataAvailabilityLayerClient) WaitForSyncing() {
+	<-m.synced
 }
 
 // GetClientType returns client type.
@@ -202,8 +206,21 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			// TODO(srene):  Split batch in multiple blobs if necessary if supported
 			height, commitment, err := c.submit(data)
+			if errors.Is(err, gerrc.ErrInternal) {
+				// no point retrying if it's because of our code being wrong
+				err = fmt.Errorf("submit: %w", err)
+				return da.ResultSubmitBatch{
+					BaseResult: da.BaseResult{
+						Code:    da.StatusError,
+						Message: err.Error(),
+						Error:   err,
+					},
+				}
+			}
+
 			if err != nil {
 				c.logger.Error("Submit blob.", "error", err)
+				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
 			}
@@ -220,6 +237,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			result := c.CheckBatchAvailability(daMetaData)
 			if result.Code != da.StatusSuccess {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
+				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
 			}
@@ -229,6 +247,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			c.logger.Debug("Blob availability check passed successfully.")
 
+			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusSuccess,
@@ -247,31 +266,19 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			c.logger.Debug("Context cancelled.")
 			return da.ResultRetrieveBatch{}
 		default:
-			// Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
 			var resultRetrieveBatch da.ResultRetrieveBatch
+
 			err := retry.Do(
 				func() error {
-					var result da.ResultRetrieveBatch
-					if daMetaData.Commitment == nil {
-						result = c.retrieveBatchesNoCommitment(daMetaData.Height)
-					} else {
-						result = c.retrieveBatches(daMetaData)
-					}
-					resultRetrieveBatch = result
-
-					if errors.Is(result.Error, da.ErrRetrieval) {
-						c.logger.Error("Retrieve batch.", "error", result.Error)
-						return result.Error
-					}
-
-					return nil
+					resultRetrieveBatch = c.retrieveBatches(daMetaData)
+					return resultRetrieveBatch.Error
 				},
-				retry.Attempts(uint(c.config.RetryAttempts)),
+				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 				retry.DelayType(retry.FixedDelay),
 				retry.Delay(c.config.RetryDelay),
 			)
 			if err != nil {
-				c.logger.Error("RetrieveBatches process failed.", "error", err)
+				c.logger.Error("Retrieve batch", "height", daMetaData.Height, "commitment", hex.EncodeToString(daMetaData.Commitment))
 			}
 			return resultRetrieveBatch
 
@@ -308,7 +315,14 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	var batch pb.Batch
 	err = proto.Unmarshal(blob.Data, &batch)
 	if err != nil {
-		c.logger.Error("Unmarshal block.", "daHeight", daMetaData.Height, "error", err)
+		c.logger.Error("Unmarshal blob.", "daHeight", daMetaData.Height, "error", err)
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   da.ErrBlobNotParsed,
+			},
+		}
 	}
 
 	c.logger.Debug("Blob retrieved successfully from DA.", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
@@ -320,7 +334,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
-				Error:   err,
+				Error:   da.ErrBlobNotParsed,
 			},
 		}
 	}
@@ -334,49 +348,6 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	}
 }
 
-// RetrieveBatches gets a batch of blocks from DA layer.
-func (c *DataAvailabilityLayerClient) retrieveBatchesNoCommitment(dataLayerHeight uint64) da.ResultRetrieveBatch {
-	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-	defer cancel()
-	blobs, err := c.rpc.GetAll(ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
-	if err != nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-			},
-		}
-	}
-
-	var batches []*types.Batch
-	for i, blob := range blobs {
-		var batch pb.Batch
-		err = proto.Unmarshal(blob.Data, &batch)
-		if err != nil {
-			c.logger.Error("Unmarshal block.", "daHeight", dataLayerHeight, "position", i, "error", err)
-			continue
-		}
-		parsedBatch := new(types.Batch)
-		err := parsedBatch.FromProto(&batch)
-		if err != nil {
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		}
-		batches = append(batches, parsedBatch)
-	}
-
-	return da.ResultRetrieveBatch{
-		BaseResult: da.BaseResult{
-			Code: da.StatusSuccess,
-		},
-		Batches: batches,
-	}
-}
-
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	var availabilityResult da.ResultCheckBatch
 	for {
@@ -385,17 +356,22 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 			c.logger.Debug("Context cancelled")
 			return da.ResultCheckBatch{}
 		default:
-			err := retry.Do(func() error {
-				result := c.checkBatchAvailability(daMetaData)
-				availabilityResult = result
+			err := retry.Do(
+				func() error {
+					result := c.checkBatchAvailability(daMetaData)
+					availabilityResult = result
 
-				if result.Code != da.StatusSuccess {
-					c.logger.Error("Blob submitted not found in DA. Retrying availability check.")
-					return da.ErrBlobNotFound
-				}
+					if result.Code != da.StatusSuccess {
+						c.logger.Error("Blob submitted not found in DA. Retrying availability check.")
+						return da.ErrBlobNotFound
+					}
 
-				return nil
-			}, retry.Attempts(uint(c.config.RetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.config.RetryDelay))
+					return nil
+				},
+				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
+				retry.DelayType(retry.FixedDelay),
+				retry.Delay(c.config.RetryDelay),
+			)
 			if err != nil {
 				c.logger.Error("CheckAvailability process failed.", "error", err)
 			}
@@ -513,39 +489,17 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitment, error) {
 	blobs, commitments, err := c.blobsAndCommitments(daBlob)
 	if err != nil {
-		return 0, nil, fmt.Errorf("blobs and commitments: %w", err)
+		return 0, nil, fmt.Errorf("blobs and commitments: %w: %w", err, gerrc.ErrInternal)
 	}
 
 	if len(commitments) == 0 {
-		return 0, nil, fmt.Errorf("zero commitments: %w", gerr.ErrNotFound)
-	}
-
-	blobSizes := make([]uint32, len(blobs))
-	for i, blob := range blobs {
-		blobSizes[i] = uint32(len(blob.Data))
+		return 0, nil, fmt.Errorf("zero commitments: %w: %w", gerrc.ErrNotFound, gerrc.ErrInternal)
 	}
 
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	/*
-		TODO: dry out all retries
-	*/
-
-	var height uint64
-
-	err = retry.Do(
-		func() error {
-			var err error
-			height, err = c.rpc.Submit(ctx, blobs, openrpc.GasPrice(c.config.GasPrices))
-			return err
-		},
-		retry.Context(c.ctx),
-		retry.LastErrorOnly(true),
-		retry.Delay(c.config.RetryDelay),
-		retry.Attempts(uint(c.config.RetryAttempts)),
-		retry.DelayType(retry.FixedDelay),
-	)
+	height, err := c.rpc.Submit(ctx, blobs, blob.NewSubmitOptions(blob.WithGasPrice(c.config.GasPrices)))
 	if err != nil {
 		return 0, nil, fmt.Errorf("do rpc submit: %w", err)
 	}
@@ -575,12 +529,7 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*bl
 	}
 	blobs = append(blobs, b)
 
-	commitment, err := blob.CreateCommitment(b)
-	if err != nil {
-		return nil, nil, fmt.Errorf("create commitment: %w", err)
-	}
-
-	commitments = append(commitments, commitment)
+	commitments = append(commitments, b.Commitment)
 	return blobs, commitments, nil
 }
 
@@ -645,4 +594,27 @@ func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
 	if err != nil {
 		c.logger.Error("Waiting for Celestia data availability client to sync", "err", err)
 	}
+}
+
+// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+	return maxBlobSizeBytes
+}
+
+// GetSignerBalance returns the balance for a specific address
+func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	ctx, cancel := context.WithTimeout(d.ctx, d.config.Timeout)
+	defer cancel()
+
+	balance, err := d.rpc.GetSignerBalance(ctx)
+	if err != nil {
+		return da.Balance{}, fmt.Errorf("get balance: %w", err)
+	}
+
+	daBalance := da.Balance{
+		Amount: balance.Amount,
+		Denom:  balance.Denom,
+	}
+
+	return daBalance, nil
 }

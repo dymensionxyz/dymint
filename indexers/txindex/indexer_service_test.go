@@ -48,19 +48,45 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		NumTxs: int64(2),
 	})
 	require.NoError(t, err)
+
 	txResult1 := &abci.TxResult{
 		Height: 1,
 		Index:  uint32(0),
 		Tx:     types.Tx("foo"),
-		Result: abci.ResponseDeliverTx{Code: 0},
+		Result: abci.ResponseDeliverTx{
+			Code: 0,
+			Events: []abci.Event{{Type: "test_event",
+				Attributes: []abci.EventAttribute{
+					{
+						Key:   []byte("foo"),
+						Value: []byte("100"),
+						Index: true,
+					},
+				},
+			},
+			},
+		},
 	}
+
 	err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult1})
 	require.NoError(t, err)
 	txResult2 := &abci.TxResult{
 		Height: 1,
 		Index:  uint32(1),
 		Tx:     types.Tx("bar"),
-		Result: abci.ResponseDeliverTx{Code: 0},
+		Result: abci.ResponseDeliverTx{
+			Code: 0,
+			Events: []abci.Event{{Type: "test_event",
+				Attributes: []abci.EventAttribute{
+					{
+						Key:   []byte("foo"),
+						Value: []byte("100"),
+						Index: true,
+					},
+				},
+			},
+			},
+		},
 	}
 	err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult2})
 	require.NoError(t, err)
@@ -78,4 +104,16 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	res, err = txIndexer.Get(types.Tx("bar").Hash())
 	require.NoError(t, err)
 	require.Equal(t, txResult2, res)
+
+	blocksPruned, err := blockIndexer.Prune(1, 2, log.NewNopLogger())
+	require.NoError(t, err)
+	expectedBlocksPruned := uint64(1)
+	require.Equal(t, expectedBlocksPruned, blocksPruned)
+
+	pruned, err := txIndexer.Prune(1, 2, log.NewNopLogger())
+	require.NoError(t, err)
+	// 2 indexed tx + indexed 2 events = 4 pruned
+	expectedPruned := uint64(4)
+	require.Equal(t, expectedPruned, pruned)
+
 }

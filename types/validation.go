@@ -4,16 +4,18 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"time"
 
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
-func ValidateProposedTransition(state *State, block *Block, commit *Commit, proposer *Sequencer) error {
+func ValidateProposedTransition(state *State, block *Block, commit *Commit, proposerPubKey tmcrypto.PubKey) error {
 	if err := block.ValidateWithState(state); err != nil {
 		return fmt.Errorf("block: %w", err)
 	}
 
-	if err := commit.ValidateWithHeader(proposer, &block.Header); err != nil {
+	if err := commit.ValidateWithHeader(proposerPubKey, &block.Header); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
 	return nil
@@ -23,41 +25,86 @@ func ValidateProposedTransition(state *State, block *Block, commit *Commit, prop
 func (b *Block) ValidateBasic() error {
 	err := b.Header.ValidateBasic()
 	if err != nil {
-		return err
+		return fmt.Errorf("header: %w", err)
 	}
 
 	err = b.Data.ValidateBasic()
 	if err != nil {
-		return err
+		return fmt.Errorf("data: %w", err)
 	}
 
 	err = b.LastCommit.ValidateBasic()
 	if err != nil {
-		return err
+		return fmt.Errorf("last commit: %w", err)
 	}
 
+	if b.Header.DataHash != [32]byte(GetDataHash(b)) {
+		return ErrInvalidHeaderDataHash
+	}
+
+	if err := b.validateDymHeader(); err != nil {
+		return fmt.Errorf("dym header: %w", err)
+	}
+
+	return nil
+}
+
+func (b *Block) validateDymHeader() error {
+	exp := b.Header.DymHash()
+	got := MakeDymHeader(b.Data.ConsensusMessages).Hash()
+	if !bytes.Equal(exp, got) {
+		return ErrInvalidDymHeaderHash
+	}
 	return nil
 }
 
 func (b *Block) ValidateWithState(state *State) error {
 	err := b.ValidateBasic()
 	if err != nil {
+		if errors.Is(err, ErrInvalidHeaderDataHash) {
+			return NewErrInvalidHeaderDataHashFraud(b)
+		}
+		if errors.Is(err, ErrInvalidDymHeader) {
+			return NewErrInvalidDymHeaderFraud(b, err)
+		}
+
 		return err
 	}
-	if b.Header.Version.App != state.Version.Consensus.App ||
-		b.Header.Version.Block != state.Version.Consensus.Block {
-		return errors.New("b version mismatch")
+
+	if b.Header.ChainID != state.ChainID {
+		return NewErrInvalidChainID(state.ChainID, b)
 	}
 
-	if b.Header.Height != state.NextHeight() {
-		return errors.New("height mismatch")
+	if b.Header.LastHeaderHash != state.LastHeaderHash {
+		return NewErrLastHeaderHashMismatch(state.LastHeaderHash, b)
+	}
+
+	currentTime := time.Now().UTC()
+	if currentTime.Add(TimeFraudMaxDrift).Before(b.Header.GetTimestamp()) {
+		return NewErrTimeFraud(b, currentTime)
+	}
+
+	if b.Header.Version.App != state.GetRevision() ||
+		b.Header.Version.Block != state.Version.Consensus.Block {
+		return ErrVersionMismatch
+	}
+
+	nextHeight := state.NextHeight()
+	if b.Header.Height != nextHeight {
+		return NewErrFraudHeightMismatch(state.NextHeight(), &b.Header)
+	}
+
+	proposerHash := state.GetProposerHash()
+	if !bytes.Equal(b.Header.SequencerHash[:], proposerHash) {
+		return NewErrInvalidSequencerHashFraud([32]byte(proposerHash), b.Header.SequencerHash[:], &b.Header)
 	}
 
 	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
-		return errors.New("AppHash mismatch")
+		return NewErrFraudAppHashMismatch(state.AppHash, &b.Header)
 	}
+
 	if !bytes.Equal(b.Header.LastResultsHash[:], state.LastResultsHash[:]) {
-		return errors.New("LastResultsHash mismatch")
+		return NewErrLastResultsHashMismatch(state.LastResultsHash, &b.Header)
 	}
 
 	return nil
@@ -66,7 +113,7 @@ func (b *Block) ValidateWithState(state *State) error {
 // ValidateBasic performs basic validation of a header.
 func (h *Header) ValidateBasic() error {
 	if len(h.ProposerAddress) == 0 {
-		return errors.New("no proposer address")
+		return ErrEmptyProposerAddress
 	}
 
 	return nil
@@ -88,28 +135,47 @@ func (c *Commit) ValidateBasic() error {
 			return errors.New("signature is too big")
 		}
 	}
+
 	return nil
 }
 
-// Validate performs full validation of a commit.
-func (c *Commit) Validate(proposer *Sequencer, abciHeaderBytes []byte) error {
+func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Header) error {
 	if err := c.ValidateBasic(); err != nil {
-		return err
+		return NewErrInvalidSignatureFraud(err, header, c)
 	}
-	if !proposer.PublicKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
-		return ErrInvalidSignature
-	}
-	return nil
-}
 
-func (c *Commit) ValidateWithHeader(proposer *Sequencer, header *Header) error {
 	abciHeaderPb := ToABCIHeaderPB(header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
 	if err != nil {
 		return err
 	}
-	if err = c.Validate(proposer, abciHeaderBytes); err != nil {
+
+	// commit is validated to have single signature
+	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
+		return NewErrInvalidSignatureFraud(ErrInvalidSignature, header, c)
+	}
+
+	if c.Height != header.Height {
+		return NewErrInvalidCommitBlockHeightFraud(c.Height, header)
+	}
+
+	if !bytes.Equal(header.ProposerAddress, proposerPubKey.Address()) {
+		return NewErrInvalidProposerAddressFraud(header.ProposerAddress, proposerPubKey.Address(), header)
+	}
+
+	seq := NewSequencerFromValidator(*tmtypes.NewValidator(proposerPubKey, 1))
+	proposerHash, err := seq.Hash()
+	if err != nil {
 		return err
 	}
+
+	if !bytes.Equal(header.SequencerHash[:], proposerHash) {
+		return NewErrInvalidSequencerHashFraud(header.SequencerHash, proposerHash[:], header)
+	}
+
+	if c.HeaderHash != header.Hash() {
+		return NewErrInvalidHeaderHashFraud(c.HeaderHash, header)
+	}
+
 	return nil
 }

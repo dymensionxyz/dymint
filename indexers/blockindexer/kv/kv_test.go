@@ -7,8 +7,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
+	"golang.org/x/exp/rand"
 
 	blockidxkv "github.com/dymensionxyz/dymint/indexers/blockindexer/kv"
 	"github.com/dymensionxyz/dymint/store"
@@ -93,6 +95,10 @@ func TestBlockIndexer(t *testing.T) {
 		q       *query.Query
 		results []int64
 	}{
+		"block.height < 5": {
+			q:       query.MustParse("block.height < 2"),
+			results: []int64{1},
+		},
 		"block.height = 100": {
 			q:       query.MustParse("block.height = 100"),
 			results: []int64{},
@@ -138,5 +144,87 @@ func TestBlockIndexer(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tc.results, results)
 		})
+	}
+}
+
+func TestBlockIndexerPruning(t *testing.T) {
+
+	// init the block indexer
+	prefixStore := store.NewPrefixKV(store.NewDefaultInMemoryKVStore(), []byte("block_events"))
+	indexer := blockidxkv.New(prefixStore)
+	numBlocks := uint64(100)
+
+	numEvents := uint64(0)
+	// index block data
+	for i := uint64(1); i <= numBlocks; i++ {
+		beginBlock := getBeginBlock()
+		endBlock := getEndBlock()
+		numEvents += uint64(len(beginBlock.Events))
+		numEvents += uint64(len(endBlock.Events))
+		indexer.Index(types.EventDataNewBlockHeader{
+			Header:           types.Header{Height: int64(i)},
+			ResultBeginBlock: beginBlock,
+			ResultEndBlock:   endBlock,
+		})
+	}
+
+	// query all blocks and receive events for all block heights
+	queryString := fmt.Sprintf("block.height <= %d", numBlocks)
+	q := query.MustParse(queryString)
+	results, err := indexer.Search(context.Background(), q)
+	require.NoError(t, err)
+	require.Equal(t, numBlocks, uint64(len(results)))
+
+	// prune indexer for all heights
+	pruned, err := indexer.Prune(1, numBlocks+1, log.NewNopLogger())
+	require.NoError(t, err)
+	require.Equal(t, numBlocks+numEvents, pruned)
+
+	// check the query returns empty
+	results, err = indexer.Search(context.Background(), q)
+	require.NoError(t, err)
+	require.Equal(t, 0, len(results))
+
+}
+
+func getBeginBlock() abci.ResponseBeginBlock {
+	if rand.Intn(2) == 1 {
+		return abci.ResponseBeginBlock{
+			Events: []abci.Event{
+				{
+					Type: "begin_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   []byte("proposer"),
+							Value: []byte("FCAA001"),
+							Index: true,
+						},
+					},
+				},
+			},
+		}
+	} else {
+		return abci.ResponseBeginBlock{}
+	}
+}
+
+func getEndBlock() abci.ResponseEndBlock {
+	if rand.Intn(2) == 1 {
+		return abci.ResponseEndBlock{
+			Events: []abci.Event{
+				{
+					Type: "end_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   []byte("foo"),
+							Value: []byte("value"),
+							Index: true,
+						},
+					},
+				},
+			},
+		}
+	} else {
+		return abci.ResponseEndBlock{}
 	}
 }
