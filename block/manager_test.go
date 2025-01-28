@@ -80,7 +80,7 @@ func TestInitialState(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(p2pClient)
 
-	err = p2pClient.Start(context.Background(), false)
+	err = p2pClient.Start(context.Background())
 	defer func() {
 		_ = p2pClient.Close()
 	}()

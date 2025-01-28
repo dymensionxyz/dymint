@@ -151,7 +151,7 @@ func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 		return err
 	}
 
-	if !isSequencer {
+	if !c.conf.DiscoveryEnabled {
 		c.logger.Debug("Setting up active peer discovery.")
 		err = c.peerDiscovery(ctx)
 		if err != nil {

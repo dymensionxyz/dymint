@@ -131,7 +131,7 @@ func StartTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]Hos
 	}
 
 	for i, c := range clients {
-		err := c.StartWithHost(ctx, mnet.Hosts()[i], false)
+		err := c.StartWithHost(ctx, mnet.Hosts()[i])
 		require.NoError(err)
 	}
 
