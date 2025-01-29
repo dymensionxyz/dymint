@@ -117,6 +117,9 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				backoff.Sleep()
 				continue
 			}
+
+			submitMetadata := &DASubmitMetaData{Height: resp.Result.DataLayerHeight}
+
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusCode(resp.Result.Code),
@@ -124,7 +127,7 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				},
 				SubmitMetaData: &da.DASubmitMetaData{
 					Client: da.Grpc,
-					Height: resp.Result.DataLayerHeight,
+					DAPath: submitMetadata.ToPath(),
 				},
 			}
 		}
@@ -132,9 +135,14 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 }
 
 // CheckBatchAvailability proxies CheckBatchAvailability request to gRPC server.
-func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
 	backoff := d.getBackoff()
 
+	submitMetadata := &DASubmitMetaData{}
+	daMetaData, err := submitMetadata.FromPath(daPath)
+	if err != nil {
+		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
+	}
 	for {
 		select {
 		case <-d.ctx.Done():
@@ -163,9 +171,14 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 }
 
 // RetrieveBatches proxies RetrieveBlocks request to gRPC server.
-func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (d *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
 	backoff := d.getBackoff()
 
+	daMetaData := &DASubmitMetaData{}
+	daMetaData, err := daMetaData.FromPath(daPath)
+	if err != nil {
+		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
+	}
 	for {
 		select {
 		case <-d.ctx.Done():
@@ -196,9 +209,6 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 					Code:    da.StatusCode(resp.Result.Code),
 					Message: resp.Result.Message,
 				},
-				CheckMetaData: &da.DACheckMetaData{
-					Height: daMetaData.Height,
-				},
 				Batches: batches,
 			}
 		}
@@ -219,4 +229,30 @@ func (d *DataAvailabilityLayerClient) getBackoff() uretry.Backoff {
 func errorIsRetryable(err error) bool {
 	// kept it simple for now
 	return true
+}
+
+// DAMetaData contains meta data about a batch on the Data Availability Layer.
+type DASubmitMetaData struct {
+	// Height is the height of the block in the da layer
+	Height uint64
+}
+
+// ToPath converts a DAMetaData to a path.
+func (d *DASubmitMetaData) ToPath() string {
+	return strconv.FormatUint(d.Height, 10)
+}
+
+// FromPath parses a path to a DAMetaData.
+func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
+
+	height, err := strconv.ParseUint(path, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	submitData := &DASubmitMetaData{
+		Height: height,
+	}
+
+	return submitData, nil
 }

@@ -195,16 +195,16 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			c.logger.Debug("Submitted blob to DA successfully.")
 
-			result := c.CheckBatchAvailability(daMetaData)
-			if result.Code != da.StatusSuccess {
+			checkMetadata, err := c.checkBatchAvailability(daMetaData)
+			if err != nil {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
 			}
-			daMetaData.Root = result.CheckMetaData.Root
-			daMetaData.Index = result.CheckMetaData.Index
-			daMetaData.Length = result.CheckMetaData.Length
+			daMetaData.Root = checkMetadata.Root
+			daMetaData.Index = checkMetadata.Index
+			daMetaData.Length = checkMetadata.Length
 
 			c.logger.Debug("Blob availability check passed successfully.")
 
@@ -214,14 +214,27 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					Code:    da.StatusSuccess,
 					Message: "Submission successful",
 				},
-				SubmitMetaData: daMetaData,
+				SubmitMetaData: &da.DASubmitMetaData{
+					Client: da.Celestia,
+					DAPath: daMetaData.ToPath(),
+				},
 			}
 		}
 	}
 }
 
 // RetrieveBatches downloads a batch from celestia, defined by daMetadata, and retries RetryAttempts in case of failure
-func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
+	submitMetadata := &SubmitMetaData{}
+	daMetaData, err := submitMetadata.FromPath(string(daPath))
+	if err != nil {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Unable to get DA metadata",
+			},
+		}
+	}
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -249,18 +262,33 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 }
 
 // CheckBatchAvailability retrieves availability proofs from celestia for the blob defined in daMetaData, and validates its inclusion
-func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
+
+	submitMetadata := &SubmitMetaData{}
+	daMetaData, err := submitMetadata.FromPath(string(daPath))
+	if err != nil {
+		return da.ResultCheckBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Unable to get DA metadata",
+			},
+		}
+	}
 	for {
 		select {
 		case <-c.ctx.Done():
 			c.logger.Debug("Context cancelled")
-			return da.ResultCheckBatch{}
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: "context cancelled",
+				},
+			}
 		default:
-			var resultAvailabilityBatch da.ResultCheckBatch
 			err := retry.Do(
 				func() error {
-					resultAvailabilityBatch = c.checkBatchAvailability(daMetaData)
-					return resultAvailabilityBatch.Error
+					_, err = c.checkBatchAvailability(daMetaData)
+					return err
 				},
 				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 				retry.DelayType(retry.FixedDelay),
@@ -268,8 +296,20 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 			)
 			if err != nil {
 				c.logger.Error("CheckBatchAvailability batch", "height", daMetaData.Height, "commitment", hex.EncodeToString(daMetaData.Commitment), "error", err)
+				return da.ResultCheckBatch{
+					BaseResult: da.BaseResult{
+						Code:    da.StatusError,
+						Message: "Blob not available",
+					},
+				}
 			}
-			return resultAvailabilityBatch
+
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusSuccess,
+					Message: "Blob available",
+				},
+			}
 		}
 	}
 }
@@ -298,18 +338,17 @@ func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 }
 
 // submit submits a blob to celestia, including data bytes.
-func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData, error) {
+func (c *DataAvailabilityLayerClient) submit(data []byte) (*SubmitMetaData, error) {
 	// TODO(srene):  Split batch in multiple blobs if necessary when supported
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 	ids, err := c.client.Submit(ctx, []da.Blob{data}, c.config.GasPrices, c.config.NamespaceID.Bytes())
 	if err != nil {
-		return &da.DASubmitMetaData{}, err
+		return &SubmitMetaData{}, err
 	}
 	height, commitment := splitID(ids[0])
 
-	return &da.DASubmitMetaData{
-		Client:     da.Celestia,
+	return &SubmitMetaData{
 		Height:     height,
 		Commitment: commitment,
 		Namespace:  c.config.NamespaceID.Bytes(),
@@ -317,40 +356,22 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 }
 
 // checkBatchAvailability gets da availability data from celestia and validates blob inclusion with it
-func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) (*CheckMetaData, error) {
 	daCheckMetaData, err := c.getDAAvailabilityMetaData(daMetaData)
 	if err != nil {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: fmt.Sprintf("Error getting NMT proof: %s", err),
-				Error:   da.ErrUnableToGetProofs,
-			},
-		}
+		return &CheckMetaData{}, err
 	}
 
 	err = c.validateInclusion(daCheckMetaData)
 	if err != nil {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: fmt.Sprintf("Error validating blob inclusion: %s", err),
-				Error:   da.ErrBlobNotIncluded,
-			},
-		}
+		return &CheckMetaData{}, err
 	}
 
-	return da.ResultCheckBatch{
-		BaseResult: da.BaseResult{
-			Code:    da.StatusSuccess,
-			Message: "Blob available",
-		},
-		CheckMetaData: daCheckMetaData,
-	}
+	return daCheckMetaData, nil
 }
 
 // retrieveBatches downloads a blob from celestia and returns the batch included
-func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *SubmitMetaData) da.ResultRetrieveBatch {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -414,7 +435,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 }
 
 // getDataRoot returns celestia data root included in the extended headers
-func (c *DataAvailabilityLayerClient) getDataRoot(daMetaData *da.DASubmitMetaData) ([]byte, error) {
+func (c *DataAvailabilityLayerClient) getDataRoot(daMetaData *SubmitMetaData) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 	dah, err := c.client.GetByHeight(ctx, daMetaData.Height)
@@ -425,7 +446,7 @@ func (c *DataAvailabilityLayerClient) getDataRoot(daMetaData *da.DASubmitMetaDat
 }
 
 // getDAAvailabilityMetaData returns the da metadata (span + proofs) necessary to check blob inclusion
-func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.DASubmitMetaData) (*da.DACheckMetaData, error) {
+func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *SubmitMetaData) (*CheckMetaData, error) {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -436,7 +457,7 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.D
 		// Therefore we need to prove whether the commitment is wrong or the span does not exists.
 		// In case the span is valid (within the size of the matrix) it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
 		// is the data for the span, and reproducing the commitment will generate a different one.
-		return &da.DACheckMetaData{}, err
+		return &CheckMetaData{}, err
 	}
 
 	var nmtProofs [][]*nmt.Proof
@@ -444,7 +465,7 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.D
 		blobProof := &[]nmt.Proof{}
 		err := json.Unmarshal(daProof, blobProof)
 		if err != nil {
-			return &da.DACheckMetaData{}, err
+			return &CheckMetaData{}, err
 		}
 		var nmtProof []*nmt.Proof
 		for _, prf := range *blobProof {
@@ -468,17 +489,16 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.D
 			// TODO (srene): In this case the commitment is correct but does not match the span.
 			// If the span is valid we have to repeat the previous step (sending data + proof of data as inclusion proof)
 			// In case the span is not valid (out of the size of the matrix) we need to send unavailable proof (the span does not exist) by sending proof of any row root to data root
-			return &da.DACheckMetaData{}, fmt.Errorf("span does not match blob commitment")
+			return &CheckMetaData{}, fmt.Errorf("span does not match blob commitment")
 		}
 	}
 
 	root, err := c.getDataRoot(daMetaData)
 	if err != nil {
-		return &da.DACheckMetaData{}, err
+		return &CheckMetaData{}, err
 	}
 
-	return &da.DACheckMetaData{
-		Client:     daMetaData.Client,
+	return &CheckMetaData{
 		Height:     daMetaData.Height,
 		Commitment: daMetaData.Commitment,
 		Namespace:  daMetaData.Namespace,
@@ -489,7 +509,7 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.D
 	}, nil
 }
 
-func (c *DataAvailabilityLayerClient) validateInclusion(daMetaData *da.DACheckMetaData) error {
+func (c *DataAvailabilityLayerClient) validateInclusion(daMetaData *CheckMetaData) error {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 

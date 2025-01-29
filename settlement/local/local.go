@@ -328,10 +328,7 @@ func (c *Client) convertBatchToSettlementBatch(batch *types.Batch, daResult *da.
 		StartHeight: batch.StartHeight(),
 		EndHeight:   batch.EndHeight(),
 		MetaData: &settlement.BatchMetaData{
-			DA: &da.DASubmitMetaData{
-				Height: daResult.SubmitMetaData.Height,
-				Client: daResult.SubmitMetaData.Client,
-			},
+			DA: daResult.SubmitMetaData,
 		},
 		BlockDescriptors: bds,
 		CreationTime:     time.Now(),

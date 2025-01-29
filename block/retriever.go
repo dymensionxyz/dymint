@@ -11,13 +11,13 @@ import (
 )
 
 func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
-	m.logger.Debug("trying to retrieve batch from DA", "daHeight", slBatch.MetaData.DA.Height)
+	m.logger.Debug("trying to retrieve batch from DA", "daHeight", slBatch.MetaData.DA)
 	batchResp := m.fetchBatch(slBatch.MetaData.DA)
 	if batchResp.Code != da.StatusSuccess {
 		return batchResp.Error
 	}
 
-	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", slBatch.MetaData.DA.Height)
+	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", slBatch.MetaData.DA)
 
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
@@ -46,7 +46,7 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 			}
 
 			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
-			err := m.validateAndApplyBlock(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.MetaData.DA.Height})
+			err := m.validateAndApplyBlock(block, batch.Commits[i], types.BlockMetaData{Source: types.DA})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
@@ -113,7 +113,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 	}
 
 	// batchRes.MetaData includes proofs necessary to open disputes with the Hub
-	batchRes := m.Retriever.RetrieveBatches(daMetaData)
+	batchRes := m.Retriever.RetrieveBatches(daMetaData.DAPath)
 	// TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
 	// NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes

@@ -601,23 +601,21 @@ func getJsonFromBlock(block *Block) ([]byte, error) {
 type ErrStateUpdateBlobNotAvailableFraud struct {
 	StateIndex uint64
 	DA         string
-	DAHeight   uint64
-	Commitment string
+	DAPath     string
 }
 
-func NewErrStateUpdateBlobNotAvailableFraud(stateIndex uint64, da string, daHeight uint64, commitment string) error {
+func NewErrStateUpdateBlobNotAvailableFraud(stateIndex uint64, da string, daPath string) error {
 	return &ErrStateUpdateBlobNotAvailableFraud{
 		StateIndex: stateIndex,
 		DA:         da,
-		DAHeight:   daHeight,
-		Commitment: commitment,
+		DAPath:     daPath,
 	}
 }
 
 func (e ErrStateUpdateBlobNotAvailableFraud) Error() string {
 	return fmt.Sprintf(
-		"possible fraud detected: Blob Not Available in DA - StateIndex: %d, DA: %s, DA Height: %d, Commitment: %s",
-		e.StateIndex, e.DA, e.DAHeight, e.Commitment,
+		"possible fraud detected: Blob Not Available in DA - StateIndex: %d, DA: %s, DAPath: %s",
+		e.StateIndex, e.DA, e.DAPath,
 	)
 }
 
@@ -629,23 +627,21 @@ func (e ErrStateUpdateBlobNotAvailableFraud) Unwrap() error {
 type ErrStateUpdateBlobCorruptedFraud struct {
 	StateIndex uint64
 	DA         string
-	DAHeight   uint64
-	Commitment string
+	DAPath     string
 }
 
-func NewErrStateUpdateBlobCorruptedFraud(stateIndex uint64, da string, daHeight uint64, commitment string) error {
+func NewErrStateUpdateBlobCorruptedFraud(stateIndex uint64, da string, daPath string) error {
 	return &ErrStateUpdateBlobCorruptedFraud{
 		StateIndex: stateIndex,
 		DA:         da,
-		DAHeight:   daHeight,
-		Commitment: commitment,
+		DAPath:     daPath,
 	}
 }
 
 func (e ErrStateUpdateBlobCorruptedFraud) Error() string {
 	return fmt.Sprintf(
-		"possible fraud detected: Blob Corrupted in DA - StateIndex: %d, DA: %s, DA Height: %d, Commitment: %s",
-		e.StateIndex, e.DA, e.DAHeight, e.Commitment,
+		"possible fraud detected: Blob Corrupted in DA - StateIndex: %d, DA: %s, DAPath: %s",
+		e.StateIndex, e.DA, e.DAPath,
 	)
 }
 
