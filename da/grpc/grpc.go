@@ -231,18 +231,18 @@ func errorIsRetryable(err error) bool {
 	return true
 }
 
-// DAMetaData contains meta data about a batch on the Data Availability Layer.
+// SubmitMetaData contains meta data about a batch on the Data Availability Layer.
 type SubmitMetaData struct {
 	// Height is the height of the block in the da layer
 	Height uint64
 }
 
-// ToPath converts a DAMetaData to a path.
+// ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
 	return strconv.FormatUint(d.Height, 10)
 }
 
-// FromPath parses a path to a DAMetaData.
+// FromPath parses a path to a SubmitMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	height, err := strconv.ParseUint(path, 10, 64)
 	if err != nil {
