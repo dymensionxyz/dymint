@@ -460,13 +460,6 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	/*DACheckMetaData := &da.DACheckMetaData{
-		Client:       daMetaData.Client,
-		Height:       daMetaData.Height,
-		WvmTxHash:    daMetaData.WvmTxHash,
-		WvmBlockHash: daMetaData.WvmBlockHash,
-	}*/
-
 	wvmBlob, err := c.gateway.RetrieveFromGateway(ctx, daMetaData.WvmTxHash)
 	if err != nil {
 		return da.ResultCheckBatch{
@@ -475,7 +468,6 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 				Message: err.Error(),
 				Error:   da.ErrBlobNotFound,
 			},
-			// CheckMetaData: DACheckMetaData,
 		}
 	}
 
@@ -486,33 +478,14 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 				Message: err.Error(),
 				Error:   da.ErrProofNotMatching,
 			},
-			// CheckMetaData: DACheckMetaData,
 		}
 	}
-
-	/*// If ArweaveBlockHash is missing in metadata but available in the blob, update it.
-	if DACheckMetaData.WvmArweaveBlockHash == "" && wvmBlob.ArweaveBlockHash != "" {
-		DACheckMetaData.WvmArweaveBlockHash = wvmBlob.ArweaveBlockHash
-	}
-
-	if DACheckMetaData.Height < wvmBlob.WvmBlockNumber {
-		// Update metadata only if the blob represents a higher block (reorg case)
-		DACheckMetaData.WvmArweaveBlockHash = wvmBlob.ArweaveBlockHash
-		DACheckMetaData.WvmBlockHash = wvmBlob.WvmBlockHash
-		DACheckMetaData.Height = wvmBlob.WvmBlockNumber
-	}
-
-	// Ensure WvmBlockHash matches the latest blob hash for consistency
-	if DACheckMetaData.WvmBlockHash != wvmBlob.WvmBlockHash {
-		DACheckMetaData.WvmBlockHash = wvmBlob.WvmBlockHash
-	}*/
 
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusSuccess,
 			Message: "batch available",
 		},
-		// CheckMetaData: DACheckMetaData,
 	}
 }
 

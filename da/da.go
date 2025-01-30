@@ -103,18 +103,14 @@ type ResultSubmitBatch struct {
 // ResultCheckBatch contains information about block availability, returned from DA layer client.
 type ResultCheckBatch struct {
 	BaseResult
-	// DAHeight informs about a height on Data Availability Layer for given result.
-	// CheckMetaData *DACheckMetaData
 }
 
 // ResultRetrieveBatch contains batch of blocks returned from DA layer client.
 type ResultRetrieveBatch struct {
 	BaseResult
-	// Block is the full block retrieved from Data Availability Layer.
+	// Batches are the blob(s) with blocks retrieved from Data Availability Layer.
 	// If Code is not equal to StatusSuccess, it has to be nil.
 	Batches []*types.Batch
-	// DAHeight informs about a height on Data Availability Layer for given result.
-	// CheckMetaData *DACheckMetaData
 }
 
 // DataAvailabilityLayerClient defines generic interface for DA layer block submission.
