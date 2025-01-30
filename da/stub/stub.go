@@ -35,7 +35,7 @@ func (l Layer) GetClientType() da.Client {
 	panic("implement me")
 }
 
-func (l Layer) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (l Layer) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
 	panic("implement me")
 }
 
