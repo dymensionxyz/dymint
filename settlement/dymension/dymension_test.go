@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/local"
 	dymensionmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement/dymension"
 	rollapptypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	sequencertypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
@@ -155,9 +156,12 @@ func TestPostBatch(t *testing.T) {
 			}
 			if c.shouldMockBatchIncluded {
 				if c.isBatchIncludedSuccess {
-					daMetaData := &da.DASubmitMetaData{
+					daMockMetadata := local.SubmitMetaData{
 						Height: 1,
+					}
+					daMetaData := &da.DASubmitMetaData{
 						Client: da.Mock,
+						DAPath: daMockMetadata.ToPath(),
 					}
 					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(
 						&rollapptypes.QueryGetStateInfoResponse{StateInfo: rollapptypes.StateInfo{
