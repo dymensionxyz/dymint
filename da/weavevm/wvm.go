@@ -244,8 +244,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				continue
 			}
 
-			daMetaData := &da.DASubmitMetaData{
-				Client:       da.WeaveVM,
+			daMetaData := &SubmitMetaData{
 				Height:       submitMeta.WvmBlockNumber.Uint64(),
 				Commitment:   commitment,
 				WvmTxHash:    submitMeta.WvmTxHash,
@@ -260,13 +259,26 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					Code:    da.StatusSuccess,
 					Message: "Submission successful",
 				},
-				SubmitMetaData: daMetaData,
+				SubmitMetaData: &da.DASubmitMetaData{
+					Client: da.Celestia,
+					DAPath: daMetaData.ToPath(),
+				},
 			}
 		}
 	}
 }
 
-func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
+	submitMetadata := &SubmitMetaData{}
+	daMetaData, err := submitMetadata.FromPath(string(daPath))
+	if err != nil {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Unable to get DA metadata",
+			},
+		}
+	}
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -298,7 +310,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 	}
 }
 
-func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *SubmitMetaData) da.ResultRetrieveBatch {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 	c.logger.Debug("Getting blob from weaveVM DA.")
@@ -338,7 +350,7 @@ func (c *DataAvailabilityLayerClient) retrieveFromWeaveVM(ctx context.Context, t
 	return &weaveVMtypes.WvmDymintBlob{Blob: tx.Data(), WvmTxHash: txHash}, nil
 }
 
-func (c *DataAvailabilityLayerClient) processRetrievedData(data *weaveVMtypes.WvmDymintBlob, daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) processRetrievedData(data *weaveVMtypes.WvmDymintBlob, daMetaData *SubmitMetaData) da.ResultRetrieveBatch {
 	var batches []*types.Batch
 	if data.Blob == nil {
 		return da.ResultRetrieveBatch{
@@ -367,7 +379,8 @@ func (c *DataAvailabilityLayerClient) processRetrievedData(data *weaveVMtypes.Wv
 			"wvm_block_number", daMetaData.Height,
 			"wvm_block_hash", daMetaData.WvmBlockHash,
 			"wvm_tx_hash", daMetaData.WvmTxHash,
-			"arweave_block_hash", daMetaData.WvmArweaveBlockHash, "error", err)
+			//		"arweave_block_hash", daMetaData.WvmArweaveBlockHash, "error", err)
+		)
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -400,7 +413,19 @@ func (c *DataAvailabilityLayerClient) processRetrievedData(data *weaveVMtypes.Wv
 	}
 }
 
-func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
+
+	submitMetadata := &SubmitMetaData{}
+	daMetaData, err := submitMetadata.FromPath(string(daPath))
+	if err != nil {
+		return da.ResultCheckBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Unable to get DA metadata",
+			},
+		}
+	}
+
 	var availabilityResult da.ResultCheckBatch
 	for {
 		select {
@@ -432,16 +457,16 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	}
 }
 
-func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	DACheckMetaData := &da.DACheckMetaData{
+	/*DACheckMetaData := &da.DACheckMetaData{
 		Client:       daMetaData.Client,
 		Height:       daMetaData.Height,
 		WvmTxHash:    daMetaData.WvmTxHash,
 		WvmBlockHash: daMetaData.WvmBlockHash,
-	}
+	}*/
 
 	wvmBlob, err := c.gateway.RetrieveFromGateway(ctx, daMetaData.WvmTxHash)
 	if err != nil {
@@ -451,7 +476,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 				Message: err.Error(),
 				Error:   da.ErrBlobNotFound,
 			},
-			CheckMetaData: DACheckMetaData,
+			//CheckMetaData: DACheckMetaData,
 		}
 	}
 
@@ -462,11 +487,11 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 				Message: err.Error(),
 				Error:   da.ErrProofNotMatching,
 			},
-			CheckMetaData: DACheckMetaData,
+			//CheckMetaData: DACheckMetaData,
 		}
 	}
 
-	// If ArweaveBlockHash is missing in metadata but available in the blob, update it.
+	/*// If ArweaveBlockHash is missing in metadata but available in the blob, update it.
 	if DACheckMetaData.WvmArweaveBlockHash == "" && wvmBlob.ArweaveBlockHash != "" {
 		DACheckMetaData.WvmArweaveBlockHash = wvmBlob.ArweaveBlockHash
 	}
@@ -481,14 +506,14 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 	// Ensure WvmBlockHash matches the latest blob hash for consistency
 	if DACheckMetaData.WvmBlockHash != wvmBlob.WvmBlockHash {
 		DACheckMetaData.WvmBlockHash = wvmBlob.WvmBlockHash
-	}
+	}*/
 
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusSuccess,
 			Message: "batch available",
 		},
-		CheckMetaData: DACheckMetaData,
+		//CheckMetaData: DACheckMetaData,
 	}
 }
 
