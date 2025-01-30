@@ -72,20 +72,20 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 	// load all DA blocks from the batch to be validated
 	var daBatch da.ResultRetrieveBatch
 	for {
-		daBatch = v.blockManager.fetchBatch(batch.MetaData.DA)
+		daBatch = v.blockManager.fetchBatch(batch.MetaData)
 		if daBatch.Code == da.StatusSuccess {
 			break
 		}
 
 		// fraud detected in case blob is retrieved but unable to get blocks from it.
 		if errors.Is(daBatch.BaseResult.Error, da.ErrBlobNotParsed) {
-			return types.NewErrStateUpdateBlobCorruptedFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.DAPath)
+			return types.NewErrStateUpdateBlobCorruptedFraud(batch.StateIndex, string(batch.MetaData.Client), batch.MetaData.DAPath)
 		}
 
 		// fraud detected in case availability checks fail and therefore there certainty the blob, according to the state update DA path, is not available.
-		checkBatchResult := v.blockManager.Retriever.CheckBatchAvailability(batch.MetaData.DA.DAPath)
+		checkBatchResult := v.blockManager.Retriever.CheckBatchAvailability(batch.MetaData.DAPath)
 		if errors.Is(checkBatchResult.Error, da.ErrBlobNotIncluded) {
-			return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.DAPath)
+			return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.Client), batch.MetaData.DAPath)
 		}
 
 		// FIXME: how to handle non-happy case? not returning error?

@@ -414,13 +414,11 @@ func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, 
 	return &settlement.ResultRetrieveBatch{
 		Batch: &settlement.Batch{
 			BlockDescriptors: bds,
-			MetaData: &settlement.BatchMetaData{
-				DA: daMetaData,
-			},
-			StartHeight:   startHeight,
-			EndHeight:     endHeight,
-			NumBlocks:     endHeight - startHeight + 1,
-			NextSequencer: nextSequencer,
+			MetaData:         daMetaData,
+			StartHeight:      startHeight,
+			EndHeight:        endHeight,
+			NumBlocks:        endHeight - startHeight + 1,
+			NextSequencer:    nextSequencer,
 		},
 		ResultBase: settlement.ResultBase{
 			StateIndex: 1,

@@ -11,13 +11,13 @@ import (
 )
 
 func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
-	m.logger.Debug("trying to retrieve batch from DA", "daHeight", slBatch.MetaData.DA)
-	batchResp := m.fetchBatch(slBatch.MetaData.DA)
+	m.logger.Debug("trying to retrieve batch from DA", "dametadata", slBatch.MetaData)
+	batchResp := m.fetchBatch(slBatch.MetaData)
 	if batchResp.Code != da.StatusSuccess {
 		return batchResp.Error
 	}
 
-	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", slBatch.MetaData.DA)
+	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "dametadata", slBatch.MetaData)
 
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()

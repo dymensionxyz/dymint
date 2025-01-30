@@ -212,11 +212,9 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 		Height: 1,
 	}
 	batch := &settlement.Batch{
-		MetaData: &settlement.BatchMetaData{
-			DA: &da.DASubmitMetaData{
-				Client: da.Mock,
-				DAPath: submitMetadata.ToPath(),
-			},
+		MetaData: &da.DASubmitMetaData{
+			Client: da.Mock,
+			DAPath: submitMetadata.ToPath(),
 		},
 	}
 
@@ -570,9 +568,7 @@ func TestDAFetch(t *testing.T) {
 				})
 			}
 			slBatch := &settlement.Batch{
-				MetaData: &settlement.BatchMetaData{
-					DA: c.daMetaData,
-				},
+				MetaData:         c.daMetaData,
 				BlockDescriptors: bds,
 				EndHeight:        batch.EndHeight(),
 			}
