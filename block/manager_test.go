@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 
 	"github.com/dymensionxyz/dymint/block"
+	"github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
@@ -207,11 +208,14 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
+	submitMetadata := local.SubmitMetaData{
+		Height: 1,
+	}
 	batch := &settlement.Batch{
 		MetaData: &settlement.BatchMetaData{
 			DA: &da.DASubmitMetaData{
 				Client: da.Mock,
-				Height: 1,
+				DAPath: submitMetadata.ToPath(),
 			},
 		},
 	}
@@ -545,7 +549,7 @@ func TestDAFetch(t *testing.T) {
 		{
 			name:       "wrong DA",
 			manager:    manager,
-			daMetaData: &da.DASubmitMetaData{Client: da.Celestia, Height: daResultSubmitBatch.SubmitMetaData.Height},
+			daMetaData: &da.DASubmitMetaData{Client: da.Celestia, DAPath: daResultSubmitBatch.SubmitMetaData.ToPath()},
 			batch:      batch,
 			err:        da.ErrDAMismatch,
 		},

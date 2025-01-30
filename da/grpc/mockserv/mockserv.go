@@ -47,7 +47,7 @@ func (m *mockImpl) SubmitBatch(_ context.Context, request *dalc.SubmitBatchReque
 		return nil, err
 	}
 	resp := m.da.SubmitBatch(&b)
-	submitMetadata := &grpcda.DASubmitMetaData{}
+	submitMetadata := &grpcda.SubmitMetaData{}
 	dapath, err := submitMetadata.FromPath(resp.SubmitMetaData.DAPath)
 	return &dalc.SubmitBatchResponse{
 		Result: &dalc.DAResponse{
@@ -60,7 +60,7 @@ func (m *mockImpl) SubmitBatch(_ context.Context, request *dalc.SubmitBatchReque
 
 func (m *mockImpl) CheckBatchAvailability(_ context.Context, request *dalc.CheckBatchAvailabilityRequest) (*dalc.CheckBatchAvailabilityResponse, error) {
 
-	daMetaData := &grpcda.DASubmitMetaData{
+	daMetaData := &grpcda.SubmitMetaData{
 		Height: request.DataLayerHeight,
 	}
 	resp := m.da.CheckBatchAvailability(daMetaData.ToPath())
@@ -73,7 +73,7 @@ func (m *mockImpl) CheckBatchAvailability(_ context.Context, request *dalc.Check
 }
 
 func (m *mockImpl) RetrieveBatches(context context.Context, request *dalc.RetrieveBatchesRequest) (*dalc.RetrieveBatchesResponse, error) {
-	daMetaData := &grpcda.DASubmitMetaData{
+	daMetaData := &grpcda.SubmitMetaData{
 		Height: request.DataLayerHeight,
 	}
 	resp := m.da.RetrieveBatches(daMetaData.ToPath())

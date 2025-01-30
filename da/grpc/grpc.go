@@ -118,7 +118,7 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				continue
 			}
 
-			submitMetadata := &DASubmitMetaData{Height: resp.Result.DataLayerHeight}
+			submitMetadata := &SubmitMetaData{Height: resp.Result.DataLayerHeight}
 
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
@@ -138,7 +138,7 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
 	backoff := d.getBackoff()
 
-	submitMetadata := &DASubmitMetaData{}
+	submitMetadata := &SubmitMetaData{}
 	daMetaData, err := submitMetadata.FromPath(daPath)
 	if err != nil {
 		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
@@ -174,7 +174,7 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 func (d *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
 	backoff := d.getBackoff()
 
-	daMetaData := &DASubmitMetaData{}
+	daMetaData := &SubmitMetaData{}
 	daMetaData, err := daMetaData.FromPath(daPath)
 	if err != nil {
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
@@ -232,25 +232,25 @@ func errorIsRetryable(err error) bool {
 }
 
 // DAMetaData contains meta data about a batch on the Data Availability Layer.
-type DASubmitMetaData struct {
+type SubmitMetaData struct {
 	// Height is the height of the block in the da layer
 	Height uint64
 }
 
 // ToPath converts a DAMetaData to a path.
-func (d *DASubmitMetaData) ToPath() string {
+func (d *SubmitMetaData) ToPath() string {
 	return strconv.FormatUint(d.Height, 10)
 }
 
 // FromPath parses a path to a DAMetaData.
-func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
+func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 
 	height, err := strconv.ParseUint(path, 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	submitData := &DASubmitMetaData{
+	submitData := &SubmitMetaData{
 		Height: height,
 	}
 

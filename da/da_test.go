@@ -99,17 +99,20 @@ func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	// wait a bit more than mockDaBlockTime, so dymint blocks can be "included" in mock block
 	time.Sleep(mockDaBlockTime + 20*time.Millisecond)
 
-	check := dalc.CheckBatchAvailability(h1)
+	check := dalc.CheckBatchAvailability(h1.DAPath)
 	// print the check result
 	t.Logf("CheckBatchAvailability result: %+v", check)
 	assert.Equal(da.StatusSuccess, check.Code)
 
-	check = dalc.CheckBatchAvailability(h2)
+	check = dalc.CheckBatchAvailability(h2.DAPath)
 	assert.Equal(da.StatusSuccess, check.Code)
 
-	h1.Height = h1.Height - 1
+	path := &local.DASubmitMetaData{}
+	daMetaData, err := path.FromPath(h1.DAPath)
+	require.NoError(err)
+	daMetaData.Height = daMetaData.Height - 1
 	// this height should not be used by DALC
-	check = dalc.CheckBatchAvailability(h1)
+	check = dalc.CheckBatchAvailability(h1.DAPath)
 	assert.Equal(da.StatusSuccess, check.Code)
 }
 
@@ -174,15 +177,19 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 		assert.Equal(da.StatusSuccess, resp.Code, resp.Message)
 		time.Sleep(time.Duration(rand.Int63() % mockDaBlockTime.Milliseconds()))
 
-		countAtHeight[resp.SubmitMetaData.Height]++
-		batches[batch] = resp.SubmitMetaData.Height
+		path := &local.DASubmitMetaData{}
+		daMetaData, err := path.FromPath(resp.SubmitMetaData.DAPath)
+		require.NoError(err)
+
+		countAtHeight[daMetaData.Height]++
+		batches[batch] = daMetaData.Height
 	}
 
 	// wait a bit more than mockDaBlockTime, so mock can "produce" last blocks
 	time.Sleep(mockDaBlockTime + 20*time.Millisecond)
 
 	for h, cnt := range countAtHeight {
-		daMetaData := &da.DASubmitMetaData{
+		daMetaData := &local.DASubmitMetaData{
 			Height: h,
 		}
 		t.Log("Retrieving block, DA Height", h)
