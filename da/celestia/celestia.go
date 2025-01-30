@@ -263,9 +263,8 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 
 // CheckBatchAvailability retrieves availability proofs from celestia for the blob defined in daMetaData, and validates its inclusion
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
-
 	submitMetadata := &SubmitMetaData{}
-	daMetaData, err := submitMetadata.FromPath(string(daPath))
+	daMetaData, err := submitMetadata.FromPath(daPath)
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{

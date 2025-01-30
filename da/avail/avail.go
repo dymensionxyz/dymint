@@ -85,7 +85,6 @@ func (d *SubmitMetaData) ToPath() string {
 
 // FromPath parses a path to a DAMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
-
 	height, err := strconv.ParseUint(path, 10, 64)
 	if err != nil {
 		return nil, err
@@ -197,7 +196,6 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 
 // RetrieveBatches retrieves batch from DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
-
 	daMetaData := &SubmitMetaData{}
 	daMetaData, err := daMetaData.FromPath(daPath)
 	if err != nil {

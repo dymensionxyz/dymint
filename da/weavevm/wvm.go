@@ -270,7 +270,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
 	submitMetadata := &SubmitMetaData{}
-	daMetaData, err := submitMetadata.FromPath(string(daPath))
+	daMetaData, err := submitMetadata.FromPath(daPath)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -414,9 +414,8 @@ func (c *DataAvailabilityLayerClient) processRetrievedData(data *weaveVMtypes.Wv
 }
 
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
-
 	submitMetadata := &SubmitMetaData{}
-	daMetaData, err := submitMetadata.FromPath(string(daPath))
+	daMetaData, err := submitMetadata.FromPath(daPath)
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
@@ -476,7 +475,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 				Message: err.Error(),
 				Error:   da.ErrBlobNotFound,
 			},
-			//CheckMetaData: DACheckMetaData,
+			// CheckMetaData: DACheckMetaData,
 		}
 	}
 
@@ -487,7 +486,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 				Message: err.Error(),
 				Error:   da.ErrProofNotMatching,
 			},
-			//CheckMetaData: DACheckMetaData,
+			// CheckMetaData: DACheckMetaData,
 		}
 	}
 
@@ -513,7 +512,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 			Code:    da.StatusSuccess,
 			Message: "batch available",
 		},
-		//CheckMetaData: DACheckMetaData,
+		// CheckMetaData: DACheckMetaData,
 	}
 }
 
