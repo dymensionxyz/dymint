@@ -285,9 +285,29 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 				},
 			}
 		default:
+			result := da.ResultCheckBatch{}
 			err := retry.Do(
 				func() error {
-					_, err = c.checkBatchAvailability(daMetaData)
+					_, err := c.checkBatchAvailability(daMetaData)
+					if errors.Is(err, da.ErrBlobNotIncluded) {
+						result = da.ResultCheckBatch{
+							BaseResult: da.BaseResult{
+								Code:    da.StatusError,
+								Message: "Blob not available",
+								Error:   err,
+							},
+						}
+						return nil
+					}
+					if err == nil {
+						result = da.ResultCheckBatch{
+							BaseResult: da.BaseResult{
+								Code:    da.StatusSuccess,
+								Message: "Blob available",
+							},
+						}
+						return nil
+					}
 					return err
 				},
 				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
@@ -305,12 +325,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 				}
 			}
 
-			return da.ResultCheckBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusSuccess,
-					Message: "Blob available",
-				},
-			}
+			return result
 		}
 	}
 }
@@ -521,7 +536,7 @@ func (c *DataAvailabilityLayerClient) validateInclusion(daMetaData *CheckMetaDat
 	}
 	for _, incl := range included {
 		if !incl {
-			return fmt.Errorf("blob commitment not included")
+			return da.ErrBlobNotIncluded
 		}
 	}
 	return nil
