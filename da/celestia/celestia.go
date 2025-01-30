@@ -226,7 +226,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 // RetrieveBatches downloads a batch from celestia, defined by daMetadata, and retries RetryAttempts in case of failure
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
 	submitMetadata := &SubmitMetaData{}
-	daMetaData, err := submitMetadata.FromPath(string(daPath))
+	daMetaData, err := submitMetadata.FromPath(daPath)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -300,6 +300,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 					BaseResult: da.BaseResult{
 						Code:    da.StatusError,
 						Message: "Blob not available",
+						Error:   err,
 					},
 				}
 			}
@@ -457,7 +458,7 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *Subm
 		// Therefore we need to prove whether the commitment is wrong or the span does not exists.
 		// In case the span is valid (within the size of the matrix) it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
 		// is the data for the span, and reproducing the commitment will generate a different one.
-		return &CheckMetaData{}, err
+		return &CheckMetaData{}, da.ErrUnableToGetProofs
 	}
 
 	var nmtProofs [][]*nmt.Proof
@@ -465,7 +466,7 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *Subm
 		blobProof := &[]nmt.Proof{}
 		err := json.Unmarshal(daProof, blobProof)
 		if err != nil {
-			return &CheckMetaData{}, err
+			return &CheckMetaData{}, da.ErrUnableToGetProofs
 		}
 		var nmtProof []*nmt.Proof
 		for _, prf := range *blobProof {
