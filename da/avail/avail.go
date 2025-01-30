@@ -73,25 +73,25 @@ type DataAvailabilityLayerClient struct {
 }
 
 // DAMetaData contains meta data about a batch on the Data Availability Layer.
-type DASubmitMetaData struct {
+type SubmitMetaData struct {
 	// Height is the height of the block in the da layer
 	Height uint64
 }
 
 // ToPath converts a DAMetaData to a path.
-func (d *DASubmitMetaData) ToPath() string {
+func (d *SubmitMetaData) ToPath() string {
 	return strconv.FormatUint(d.Height, 10)
 }
 
 // FromPath parses a path to a DAMetaData.
-func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
+func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 
 	height, err := strconv.ParseUint(path, 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	submitData := &DASubmitMetaData{
+	submitData := &SubmitMetaData{
 		Height: height,
 	}
 
@@ -198,7 +198,7 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 // RetrieveBatches retrieves batch from DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
 
-	daMetaData := &DASubmitMetaData{}
+	daMetaData := &SubmitMetaData{}
 	daMetaData, err := daMetaData.FromPath(daPath)
 	if err != nil {
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
@@ -338,7 +338,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				continue
 			}
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
-			submitMetadata := &DASubmitMetaData{Height: daBlockHeight}
+			submitMetadata := &SubmitMetaData{Height: daBlockHeight}
 
 			c.logger.Debug("Successfully submitted batch.")
 			return da.ResultSubmitBatch{

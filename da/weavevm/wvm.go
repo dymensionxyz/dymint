@@ -260,7 +260,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					Message: "Submission successful",
 				},
 				SubmitMetaData: &da.DASubmitMetaData{
-					Client: da.Celestia,
+					Client: da.WeaveVM,
 					DAPath: daMetaData.ToPath(),
 				},
 			}

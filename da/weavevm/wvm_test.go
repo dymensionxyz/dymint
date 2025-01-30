@@ -245,7 +245,11 @@ func TestSubmitBatch(t *testing.T) {
 				submitMD := res.SubmitMetaData
 				assert.NotNil(t, submitMD)
 				assert.Equal(t, da.WeaveVM, submitMD.Client)
-				assert.Equal(t, uint64(123), submitMD.Height)
+
+				metadata := &weavevm.SubmitMetaData{}
+				wvMetaData, err := metadata.FromPath(submitMD.DAPath)
+				require.NoError(t, err)
+				assert.Equal(t, uint64(123), wvMetaData.Height)
 			}
 
 			// Verify all expected mock calls were made
@@ -268,7 +272,7 @@ func TestRetrieveBatches(t *testing.T) {
 	testCases := []struct {
 		name            string
 		setupMocks      func()
-		submitMeta      *da.DASubmitMetaData
+		submitMeta      *weavevm.SubmitMetaData
 		expectCode      da.StatusCode
 		expectError     string
 		validateBatches func(t *testing.T, batches []*types.Batch)
@@ -281,12 +285,12 @@ func TestRetrieveBatches(t *testing.T) {
 				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
 					Return(tx, false, nil).Once()
 			},
-			submitMeta: &da.DASubmitMetaData{
-				Client:     da.WeaveVM,
+			submitMeta: &weavevm.SubmitMetaData{
 				Height:     123,
 				WvmTxHash:  testTxHash,
 				Commitment: crypto.Keccak256(batchData),
 			},
+
 			expectCode: da.StatusSuccess,
 			validateBatches: func(t *testing.T, batches []*types.Batch) {
 				require.Len(t, batches, 1)
@@ -304,8 +308,7 @@ func TestRetrieveBatches(t *testing.T) {
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(nil, errors.New("blob not found")).Once()
 			},
-			submitMeta: &da.DASubmitMetaData{
-				Client:     da.WeaveVM,
+			submitMeta: &weavevm.SubmitMetaData{
 				Height:     123,
 				WvmTxHash:  testTxHash,
 				Commitment: crypto.Keccak256(batchData),
@@ -321,8 +324,7 @@ func TestRetrieveBatches(t *testing.T) {
 				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
 					Return(tx, false, nil).Once()
 			},
-			submitMeta: &da.DASubmitMetaData{
-				Client:     da.WeaveVM,
+			submitMeta: &weavevm.SubmitMetaData{
 				Height:     123,
 				WvmTxHash:  testTxHash,
 				Commitment: crypto.Keccak256(batchData),
@@ -339,7 +341,7 @@ func TestRetrieveBatches(t *testing.T) {
 
 			tc.setupMocks()
 
-			res := dalc.RetrieveBatches(tc.submitMeta)
+			res := dalc.RetrieveBatches(tc.submitMeta.ToPath())
 
 			assert.Equal(t, tc.expectCode, res.Code)
 			if tc.expectError != "" {
@@ -368,7 +370,7 @@ func TestCheckBatchAvailability(t *testing.T) {
 	testCases := []struct {
 		name        string
 		setupMocks  func()
-		submitMeta  *da.DASubmitMetaData
+		submitMeta  *weavevm.SubmitMetaData
 		expectCode  da.StatusCode
 		expectError string
 	}{
@@ -384,8 +386,7 @@ func TestCheckBatchAvailability(t *testing.T) {
 						WvmBlockNumber:   123,
 					}, nil).Once()
 			},
-			submitMeta: &da.DASubmitMetaData{
-				Client:     da.WeaveVM,
+			submitMeta: &weavevm.SubmitMetaData{
 				Height:     123,
 				WvmTxHash:  testTxHash,
 				Commitment: batchHash,
@@ -398,8 +399,7 @@ func TestCheckBatchAvailability(t *testing.T) {
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(nil, errors.New("blob not found")).Once()
 			},
-			submitMeta: &da.DASubmitMetaData{
-				Client:     da.WeaveVM,
+			submitMeta: &weavevm.SubmitMetaData{
 				Height:     123,
 				WvmTxHash:  testTxHash,
 				Commitment: batchHash,
@@ -419,8 +419,7 @@ func TestCheckBatchAvailability(t *testing.T) {
 						WvmBlockNumber:   123,
 					}, nil).Once()
 			},
-			submitMeta: &da.DASubmitMetaData{
-				Client:     da.WeaveVM,
+			submitMeta: &weavevm.SubmitMetaData{
 				Height:     123,
 				WvmTxHash:  testTxHash,
 				Commitment: batchHash,
@@ -434,8 +433,7 @@ func TestCheckBatchAvailability(t *testing.T) {
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(nil, context.DeadlineExceeded).Once()
 			},
-			submitMeta: &da.DASubmitMetaData{
-				Client:     da.WeaveVM,
+			submitMeta: &weavevm.SubmitMetaData{
 				Height:     123,
 				WvmTxHash:  testTxHash,
 				Commitment: batchHash,
@@ -452,7 +450,7 @@ func TestCheckBatchAvailability(t *testing.T) {
 
 			tc.setupMocks()
 
-			res := dalc.CheckBatchAvailability(tc.submitMeta)
+			res := dalc.CheckBatchAvailability(tc.submitMeta.ToPath())
 
 			assert.Equal(t, tc.expectCode, res.Code)
 			if tc.expectError != "" {
