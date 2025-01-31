@@ -346,7 +346,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				},
 				SubmitMetaData: &da.DASubmitMetaData{
 					DAPath: submitMetadata.ToPath(),
-					Client: da.Mock,
+					Client: da.Avail,
 				},
 			}
 		}
