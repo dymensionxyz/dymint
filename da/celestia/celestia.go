@@ -429,6 +429,11 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.D
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
+	root, err := c.getDataRoot(daMetaData)
+	if err != nil {
+		return &da.DACheckMetaData{}, err
+	}
+
 	ids := []daclient.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
 	daProofs, err := c.client.GetProofs(ctx, ids, c.config.NamespaceID.Bytes())
 	if err != nil || daProofs[0] == nil {
@@ -436,7 +441,7 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.D
 		// Therefore we need to prove whether the commitment is wrong or the span does not exists.
 		// In case the span is valid (within the size of the matrix) it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
 		// is the data for the span, and reproducing the commitment will generate a different one.
-		return &da.DACheckMetaData{}, err
+		return &da.DACheckMetaData{}, da.ErrUnableToGetProofs
 	}
 
 	var nmtProofs [][]*nmt.Proof
@@ -444,7 +449,7 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.D
 		blobProof := &[]nmt.Proof{}
 		err := json.Unmarshal(daProof, blobProof)
 		if err != nil {
-			return &da.DACheckMetaData{}, err
+			return &da.DACheckMetaData{}, da.ErrUnableToGetProofs
 		}
 		var nmtProof []*nmt.Proof
 		for _, prf := range *blobProof {
@@ -468,13 +473,8 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *da.D
 			// TODO (srene): In this case the commitment is correct but does not match the span.
 			// If the span is valid we have to repeat the previous step (sending data + proof of data as inclusion proof)
 			// In case the span is not valid (out of the size of the matrix) we need to send unavailable proof (the span does not exist) by sending proof of any row root to data root
-			return &da.DACheckMetaData{}, fmt.Errorf("span does not match blob commitment")
+			return &da.DACheckMetaData{}, da.ErrProofNotMatching
 		}
-	}
-
-	root, err := c.getDataRoot(daMetaData)
-	if err != nil {
-		return &da.DACheckMetaData{}, err
 	}
 
 	return &da.DACheckMetaData{
