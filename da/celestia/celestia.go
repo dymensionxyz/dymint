@@ -465,6 +465,11 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *Subm
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
+	root, err := c.getDataRoot(daMetaData)
+	if err != nil {
+		return &CheckMetaData{}, err
+	}
+
 	ids := []daclient.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
 	daProofs, err := c.client.GetProofs(ctx, ids, c.config.NamespaceID.Bytes())
 	if err != nil || daProofs[0] == nil {
@@ -504,13 +509,8 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *Subm
 			// TODO (srene): In this case the commitment is correct but does not match the span.
 			// If the span is valid we have to repeat the previous step (sending data + proof of data as inclusion proof)
 			// In case the span is not valid (out of the size of the matrix) we need to send unavailable proof (the span does not exist) by sending proof of any row root to data root
-			return &CheckMetaData{}, fmt.Errorf("span does not match blob commitment")
+			return &CheckMetaData{}, da.ErrProofNotMatching
 		}
-	}
-
-	root, err := c.getDataRoot(daMetaData)
-	if err != nil {
-		return &CheckMetaData{}, err
 	}
 
 	return &CheckMetaData{
