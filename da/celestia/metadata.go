@@ -48,7 +48,7 @@ func (d *SubmitMetaData) ToPath() string {
 // FromPath parses a path to a SubmitMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(da.PathSeparator[0]) })
-	if len(pathParts) < 2 {
+	if len(pathParts) != 6 {
 		return nil, fmt.Errorf("invalid DA path")
 	}
 

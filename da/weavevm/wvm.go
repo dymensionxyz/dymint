@@ -245,10 +245,9 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 
 			daMetaData := &SubmitMetaData{
-				Height:       submitMeta.WvmBlockNumber.Uint64(),
-				Commitment:   commitment,
-				WvmTxHash:    submitMeta.WvmTxHash,
-				WvmBlockHash: submitMeta.WvmBlockHash,
+				Height:     submitMeta.WvmBlockNumber.Uint64(),
+				Commitment: commitment,
+				WvmTxHash:  submitMeta.WvmTxHash,
 			}
 
 			c.logger.Debug("Submitted blob to DA successfully.")
@@ -377,9 +376,7 @@ func (c *DataAvailabilityLayerClient) processRetrievedData(data *weaveVMtypes.Wv
 	if err != nil {
 		c.logger.Error("Unmarshal blob.",
 			"wvm_block_number", daMetaData.Height,
-			"wvm_block_hash", daMetaData.WvmBlockHash,
 			"wvm_tx_hash", daMetaData.WvmTxHash,
-			//		"arweave_block_hash", daMetaData.WvmArweaveBlockHash, "error", err)
 		)
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
