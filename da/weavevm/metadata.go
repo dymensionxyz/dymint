@@ -17,8 +17,6 @@ type SubmitMetaData struct {
 	Commitment da.Commitment
 	// WeaveVM tx hash
 	WvmTxHash string
-	// WeaveVM block hash
-	WvmBlockHash string
 }
 
 // ToPath converts a SubmitMetaData to a path.
@@ -28,7 +26,6 @@ func (d *SubmitMetaData) ToPath() string {
 		strconv.FormatUint(d.Height, 10),
 		commitment,
 		d.WvmTxHash,
-		d.WvmBlockHash,
 	}
 	for i, part := range path {
 		path[i] = strings.Trim(part, da.PathSeparator)
@@ -39,7 +36,7 @@ func (d *SubmitMetaData) ToPath() string {
 // FromPath parses a path to a SubmitMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(da.PathSeparator[0]) })
-	if len(pathParts) < 2 {
+	if len(pathParts) != 3 {
 		return nil, fmt.Errorf("invalid DA path")
 	}
 
@@ -56,11 +53,7 @@ func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(pathParts) > 2 {
-		submitData.WvmTxHash = pathParts[2]
-	}
-	if len(pathParts) > 3 {
-		submitData.WvmBlockHash = pathParts[3]
-	}
+	submitData.WvmTxHash = pathParts[2]
+
 	return submitData, nil
 }
