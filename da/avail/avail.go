@@ -1,16 +1,20 @@
 package avail
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da/stub"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/dymensionxyz/dymint/types"
 
@@ -76,16 +80,33 @@ type DataAvailabilityLayerClient struct {
 type SubmitMetaData struct {
 	// Height is the height of the block in the da layer
 	Height uint64
+	// Avail App Id
+	AppId int64
+	// Hash that identifies the blob
+	BlobHash []byte
 }
 
 // ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
-	return strconv.FormatUint(d.Height, 10)
+	path := []string{
+		strconv.FormatUint(d.Height, 10),
+		strconv.FormatInt(d.AppId, 10),
+		hex.EncodeToString(d.BlobHash),
+	}
+	for i, part := range path {
+		path[i] = strings.Trim(part, da.PathSeparator)
+	}
+	return strings.Join(path, da.PathSeparator)
 }
 
 // FromPath parses a path to a SubmitMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
-	height, err := strconv.ParseUint(path, 10, 64)
+	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(da.PathSeparator[0]) })
+	if len(pathParts) != 3 {
+		return nil, fmt.Errorf("invalid DA path")
+	}
+
+	height, err := strconv.ParseUint(pathParts[0], 10, 64)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +115,15 @@ func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 		Height: height,
 	}
 
+	submitData.AppId, err = strconv.ParseInt(pathParts[1], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	submitData.BlobHash, err = hex.DecodeString(pathParts[2])
+	if err != nil {
+		return nil, err
+	}
 	return submitData, nil
 }
 
@@ -201,18 +231,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 	if err != nil {
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
 	}
-	//nolint:typecheck
-	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
-	if err != nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-				Error:   errors.Join(da.ErrRetrieval, err),
-			},
-		}
-	}
-	block, err := c.client.GetBlock(blockHash)
+	block, err := c.getBlock(daMetaData.Height)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -226,11 +245,12 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 	var batches []*types.Batch
 	for _, ext := range block.Block.Extrinsics {
 		// these values below are specific indexes only for data submission, differs with each extrinsic
-		if ext.Signature.AppID.Int64() == c.config.AppID &&
+		if ext.Signature.AppID.Int64() == daMetaData.AppId &&
 			ext.Method.CallIndex.SectionIndex == DataCallSectionIndex &&
 			ext.Method.CallIndex.MethodIndex == DataCallMethodIndex {
 
 			data := ext.Method.Args
+
 			for 0 < len(data) {
 				batch := &types.Batch{}
 				err := batch.UnmarshalBinary(data)
@@ -239,7 +259,10 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 					data = data[1:]
 					continue
 				}
-
+				// if blob unmarshaled successfully, we check is the same batch submitted by the sequencer comparing hashes
+				if !bytes.Equal(crypto.Keccak256Hash(data).Bytes(), daMetaData.BlobHash) {
+					continue
+				}
 				// Add the batch to the list
 				batches = append(batches, batch)
 				// Remove the bytes we just decoded.
@@ -336,7 +359,11 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				continue
 			}
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
-			submitMetadata := &SubmitMetaData{Height: daBlockHeight}
+			submitMetadata := &SubmitMetaData{
+				Height:   daBlockHeight,
+				AppId:    c.config.AppID,
+				BlobHash: crypto.Keccak256Hash(dataBlob).Bytes(),
+			}
 
 			c.logger.Debug("Successfully submitted batch.")
 			return da.ResultSubmitBatch{
@@ -355,12 +382,12 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 
 // broadcastTx broadcasts the transaction to the network and in case of success
 // returns the block height the batch was included in.
-func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
+func (c *DataAvailabilityLayerClient) broadcastTx(blob []byte) (uint64, error) {
 	meta, err := c.client.GetMetadataLatest()
 	if err != nil {
 		return 0, fmt.Errorf("GetMetadataLatest: %w", err)
 	}
-	newCall, err := availtypes.NewCall(meta, DataCallSection+"."+DataCallMethod, availtypes.NewBytes(tx))
+	newCall, err := availtypes.NewCall(meta, DataCallSection+"."+DataCallMethod, availtypes.NewBytes(blob))
 	if err != nil {
 		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
 	}
@@ -455,12 +482,82 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 
 // CheckBatchAvailability checks batch availability in DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
+	daMetaData := &SubmitMetaData{}
+	daMetaData, err := daMetaData.FromPath(daPath)
+	if err != nil {
+		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
+	}
+	//nolint:typecheck
+	block, err := c.getBlock(daMetaData.Height)
+	if err != nil {
+		block, err := c.client.GetBlockLatest()
+		if err != nil {
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: err.Error(),
+					Error:   errors.Join(da.ErrRetrieval, err),
+				},
+			}
+		}
+		if uint64(block.Block.Header.Number) < daMetaData.Height {
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: "wrong da height",
+					Error:   errors.Join(da.ErrBlobNotIncluded, err),
+				},
+			}
+		}
+	}
+	for _, ext := range block.Block.Extrinsics {
+		// these values below are specific indexes only for data submission, differs with each extrinsic
+		if ext.Signature.AppID.Int64() == c.config.AppID &&
+			ext.Method.CallIndex.SectionIndex == DataCallSectionIndex &&
+			ext.Method.CallIndex.MethodIndex == DataCallMethodIndex {
+			data := ext.Method.Args
+
+			for 0 < len(data) {
+				batch := &types.Batch{}
+				err := batch.UnmarshalBinary(data)
+				if err != nil {
+					// try to parse from the next byte on the next iteration
+					data = data[1:]
+					continue
+				}
+				// if blob unmarshaled successfully, we check is the same batch submitted by the sequencer comparing hashes
+				if bytes.Equal(crypto.Keccak256Hash(data).Bytes(), daMetaData.BlobHash) {
+					return da.ResultCheckBatch{
+						BaseResult: da.BaseResult{
+							Code:    da.StatusSuccess,
+							Message: "Blob available",
+						},
+					}
+				} else {
+					continue
+				}
+			}
+
+		}
+	}
+
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
-			Code:    da.StatusSuccess,
-			Message: "not implemented",
+			Code:    da.StatusError,
+			Message: "Blob not available",
+			Error:   da.ErrBlobNotIncluded,
 		},
 	}
+}
+
+// GetBalance returns the balance for a specific address
+func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	return da.Balance{}, nil
+}
+
+// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
+	return maxBlobSize
 }
 
 // getHeightFromHash returns the block height from the block hash
@@ -473,14 +570,13 @@ func (c *DataAvailabilityLayerClient) getHeightFromHash(hash availtypes.Hash) (u
 	return uint64(header.Number), nil
 }
 
-// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
-func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
-	return maxBlobSize
-}
-
-// GetBalance returns the balance for a specific address
-func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
-	return da.Balance{}, nil
+func (c *DataAvailabilityLayerClient) getBlock(height uint64) (*availtypes.SignedBlock, error) {
+	//nolint:typecheck
+	blockHash, err := c.client.GetBlockHash(height)
+	if err != nil {
+		return nil, err
+	}
+	return c.client.GetBlock(blockHash)
 }
 
 func (c *DataAvailabilityLayerClient) sync() {
@@ -545,7 +641,11 @@ func (c *DataAvailabilityLayerClient) sync() {
 			c.logger.Error("sync Avail DA", "attempt", n, "error", err)
 		}),
 	)
+	if err != nil {
+		c.logger.Error("Avail-node sync failed.", "error", err)
+		return
+	}
 
-	c.logger.Info("Avail-node sync completed.", "err", err)
+	c.logger.Info("Avail-node sync completed.")
 	c.synced <- struct{}{}
 }
