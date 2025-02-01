@@ -9,6 +9,7 @@ import (
 	"github.com/dymensionxyz/dymint/da/avail"
 	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/avail"
 	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -99,7 +100,9 @@ func TestRetrieveBatches(t *testing.T) {
 
 	// Retrieve the batches and make sure we only get the batches relevant for our app id
 	daMetaData := &avail.SubmitMetaData{
-		Height: 1,
+		Height:   1,
+		AppId:    int64(appId),
+		BlobHash: crypto.Keccak256(batch1bytes),
 	}
 	batchResult := dalc.RetrieveBatches(daMetaData.ToPath())
 	assert.Equal(1, len(batchResult.Batches))
