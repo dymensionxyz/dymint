@@ -22,6 +22,7 @@ import (
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/ethereum/go-ethereum"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gogo/protobuf/proto"
@@ -286,13 +287,15 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			err := retry.Do(
 				func() error {
 					resultRetrieveBatch = c.retrieveBatches(daMetaData)
-
-					if errors.Is(resultRetrieveBatch.Error, da.ErrRetrieval) {
-						c.logger.Error("Retrieve batch.", "error", resultRetrieveBatch.Error)
-						return resultRetrieveBatch.Error
+					switch resultRetrieveBatch.Error {
+					case da.ErrRetrieval:
+						c.logger.Error("Retrieve batch failed with retrieval error. Retrying availability check.", "error", resultRetrieveBatch.Error)
+						return resultRetrieveBatch.Error // Trigger retry
+					case da.ErrBlobNotFound, da.ErrBlobNotIncluded, da.ErrProofNotMatching:
+						return retry.Unrecoverable(resultRetrieveBatch.Error)
+					default:
+						return retry.Unrecoverable(resultRetrieveBatch.Error)
 					}
-
-					return nil
 				},
 				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 				retry.DelayType(retry.FixedDelay),
@@ -314,25 +317,42 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 
 	// 1. Try WeaveVM RPC first
 	data, errRpc := c.retrieveFromWeaveVM(ctx, daMetaData.WvmTxHash)
-	if errRpc != nil {
-		c.logger.Error("Failed to retrieve blob from weavevm rpc, we will try to use weavevm gateway",
-			"wvm_tx_hash", daMetaData.WvmTxHash, "error", errRpc)
-		errRpc = fmt.Errorf("unable to retrieve data from weavevm chain rpc: %w", errRpc)
-	}
 	if errRpc == nil {
 		return c.processRetrievedData(data, daMetaData)
 	}
+	if isRpcTransactionNotFoundErr(errRpc) {
+		errRpc = fmt.Errorf("failed to retrieve data from weavevm rpc: %w", errRpc)
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: fmt.Errorf("failed to retrieve data from weavevm rpc: %w", errRpc).Error(),
+				Error:   da.ErrBlobNotFound,
+			},
+		}
+	}
+
+	c.logger.Error("Failed to retrieve blob from weavevm rpc, we will try to use weavevm gateway",
+		"wvm_tx_hash", daMetaData.WvmTxHash, "error", errRpc)
 
 	// 2. Try gateway
 	data, errGateway := c.gateway.RetrieveFromGateway(ctx, daMetaData.WvmTxHash)
 	if errGateway == nil {
+		if isGatewayTransactionNotFoundErr(data) {
+			return da.ResultRetrieveBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: fmt.Sprintf("failed to find transaction data in weavevm gateway"),
+					Error:   da.ErrBlobNotFound,
+				},
+			}
+		}
 		return c.processRetrievedData(data, daMetaData)
 	}
-
+	// if we are here it means that gateway call get some kinda of error
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusError,
-			Message: fmt.Sprintf("failed to retrieve blob from both endpoints: %s :%s", errGateway.Error(), errRpc.Error()),
+			Message: fmt.Errorf("failed to retrieve data from weave vm gateway: %w", errGateway).Error(),
 			Error:   da.ErrRetrieval,
 		},
 	}
@@ -349,12 +369,12 @@ func (c *DataAvailabilityLayerClient) retrieveFromWeaveVM(ctx context.Context, t
 
 func (c *DataAvailabilityLayerClient) processRetrievedData(data *weaveVMtypes.WvmDymintBlob, daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	var batches []*types.Batch
-	if data.Blob == nil {
+	if data.Blob == nil || len(data.Blob) == 0 {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: "Blob not found",
-				Error:   da.ErrBlobNotFound,
+				Message: "Blob not included",
+				Error:   da.ErrBlobNotIncluded,
 			},
 		}
 	}
@@ -421,13 +441,15 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 				func() error {
 					result := c.checkBatchAvailability(daMetaData)
 					availabilityResult = result
-
-					if result.Code != da.StatusSuccess {
-						c.logger.Error("Blob submitted not found in DA. Retrying availability check.")
-						return result.Error
+					switch result.Error {
+					case da.ErrRetrieval:
+						c.logger.Error("Retrieve batch failed with retrieval error. Retrying availability check.", "error", result.Error)
+						return result.Error // Trigger retry
+					case da.ErrBlobNotFound, da.ErrBlobNotIncluded, da.ErrProofNotMatching:
+						return retry.Unrecoverable(result.Error)
+					default:
+						return retry.Unrecoverable(result.Error)
 					}
-
-					return nil
 				},
 				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 				retry.DelayType(retry.FixedDelay),
@@ -450,46 +472,91 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 		Height:       daMetaData.Height,
 		WvmTxHash:    daMetaData.WvmTxHash,
 		WvmBlockHash: daMetaData.WvmBlockHash,
+		Commitment:   daMetaData.Commitment,
 	}
 
-	wvmBlob, err := c.gateway.RetrieveFromGateway(ctx, daMetaData.WvmTxHash)
-	if err != nil {
+	data, errRpc := c.retrieveFromWeaveVM(ctx, daMetaData.WvmTxHash)
+	if errRpc == nil {
+		return c.processAvailabilityData(data, DACheckMetaData)
+	}
+	if isRpcTransactionNotFoundErr(errRpc) {
+		errRpc = fmt.Errorf("failed to retrieve data from weavevm rpc: %w", errRpc)
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: err.Error(),
+				Message: fmt.Errorf("failed to retrieve data from weavevm rpc: %w", errRpc).Error(),
 				Error:   da.ErrBlobNotFound,
 			},
 			CheckMetaData: DACheckMetaData,
 		}
 	}
 
-	if err := c.verifyBlobData(daMetaData.Commitment, wvmBlob.Blob); err != nil {
+	c.logger.Error("Failed to retrieve blob from weavevm rpc, we will try to use weavevm gateway",
+		"wvm_tx_hash", daMetaData.WvmTxHash, "error", errRpc)
+
+	data, errGateway := c.gateway.RetrieveFromGateway(ctx, daMetaData.WvmTxHash)
+	if errGateway == nil {
+		if isGatewayTransactionNotFoundErr(data) {
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: fmt.Sprintf("failed to find transaction data in weavevm gateway"),
+					Error:   da.ErrBlobNotFound,
+				},
+				CheckMetaData: DACheckMetaData,
+			}
+		}
+		return c.processAvailabilityData(data, DACheckMetaData)
+	}
+	// if we are here it means that gateway call get some kinda of error
+	return da.ResultCheckBatch{
+		BaseResult: da.BaseResult{
+			Code:    da.StatusError,
+			Message: fmt.Errorf("failed to retrieve data from weave vm gateway: %w", errGateway).Error(),
+			Error:   da.ErrRetrieval,
+		},
+		CheckMetaData: DACheckMetaData,
+	}
+}
+
+func (c *DataAvailabilityLayerClient) processAvailabilityData(data *weaveVMtypes.WvmDymintBlob, daMetaData *da.DACheckMetaData) da.ResultCheckBatch {
+	if data.Blob == nil || len(data.Blob) == 0 {
+		return da.ResultCheckBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Blob not included",
+				Error:   da.ErrBlobNotIncluded,
+			},
+			CheckMetaData: daMetaData,
+		}
+	}
+
+	if err := c.verifyBlobData(daMetaData.Commitment, data.Blob); err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
 				Error:   da.ErrProofNotMatching,
 			},
-			CheckMetaData: DACheckMetaData,
+			CheckMetaData: daMetaData,
 		}
 	}
 
 	// If ArweaveBlockHash is missing in metadata but available in the blob, update it.
-	if DACheckMetaData.WvmArweaveBlockHash == "" && wvmBlob.ArweaveBlockHash != "" {
-		DACheckMetaData.WvmArweaveBlockHash = wvmBlob.ArweaveBlockHash
+	if daMetaData.WvmArweaveBlockHash == "" && data.ArweaveBlockHash != "" {
+		daMetaData.WvmArweaveBlockHash = data.ArweaveBlockHash
 	}
 
-	if DACheckMetaData.Height < wvmBlob.WvmBlockNumber {
+	if daMetaData.Height < data.WvmBlockNumber {
 		// Update metadata only if the blob represents a higher block (reorg case)
-		DACheckMetaData.WvmArweaveBlockHash = wvmBlob.ArweaveBlockHash
-		DACheckMetaData.WvmBlockHash = wvmBlob.WvmBlockHash
-		DACheckMetaData.Height = wvmBlob.WvmBlockNumber
+		daMetaData.WvmArweaveBlockHash = data.ArweaveBlockHash
+		daMetaData.WvmBlockHash = data.WvmBlockHash
+		daMetaData.Height = data.WvmBlockNumber
 	}
 
 	// Ensure WvmBlockHash matches the latest blob hash for consistency
-	if DACheckMetaData.WvmBlockHash != wvmBlob.WvmBlockHash {
-		DACheckMetaData.WvmBlockHash = wvmBlob.WvmBlockHash
+	if daMetaData.WvmBlockHash != data.WvmBlockHash {
+		daMetaData.WvmBlockHash = data.WvmBlockHash
 	}
 
 	return da.ResultCheckBatch{
@@ -497,7 +564,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 			Code:    da.StatusSuccess,
 			Message: "batch available",
 		},
-		CheckMetaData: DACheckMetaData,
+		CheckMetaData: daMetaData,
 	}
 }
 
@@ -596,6 +663,16 @@ func (c *DataAvailabilityLayerClient) verifyBlobData(commitment []byte, data []b
 			hex.EncodeToString(commitment), h.Hex())
 	}
 	return nil
+}
+
+func isRpcTransactionNotFoundErr(err error) bool {
+	return errors.Is(err, ethereum.NotFound)
+}
+
+// isGatewayTransactionNotFoundErr checks if the transaction is absent in the Gateway.
+// Gateway indicates a missing transaction by setting WvmBlockHash to "0x".
+func isGatewayTransactionNotFoundErr(data *weaveVMtypes.WvmDymintBlob) bool {
+	return data.WvmBlockHash == "0x"
 }
 
 func (c *DataAvailabilityLayerClient) DAPath() string {

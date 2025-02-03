@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -375,6 +376,11 @@ func TestCheckBatchAvailability(t *testing.T) {
 		{
 			name: "Successful Availability Check",
 			setupMocks: func() {
+				// First, mock RPC call to fail with NotFound
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, ethereum.NotFound).Once()
+
+				// Then, mock Gateway to return the valid blob
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(&weaveVMtypes.WvmDymintBlob{
 						Blob:             batchData,
@@ -395,8 +401,15 @@ func TestCheckBatchAvailability(t *testing.T) {
 		{
 			name: "Blob Not Found",
 			setupMocks: func() {
+				// First, mock RPC call to fail with NotFound
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, ethereum.NotFound).Once()
+
+				// Then, mock Gateway to return not found error
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
-					Return(nil, errors.New("blob not found")).Once()
+					Return(&weaveVMtypes.WvmDymintBlob{
+						WvmBlockHash: "0x", // This indicates not found in gateway
+					}, nil).Once()
 			},
 			submitMeta: &da.DASubmitMetaData{
 				Client:     da.WeaveVM,
@@ -410,6 +423,11 @@ func TestCheckBatchAvailability(t *testing.T) {
 		{
 			name: "Verification Failure",
 			setupMocks: func() {
+				// First, mock RPC call to fail with NotFound
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, ethereum.NotFound).Once()
+
+				// Then, mock Gateway to return invalid data
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(&weaveVMtypes.WvmDymintBlob{
 						Blob:             []byte("corrupted data"),
@@ -431,6 +449,11 @@ func TestCheckBatchAvailability(t *testing.T) {
 		{
 			name: "Context Timeout",
 			setupMocks: func() {
+				// First, mock RPC call to fail with NotFound
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, ethereum.NotFound).Once()
+
+				// Then, mock Gateway to return timeout error
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(nil, context.DeadlineExceeded).Once()
 			},
@@ -441,25 +464,172 @@ func TestCheckBatchAvailability(t *testing.T) {
 				Commitment: batchHash,
 			},
 			expectCode:  da.StatusError,
-			expectError: da.ErrBlobNotFound.Error(),
+			expectError: da.ErrRetrieval.Error(),
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			// Reset mock expectations
 			mockWVM.ExpectedCalls = nil
 			mockWVM.Calls = nil
+			mockGateway.ExpectedCalls = nil
+			mockGateway.Calls = nil
 
+			// Setup test case mocks
 			tc.setupMocks()
 
+			// Execute test
 			res := dalc.CheckBatchAvailability(tc.submitMeta)
 
+			// Verify results
 			assert.Equal(t, tc.expectCode, res.Code)
 			if tc.expectError != "" {
 				assert.Contains(t, res.Error.Error(), tc.expectError)
 			}
 
+			// Verify all expected mock calls were made
 			mockWVM.AssertExpectations(t)
+			mockGateway.AssertExpectations(t)
+		})
+	}
+}
+
+func TestCheckBatchAvailability(t *testing.T) {
+	mockWVM := new(MockWeaveVM)
+	mockGateway := new(MockGateway)
+
+	dalc, _ := setupTestDALC(t, mockWVM, mockGateway)
+
+	batch := &types.Batch{
+		Blocks: []*types.Block{getRandomBlock(1, 10)},
+	}
+	batchData, _ := batch.MarshalBinary()
+	batchHash := crypto.Keccak256(batchData)
+
+	testCases := []struct {
+		name        string
+		setupMocks  func()
+		submitMeta  *da.DASubmitMetaData
+		expectCode  da.StatusCode
+		expectError string
+	}{
+		{
+			name: "Successful Availability Check",
+			setupMocks: func() {
+				// Mock GetTransactionByHash to simulate transaction not found
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, ethereum.NotFound).Once()
+
+				// Mock Gateway to return the desired blob
+				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
+					Return(&weaveVMtypes.WvmDymintBlob{
+						Blob:             batchData,
+						WvmTxHash:        testTxHash,
+						WvmBlockHash:     testBlockHash,
+						ArweaveBlockHash: "testArweaveHash",
+						WvmBlockNumber:   123,
+					}, nil).Once()
+			},
+			submitMeta: &da.DASubmitMetaData{
+				Client:     da.WeaveVM,
+				Height:     123,
+				WvmTxHash:  testTxHash,
+				Commitment: batchHash,
+			},
+			expectCode: da.StatusSuccess,
+		},
+		{
+			name: "Blob Not Found",
+			setupMocks: func() {
+				// Mock GetTransactionByHash to simulate transaction not found
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, ethereum.NotFound).Once()
+
+				// Mock Gateway to return an error indicating blob not found
+				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
+					Return(nil, errors.New("blob not found")).Once()
+			},
+			submitMeta: &da.DASubmitMetaData{
+				Client:     da.WeaveVM,
+				Height:     123,
+				WvmTxHash:  testTxHash,
+				Commitment: batchHash,
+			},
+			expectCode:  da.StatusError,
+			expectError: da.ErrBlobNotFound.Error(),
+		},
+		{
+			name: "Verification Failure",
+			setupMocks: func() {
+				// Mock GetTransactionByHash to simulate transaction not found
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, ethereum.NotFound).Once()
+
+				// Mock Gateway to return corrupted data
+				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
+					Return(&weaveVMtypes.WvmDymintBlob{
+						Blob:             []byte("corrupted data"),
+						WvmBlockHash:     testBlockHash,
+						WvmTxHash:        testTxHash,
+						ArweaveBlockHash: "testArweaveHash",
+						WvmBlockNumber:   123,
+					}, nil).Once()
+			},
+			submitMeta: &da.DASubmitMetaData{
+				Client:     da.WeaveVM,
+				Height:     123,
+				WvmTxHash:  testTxHash,
+				Commitment: batchHash,
+			},
+			expectCode:  da.StatusError,
+			expectError: da.ErrProofNotMatching.Error(),
+		},
+		{
+			name: "Context Timeout",
+			setupMocks: func() {
+				// Mock GetTransactionByHash to simulate transaction not found
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, ethereum.NotFound).Once()
+
+				// Mock Gateway to simulate context timeout
+				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
+					Return(nil, context.DeadlineExceeded).Once()
+			},
+			submitMeta: &da.DASubmitMetaData{
+				Client:     da.WeaveVM,
+				Height:     123,
+				WvmTxHash:  testTxHash,
+				Commitment: batchHash,
+			},
+			expectCode:  da.StatusError,
+			expectError: da.ErrRetrieval.Error(),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Reset mock expectations
+			mockWVM.ExpectedCalls = nil
+			mockWVM.Calls = nil
+			mockGateway.ExpectedCalls = nil
+			mockGateway.Calls = nil
+
+			// Setup test case mocks
+			tc.setupMocks()
+
+			// Execute test
+			res := dalc.CheckBatchAvailability(tc.submitMeta)
+
+			// Verify results
+			assert.Equal(t, tc.expectCode, res.Code)
+			if tc.expectError != "" {
+				assert.Contains(t, res.Error.Error(), tc.expectError)
+			}
+
+			// Verify all expected mock calls were made
+			mockWVM.AssertExpectations(t)
+			mockGateway.AssertExpectations(t)
 		})
 	}
 }
