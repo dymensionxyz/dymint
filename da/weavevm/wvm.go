@@ -321,11 +321,10 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		return c.processRetrievedData(data, daMetaData)
 	}
 	if isRpcTransactionNotFoundErr(errRpc) {
-		errRpc = fmt.Errorf("failed to retrieve data from weavevm rpc: %w", errRpc)
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Errorf("failed to retrieve data from weavevm rpc: %w", errRpc).Error(),
+				Message: fmt.Errorf("failed to find transaction data in weavevm: %w", errRpc).Error(),
 				Error:   da.ErrBlobNotFound,
 			},
 		}
@@ -341,7 +340,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 			return da.ResultRetrieveBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusError,
-					Message: "failed to find transaction data in weavevm gateway",
+					Message: "failed to find transaction data in weavevm using gateway",
 					Error:   da.ErrBlobNotFound,
 				},
 			}
@@ -480,11 +479,10 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 		return c.processAvailabilityData(data, DACheckMetaData)
 	}
 	if isRpcTransactionNotFoundErr(errRpc) {
-		errRpc = fmt.Errorf("failed to retrieve data from weavevm rpc: %w", errRpc)
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Errorf("failed to retrieve data from weavevm rpc: %w", errRpc).Error(),
+				Message: fmt.Errorf("failed to find transaction data in weavevm: %w", errRpc).Error(),
 				Error:   da.ErrBlobNotFound,
 			},
 			CheckMetaData: DACheckMetaData,
@@ -500,7 +498,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 			return da.ResultCheckBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusError,
-					Message: "failed to find transaction data in weavevm gateway",
+					Message: "failed to find transaction data in weavevm using gateway",
 					Error:   da.ErrBlobNotFound,
 				},
 				CheckMetaData: DACheckMetaData,
