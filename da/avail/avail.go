@@ -163,11 +163,6 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
-// WaitForSyncing is used to check when the DA light client finished syncing
-func (m *DataAvailabilityLayerClient) WaitForSyncing() {
-	<-m.synced
-}
-
 // GetClientType returns client type.
 func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Avail
@@ -450,7 +445,7 @@ func (c *DataAvailabilityLayerClient) getHeightFromHash(hash availtypes.Hash) (u
 }
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
-func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 	return maxBlobSize
 }
 

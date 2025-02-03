@@ -10,7 +10,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmtypes "github.com/tendermint/tendermint/types"
 
-	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/p2p"
@@ -304,25 +303,25 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 	testCases := []struct {
 		name              string
 		checkAvailability bool
-		blobData          []byte
+		blobData          [][]byte
 		expectedErrType   error
 	}{
 		{
 			name:              "Successful DA Blob",
 			checkAvailability: false,
-			blobData:          batchData,
+			blobData:          [][]byte{batchData},
 			expectedErrType:   nil,
 		},
 		{
 			name:              "Blob not valid",
 			checkAvailability: false,
-			blobData:          randomData,
+			blobData:          [][]byte{randomData},
 			expectedErrType:   &types.ErrStateUpdateBlobCorruptedFraud{},
 		},
 		{
 			name:              "Blob unavailable",
 			checkAvailability: true,
-			blobData:          batchData,
+			blobData:          [][]byte{batchData},
 			expectedErrType:   &types.ErrStateUpdateBlobNotAvailableFraud{},
 		},
 	}
@@ -345,16 +344,11 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			require.NoError(t, err)
 			manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
-			// Generate blob from batch data
-			require.NoError(t, err)
-			batchBlob, err := blob.NewBlobV0(mockDA.NID, tc.blobData)
-			require.NoError(t, err)
-
 			// RPC calls necessary for blob submission
-			mockDA.MockRPC.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-			mockDA.MockRPC.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockDA.BlobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-			mockDA.MockRPC.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-			mockDA.MockRPC.On("GetByHeight", mock.Anything, mock.Anything).Return(mockDA.Header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+			mockDA.MockRPC.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(mockDA.IDS, nil).Once().Run(func(args mock.Arguments) {})
+			mockDA.MockRPC.On("GetByHeight", mock.Anything, mock.Anything).Return(mockDA.Header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
+			mockDA.MockRPC.On("GetProofs", mock.Anything, mock.Anything, mock.Anything).Return(mockDA.BlobProofs, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
+			mockDA.MockRPC.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]bool{true}, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 
 			// Submit batch to DA
 			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
@@ -362,15 +356,15 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 
 			// RPC calls for successful blob retrieval
 			if !tc.checkAvailability {
-				mockDA.MockRPC.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(batchBlob, nil).Run(func(args mock.Arguments) {})
+				mockDA.MockRPC.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(tc.blobData, nil).Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 			}
 
 			// RPC calls for unavailable blobs
 			if tc.checkAvailability {
-				mockDA.MockRPC.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) {})
-				mockDA.MockRPC.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockDA.BlobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-				mockDA.MockRPC.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(false, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-				mockDA.MockRPC.On("GetByHeight", mock.Anything, mock.Anything).Return(mockDA.Header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+				mockDA.MockRPC.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
+				mockDA.MockRPC.On("GetByHeight", mock.Anything, mock.Anything).Return(mockDA.Header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
+				mockDA.MockRPC.On("GetProofs", mock.Anything, mock.Anything, mock.Anything).Return(mockDA.BlobProofs, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
+				mockDA.MockRPC.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]bool{false}, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 			}
 
 			// Create the StateUpdateValidator

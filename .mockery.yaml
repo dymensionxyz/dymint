@@ -23,9 +23,9 @@ packages:
     interfaces:
       AppConnConsensus:
       AppConns:
-  github.com/dymensionxyz/dymint/da/celestia/types:
+  github.com/dymensionxyz/dymint/da/celestia/client:
     interfaces:
-      CelestiaRPCClient:
+      DAClient:
   github.com/dymensionxyz/dymint/da/avail:
     interfaces:
      SubstrateApiI:
