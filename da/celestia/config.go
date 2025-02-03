@@ -7,8 +7,6 @@ import (
 	"time"
 
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
-
-	openrpcns "github.com/celestiaorg/celestia-openrpc/types/namespace"
 )
 
 const (
@@ -27,7 +25,6 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 // Config stores Celestia DALC configuration parameters.
 type Config struct {
 	BaseURL        string               `json:"base_url,omitempty"`
-	AppNodeURL     string               `json:"app_node_url,omitempty"`
 	Timeout        time.Duration        `json:"timeout,omitempty"`
 	GasPrices      float64              `json:"gas_prices,omitempty"`
 	NamespaceIDStr string               `json:"namespace_id,omitempty"`
@@ -35,16 +32,15 @@ type Config struct {
 	Backoff        uretry.BackoffConfig `json:"backoff,omitempty"`
 	RetryAttempts  *int                 `json:"retry_attempts,omitempty"`
 	RetryDelay     time.Duration        `json:"retry_delay,omitempty"`
-	NamespaceID    openrpcns.Namespace  `json:"-"`
+	NamespaceID    Namespace            `json:"-"`
 }
 
 var TestConfig = Config{
 	BaseURL:        "http://127.0.0.1:26658",
-	AppNodeURL:     "",
 	Timeout:        5 * time.Second,
 	GasPrices:      DefaultGasPrices,
 	NamespaceIDStr: "",
-	NamespaceID:    openrpcns.Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 0, 0, 255, 255}},
+	NamespaceID:    Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 0, 0, 255, 255}},
 }
 
 func generateRandNamespaceID() string {
@@ -67,11 +63,11 @@ func (c *Config) InitNamespaceID() error {
 	}
 
 	// Check if NamespaceID is of correct length (10 bytes)
-	if len(namespaceBytes) != openrpcns.NamespaceVersionZeroIDSize {
-		return fmt.Errorf("wrong length: got: %v: expect %v", len(namespaceBytes), openrpcns.NamespaceVersionZeroIDSize)
+	if len(namespaceBytes) != NamespaceVersionZeroIDSize {
+		return fmt.Errorf("wrong length: got: %v: expect %v", len(namespaceBytes), NamespaceVersionZeroIDSize)
 	}
 
-	ns, err := openrpcns.New(openrpcns.NamespaceVersionZero, append(openrpcns.NamespaceVersionZeroPrefix, namespaceBytes...))
+	ns, err := New(NamespaceVersionZero, append(NamespaceVersionZeroPrefix, namespaceBytes...))
 	if err != nil {
 		return err
 	}

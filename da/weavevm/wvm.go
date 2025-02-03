@@ -59,7 +59,6 @@ type DataAvailabilityLayerClient struct {
 	logger       types.Logger
 	ctx          context.Context
 	cancel       context.CancelFunc
-	synced       chan struct{}
 }
 
 var (
@@ -116,7 +115,6 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	// Set initial values
 	c.pubsubServer = pubsubServer
 	c.logger = logger
-	c.synced = make(chan struct{}, 1)
 
 	// Validate and set defaults for config
 	if cfg.Timeout == 0 {
@@ -180,20 +178,13 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
-	c.synced <- struct{}{}
 	return nil
 }
 
 // Stop stops DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.cancel()
-	close(c.synced)
 	return nil
-}
-
-// WaitForSyncing is used to check when the DA light client finished syncing
-func (m *DataAvailabilityLayerClient) WaitForSyncing() {
-	<-m.synced
 }
 
 // GetClientType returns client type.
@@ -553,7 +544,7 @@ func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHa
 			return nil
 		},
 		retry.Context(ctx),
-		retry.Attempts(uint(*c.config.RetryAttempts)),
+		retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 		retry.Delay(c.config.RetryDelay),
 		retry.DelayType(retry.FixedDelay), // Force fixed delay between attempts
 		retry.LastErrorOnly(true),         // Only log the last error
@@ -573,7 +564,7 @@ func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHa
 }
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
-func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 	return weaveVMtypes.WeaveVMMaxTransactionSize
 }
 

@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"cosmossdk.io/math"
-	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
+	daclient "github.com/dymensionxyz/dymint/da/celestia/client"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -176,7 +176,7 @@ type DACheckMetaData struct {
 	// Number of shares of each blob
 	Length int
 	// Proofs necessary to validate blob inclusion in the specific height
-	Proofs []*blob.Proof
+	Proofs []daclient.Proof
 	// NMT roots for each NMT Proof
 	NMTRoots []byte
 	// Proofs necessary to validate blob inclusion in the specific height
@@ -237,11 +237,8 @@ type DataAvailabilityLayerClient interface {
 	// CheckBatchAvailability checks the availability of the blob submitted getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 
-	// Used to check when the DA light client finished syncing
-	WaitForSyncing()
-
 	// Returns the maximum allowed blob size in the DA, used to check the max batch size configured
-	GetMaxBlobSizeBytes() uint32
+	GetMaxBlobSizeBytes() uint64
 
 	// GetSignerBalance returns the balance for a specific address
 	GetSignerBalance() (Balance, error)
