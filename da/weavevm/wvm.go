@@ -341,7 +341,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 			return da.ResultRetrieveBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusError,
-					Message: fmt.Sprintf("failed to find transaction data in weavevm gateway"),
+					Message: "failed to find transaction data in weavevm gateway",
 					Error:   da.ErrBlobNotFound,
 				},
 			}
@@ -500,7 +500,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 			return da.ResultCheckBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusError,
-					Message: fmt.Sprintf("failed to find transaction data in weavevm gateway"),
+					Message: "failed to find transaction data in weavevm gateway",
 					Error:   da.ErrBlobNotFound,
 				},
 				CheckMetaData: DACheckMetaData,
