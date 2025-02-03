@@ -229,6 +229,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	if m.State.GetProposer() == nil {
 		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
 		err := m.UpdateProposerFromSL()
+		if errors.Is(err, settlement.ErrProposerIsSentinel) {
+			m.logger.Info("No active proposer. Chain is halted. Waiting for a new proposer.", "height", m.State.Height())
+			err = m.WaitForActiveProposer(ctx)
+		}
 		if err != nil {
 			return err
 		}
@@ -316,10 +320,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		} else if errors.Is(err, gerrc.ErrFault) {
 			// Here we handle the fault by calling the fraud handler.
 			// it publishes a DataHealthStatus event to the pubsub and stops the block manager.
-			m.logger.Error("block manager exited with fault", "error", err)
+			m.logger.Error("block manager exited with fault")
 			m.FraudHandler.HandleFault(err)
 		} else if err != nil {
-			m.logger.Error("block manager exited with error", "error", err)
+			m.logger.Error("block manager exited with error")
 			m.StopManager(err)
 		}
 	}()
@@ -445,7 +449,6 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 
 // StopManager sets the node as unhealthy and stops the block manager context
 func (m *Manager) StopManager(err error) {
-	m.logger.Info("Freezing node", "err", err)
 	m.setUnhealthy(err)
 	m.Cancel()
 }

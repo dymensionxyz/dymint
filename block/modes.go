@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/p2p"
@@ -48,7 +49,9 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 
 	// it is checked again whether the node is the active proposer, since this could have changed after syncing.
 	amIProposerOnSL, err := m.AmIProposerOnSL()
-	if err != nil {
+	if errors.Is(err, settlement.ErrProposerIsSentinel) {
+		amIProposerOnSL = false
+	} else if err != nil {
 		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
 	if !amIProposerOnSL {

@@ -3,8 +3,11 @@ package block
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/dymensionxyz/dymint/settlement"
 )
 
 const (
@@ -63,6 +66,10 @@ func (m *Manager) AmIProposerOnSL() (bool, error) {
 	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw()
 	// get hub proposer key
 	SLProposer, err := m.SLClient.GetProposerAtHeight(-1)
+	// if no proposer set return nil
+	if errors.Is(err, settlement.ErrProposerIsSentinel) {
+		return false, nil
+	}
 	if err != nil {
 		return false, fmt.Errorf("get proposer at height: %w", err)
 	}
@@ -94,7 +101,11 @@ func (m *Manager) ShouldRotate() (bool, error) {
 	// At this point we know that there is a next proposer,
 	// so we should rotate only if we are the current proposer on the hub
 	amIProposerOnSL, err := m.AmIProposerOnSL()
-	if err != nil {
+
+	// if no proposer assigned, return false without error
+	if errors.Is(err, settlement.ErrProposerIsSentinel) {
+		return false, nil
+	} else if err != nil {
 		return false, fmt.Errorf("am i proposer on SL: %w", err)
 	}
 	return amIProposerOnSL, nil
@@ -184,4 +195,32 @@ func (m *Manager) UpdateProposerFromSL() error {
 	m.logger.Debug("Updating proposer to ", SLProposer.SettlementAddress)
 	m.State.SetProposer(SLProposer)
 	return nil
+}
+
+func (m *Manager) WaitForActiveProposer(ctx context.Context) error {
+	ticker := time.NewTicker(ProposerMonitorInterval) // TODO: make this configurable
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+
+			proposer, err := m.SLClient.GetProposerAtHeight(-1)
+
+			// no next proposer yet
+			if errors.Is(err, settlement.ErrProposerIsSentinel) {
+				continue
+			}
+
+			if err != nil {
+				return err
+			}
+
+			m.logger.Info("New proposer set.", "nextSeqAddr", proposer.SettlementAddress)
+			m.State.SetProposer(proposer)
+			return nil
+		}
+	}
 }
