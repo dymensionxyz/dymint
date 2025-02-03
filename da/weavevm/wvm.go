@@ -670,7 +670,8 @@ func isRpcTransactionNotFoundErr(err error) bool {
 }
 
 // isGatewayTransactionNotFoundErr checks if the transaction is absent in the Gateway.
-// Gateway indicates a missing transaction by setting WvmBlockHash to "0x".
+// TODO: Gateway indicates a missing transaction by setting WvmBlockHash to "0x".
+// it will be fixed in the future
 func isGatewayTransactionNotFoundErr(data *weaveVMtypes.WvmDymintBlob) bool {
 	return data.WvmBlockHash == "0x"
 }
