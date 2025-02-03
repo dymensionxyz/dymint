@@ -289,7 +289,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 					resultRetrieveBatch = c.retrieveBatches(daMetaData)
 					switch resultRetrieveBatch.Error {
 					case da.ErrRetrieval:
-						c.logger.Error("Retrieve batch failed with retrieval error. Retrying availability check.", "error", resultRetrieveBatch.Error)
+						c.logger.Error("Retrieve batch failed with retrieval error. Retrying retrieve attempt.", "error", resultRetrieveBatch.Error)
 						return resultRetrieveBatch.Error // Trigger retry
 					case da.ErrBlobNotFound, da.ErrBlobNotIncluded, da.ErrProofNotMatching:
 						return retry.Unrecoverable(resultRetrieveBatch.Error)
@@ -443,7 +443,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 					availabilityResult = result
 					switch result.Error {
 					case da.ErrRetrieval:
-						c.logger.Error("Retrieve batch failed with retrieval error. Retrying availability check.", "error", result.Error)
+						c.logger.Error("CheckBatchAvailability failed with retrieval error. Retrying availability check.", "error", result.Error)
 						return result.Error // Trigger retry
 					case da.ErrBlobNotFound, da.ErrBlobNotIncluded, da.ErrProofNotMatching:
 						return retry.Unrecoverable(result.Error)
