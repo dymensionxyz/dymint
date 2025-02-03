@@ -27,7 +27,6 @@ type DataAvailabilityLayerClient struct {
 
 	conn   *grpc.ClientConn
 	client dalc.DALCServiceClient
-	synced chan struct{}
 	logger types.Logger
 
 	// FIXME: ought to refactor so ctx is given to us by the object creator (same pattern should apply to celestia, avail clients)
@@ -56,7 +55,6 @@ var (
 // Init sets the configuration options.
 func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	d.logger = logger
-	d.synced = make(chan struct{}, 1)
 	d.ctx, d.cancel = context.WithCancel(context.Background())
 	if len(config) == 0 {
 		d.config = DefaultConfig
@@ -68,7 +66,6 @@ func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ st
 // Start creates connection to gRPC server and instantiates gRPC client.
 func (d *DataAvailabilityLayerClient) Start() error {
 	d.logger.Info("starting GRPC DALC", "host", d.config.Host, "port", d.config.Port)
-	d.synced <- struct{}{}
 
 	var err error
 	var opts []grpc.DialOption
@@ -87,11 +84,6 @@ func (d *DataAvailabilityLayerClient) Start() error {
 func (d *DataAvailabilityLayerClient) Stop() error {
 	d.cancel()
 	return d.conn.Close()
-}
-
-// WaitForSyncing is used to check when the DA light client finished syncing
-func (m *DataAvailabilityLayerClient) WaitForSyncing() {
-	<-m.synced
 }
 
 // GetClientType returns client type.
@@ -166,7 +158,7 @@ func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 }
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
-func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 	return maxBlobSize
 }
 
