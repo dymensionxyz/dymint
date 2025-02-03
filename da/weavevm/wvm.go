@@ -369,7 +369,7 @@ func (c *DataAvailabilityLayerClient) retrieveFromWeaveVM(ctx context.Context, t
 
 func (c *DataAvailabilityLayerClient) processRetrievedData(data *weaveVMtypes.WvmDymintBlob, daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	var batches []*types.Batch
-	if data.Blob == nil || len(data.Blob) == 0 {
+	if len(data.Blob) == 0 {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -520,7 +520,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 }
 
 func (c *DataAvailabilityLayerClient) processAvailabilityData(data *weaveVMtypes.WvmDymintBlob, daMetaData *da.DACheckMetaData) da.ResultCheckBatch {
-	if data.Blob == nil || len(data.Blob) == 0 {
+	if len(data.Blob) == 0 {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
