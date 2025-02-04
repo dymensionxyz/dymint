@@ -27,7 +27,7 @@ func TestPrefixKV(t *testing.T) {
 	val12 := []byte("val12")
 	val22 := []byte("val22")
 
-	// set different values in each preffix
+	// set different values in each prefix
 	err := p1.Set(key1, val11)
 	require.NoError(err)
 
