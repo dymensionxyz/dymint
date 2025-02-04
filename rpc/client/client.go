@@ -835,6 +835,7 @@ func (c *Client) ChainID() (*ResultChainId, error) {
 	}
 	return &ResultChainId{ChainID: fmt.Sprintf("0x%x", eip155ChainID)}, nil
 }
+
 func (c *Client) BlockValidated(height *int64) (*ResultBlockValidated, error) {
 	_, _, chainID := c.node.P2P.Info()
 	// invalid height
