@@ -26,7 +26,7 @@
 * **code standards:** use kv naming in store where appropriate ([#879](https://github.com/dymensionxyz/dymint/issues/879)) ([a10ad36](https://github.com/dymensionxyz/dymint/commit/a10ad365bda7b8483c2fa09cf3ae0cc02465331b))
 * **config:** pass through mempool config ([#820](https://github.com/dymensionxyz/dymint/issues/820)) ([ca012e9](https://github.com/dymensionxyz/dymint/commit/ca012e941ce267c7e7a03c9c698297d6dbdd6c02))
 * **da:** celestia height not updated when syncing ([#851](https://github.com/dymensionxyz/dymint/issues/851)) ([491f16d](https://github.com/dymensionxyz/dymint/commit/491f16d4bdf193d1f5e9c3a719eac7b9a46cde49))
-* **da:** fixed da path seperator and encoding issue ([#731](https://github.com/dymensionxyz/dymint/issues/731)) ([3a3b219](https://github.com/dymensionxyz/dymint/commit/3a3b21932750fee7eaaa9c186f78e36e3e597746))
+* **da:** fixed da path separator and encoding issue ([#731](https://github.com/dymensionxyz/dymint/issues/731)) ([3a3b219](https://github.com/dymensionxyz/dymint/commit/3a3b21932750fee7eaaa9c186f78e36e3e597746))
 * **da:** full-nodes can sync from p2p while DA light client is down or out of sync ([#857](https://github.com/dymensionxyz/dymint/issues/857)) ([2b5eb07](https://github.com/dymensionxyz/dymint/commit/2b5eb07147142b91e13c2c483238e356e6c5871c))
 * **da:** grpc da type fix ([#911](https://github.com/dymensionxyz/dymint/issues/911)) ([2b5d21b](https://github.com/dymensionxyz/dymint/commit/2b5d21b32ca48bb075f175fce9580e30d77cc212))
 * **da:** submission retry function removed ([#920](https://github.com/dymensionxyz/dymint/issues/920)) ([5a3478b](https://github.com/dymensionxyz/dymint/commit/5a3478bddfe5196eae53d0830035020398f440dc))
