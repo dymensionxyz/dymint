@@ -199,7 +199,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 	daMetaData := &SubmitMetaData{}
 	daMetaData, err := daMetaData.FromPath(daPath)
 	if err != nil {
-		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
+		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "read da path", Error: err}}
 	}
 	//nolint:typecheck
 	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
