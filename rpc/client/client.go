@@ -8,6 +8,8 @@ import (
 	"time"
 
 	sdkerrors "cosmossdk.io/errors"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	evmostypes "github.com/evmos/evmos/v12/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -21,8 +23,6 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	tm_version "github.com/tendermint/tendermint/version"
-
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
@@ -66,6 +66,10 @@ type Client struct {
 type ResultBlockValidated struct {
 	ChainID string
 	Result  BlockValidationStatus
+}
+
+type ResultChainId struct {
+	ChainID string
 }
 
 // NewClient returns Client working with given node.
@@ -824,6 +828,13 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
 }
 
+func (c *Client) ChainID() (*ResultChainId, error) {
+	eip155ChainID, err := evmostypes.ParseChainID(c.node.BlockManager.State.ChainID)
+	if err != nil {
+		return &ResultChainId{}, nil
+	}
+	return &ResultChainId{ChainID: fmt.Sprintf("0x%x", eip155ChainID)}, nil
+}
 func (c *Client) BlockValidated(height *int64) (*ResultBlockValidated, error) {
 	_, _, chainID := c.node.P2P.Info()
 	// invalid height
