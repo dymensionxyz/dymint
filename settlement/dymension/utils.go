@@ -40,12 +40,10 @@ func convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*
 	}
 
 	batchResult := &settlement.Batch{
-		Sequencer:   stateInfo.Sequencer,
-		StartHeight: stateInfo.StartHeight,
-		EndHeight:   stateInfo.StartHeight + stateInfo.NumBlocks - 1,
-		MetaData: &settlement.BatchMetaData{
-			DA: daMetaData,
-		},
+		Sequencer:        stateInfo.Sequencer,
+		StartHeight:      stateInfo.StartHeight,
+		EndHeight:        stateInfo.StartHeight + stateInfo.NumBlocks - 1,
+		MetaData:         daMetaData,
 		BlockDescriptors: stateInfo.BDs.BD,
 		NumBlocks:        stateInfo.NumBlocks,
 		NextSequencer:    stateInfo.NextProposer,
