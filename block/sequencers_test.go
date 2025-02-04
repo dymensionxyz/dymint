@@ -109,7 +109,7 @@ func TestHandleSequencerSetUpdate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Create a manger
+			// Create a manager
 			manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 			require.NoError(t, err)
 			require.NotNil(t, manager)
