@@ -31,10 +31,6 @@ type ResultBase struct {
 	StateIndex uint64
 }
 
-type BatchMetaData struct {
-	DA *da.DASubmitMetaData
-}
-
 type Batch struct {
 	// sequencer is the bech32-encoded address of the sequencer sent the update
 	Sequencer        string
@@ -44,7 +40,7 @@ type Batch struct {
 	NextSequencer    string
 
 	// MetaData about the batch in the DA layer
-	MetaData     *BatchMetaData
+	MetaData     *da.DASubmitMetaData
 	NumBlocks    uint64 // FIXME: can be removed. not used and will be deprecated
 	CreationTime time.Time
 }

@@ -7,7 +7,6 @@ import (
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	"google.golang.org/grpc"
 
-	"github.com/dymensionxyz/dymint/da"
 	grpcda "github.com/dymensionxyz/dymint/da/grpc"
 	"github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/store"
@@ -48,20 +47,25 @@ func (m *mockImpl) SubmitBatch(_ context.Context, request *dalc.SubmitBatchReque
 		return nil, err
 	}
 	resp := m.da.SubmitBatch(&b)
+	submitMetadata := &grpcda.SubmitMetaData{}
+	dapath, err := submitMetadata.FromPath(resp.SubmitMetaData.DAPath)
+	if err != nil {
+		return nil, err
+	}
 	return &dalc.SubmitBatchResponse{
 		Result: &dalc.DAResponse{
 			Code:            dalc.StatusCode(resp.Code),
 			Message:         resp.Message,
-			DataLayerHeight: resp.SubmitMetaData.Height,
+			DataLayerHeight: dapath.Height,
 		},
 	}, nil
 }
 
 func (m *mockImpl) CheckBatchAvailability(_ context.Context, request *dalc.CheckBatchAvailabilityRequest) (*dalc.CheckBatchAvailabilityResponse, error) {
-	daMetaData := &da.DASubmitMetaData{
+	daMetaData := &grpcda.SubmitMetaData{
 		Height: request.DataLayerHeight,
 	}
-	resp := m.da.CheckBatchAvailability(daMetaData)
+	resp := m.da.CheckBatchAvailability(daMetaData.ToPath())
 	return &dalc.CheckBatchAvailabilityResponse{
 		Result: &dalc.DAResponse{
 			Code:    dalc.StatusCode(resp.Code),
@@ -71,10 +75,10 @@ func (m *mockImpl) CheckBatchAvailability(_ context.Context, request *dalc.Check
 }
 
 func (m *mockImpl) RetrieveBatches(context context.Context, request *dalc.RetrieveBatchesRequest) (*dalc.RetrieveBatchesResponse, error) {
-	dataMetaData := &da.DASubmitMetaData{
+	daMetaData := &grpcda.SubmitMetaData{
 		Height: request.DataLayerHeight,
 	}
-	resp := m.da.RetrieveBatches(dataMetaData)
+	resp := m.da.RetrieveBatches(daMetaData.ToPath())
 	batches := make([]*dymint.Batch, len(resp.Batches))
 	for i := range resp.Batches {
 		batches[i] = resp.Batches[i].ToProto()

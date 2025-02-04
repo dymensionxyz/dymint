@@ -225,7 +225,7 @@ func NewMockDA(t *testing.T) (*MockDA, error) {
 	mockDA.Header = GetMockExtenderHeader()
 	mockDA.NID = config.NamespaceID.Bytes()
 
-	mockDA.IDS = []daclient.ID{[]byte("test")}
+	mockDA.IDS = []daclient.ID{[]byte("testingIds")}
 
 	nIDSize := 1
 	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)

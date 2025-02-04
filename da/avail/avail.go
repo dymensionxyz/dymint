@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -69,6 +70,31 @@ type DataAvailabilityLayerClient struct {
 	batchRetryDelay    time.Duration
 	batchRetryAttempts uint
 	synced             chan struct{}
+}
+
+// SubmitMetaData contains meta data about a batch on the Data Availability Layer.
+type SubmitMetaData struct {
+	// Height is the height of the block in the da layer
+	Height uint64
+}
+
+// ToPath converts a SubmitMetaData to a path.
+func (d *SubmitMetaData) ToPath() string {
+	return strconv.FormatUint(d.Height, 10)
+}
+
+// FromPath parses a path to a SubmitMetaData.
+func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
+	height, err := strconv.ParseUint(path, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	submitData := &SubmitMetaData{
+		Height: height,
+	}
+
+	return submitData, nil
 }
 
 var (
@@ -169,7 +195,12 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 }
 
 // RetrieveBatches retrieves batch from DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
+	daMetaData := &SubmitMetaData{}
+	daMetaData, err := daMetaData.FromPath(daPath)
+	if err != nil {
+		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "read da path", Error: err}}
+	}
 	//nolint:typecheck
 	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
 	if err != nil {
@@ -238,9 +269,6 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 		BaseResult: da.BaseResult{
 			Code: da.StatusSuccess,
 		},
-		CheckMetaData: &da.DACheckMetaData{
-			Height: daMetaData.Height,
-		},
 		Batches: batches,
 	}
 }
@@ -308,6 +336,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				continue
 			}
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
+			submitMetadata := &SubmitMetaData{Height: daBlockHeight}
 
 			c.logger.Debug("Successfully submitted batch.")
 			return da.ResultSubmitBatch{
@@ -316,8 +345,8 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					Message: "success",
 				},
 				SubmitMetaData: &da.DASubmitMetaData{
+					DAPath: submitMetadata.ToPath(),
 					Client: da.Avail,
-					Height: daBlockHeight,
 				},
 			}
 		}
@@ -425,7 +454,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 }
 
 // CheckBatchAvailability checks batch availability in DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusSuccess,

@@ -57,7 +57,7 @@ func TestDALC(t *testing.T) {
 	require.NoError(err)
 	jsonProofs, err := testutil.GetMockJsonNMTProofs(&proof)
 	require.NoError(err)
-	Ids := []daclient.ID{[]byte("test")}
+	Ids := []daclient.ID{[]byte("testingId")}
 
 	// RPC calls necessary for blob submission
 	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(Ids, nil).Once().Run(func(args mock.Arguments) {})
@@ -92,7 +92,7 @@ func TestDALC(t *testing.T) {
 	// call retrieveBlocks
 	retriever := dalc.(da.BatchRetriever)
 
-	retreiveRes := retriever.RetrieveBatches(h1)
+	retreiveRes := retriever.RetrieveBatches(h1.DAPath)
 	assert.Equal(da.StatusSuccess, retreiveRes.Code)
 	require.True(len(retreiveRes.Batches) == 1)
 	compareBatches(t, batch1, retreiveRes.Batches[0])
@@ -117,7 +117,7 @@ func TestRetrievalNotFound(t *testing.T) {
 	jsonProofs, err := testutil.GetMockJsonNMTProofs(&proof)
 	require.NoError(err)
 
-	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]daclient.ID{[]byte("test")}, nil).Once().Run(func(args mock.Arguments) {})
+	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]daclient.ID{[]byte("testingId")}, nil).Once().Run(func(args mock.Arguments) {})
 	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(testutil.GetMockExtenderHeader(), nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 	mockRPCClient.On("GetProofs", mock.Anything, mock.Anything, mock.Anything).Return(jsonProofs, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 	mockRPCClient.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]bool{true}, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
@@ -133,7 +133,7 @@ func TestRetrievalNotFound(t *testing.T) {
 
 	retriever := dalc.(da.BatchRetriever)
 
-	retreiveRes := retriever.RetrieveBatches(h1)
+	retreiveRes := retriever.RetrieveBatches(h1.DAPath)
 
 	assert.ErrorIs(retreiveRes.Error, da.ErrBlobNotFound)
 	require.True(len(retreiveRes.Batches) == 0)
@@ -158,7 +158,7 @@ func TestAvalabilityOK(t *testing.T) {
 	jsonProofs, err := testutil.GetMockJsonNMTProofs(&proof)
 	require.NoError(t, err)
 
-	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]daclient.ID{[]byte("test")}, nil).Once().Run(func(args mock.Arguments) {})
+	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]daclient.ID{[]byte("testingId")}, nil).Once().Run(func(args mock.Arguments) {})
 	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(testutil.GetMockExtenderHeader(), nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 	mockRPCClient.On("GetProofs", mock.Anything, mock.Anything, mock.Anything).Return(jsonProofs, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 	mockRPCClient.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]bool{true}, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
@@ -176,7 +176,7 @@ func TestAvalabilityOK(t *testing.T) {
 
 	retriever := dalc.(da.BatchRetriever)
 	t.Log("Checking availability batch1")
-	availRes := retriever.CheckBatchAvailability(h1)
+	availRes := retriever.CheckBatchAvailability(h1.DAPath)
 	assert.Equal(da.StatusSuccess, availRes.Code)
 }
 
@@ -199,7 +199,7 @@ func TestAvalabilityWrongProof(t *testing.T) {
 	jsonProofs, err := testutil.GetMockJsonNMTProofs(&proof)
 	require.NoError(t, err)
 
-	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]daclient.ID{[]byte("test")}, nil).Once().Run(func(args mock.Arguments) {})
+	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]daclient.ID{[]byte("testingId")}, nil).Once().Run(func(args mock.Arguments) {})
 	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(testutil.GetMockExtenderHeader(), nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 	mockRPCClient.On("GetProofs", mock.Anything, mock.Anything, mock.Anything).Return(jsonProofs, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 	mockRPCClient.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]bool{true}, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
@@ -216,7 +216,7 @@ func TestAvalabilityWrongProof(t *testing.T) {
 
 	retriever := dalc.(da.BatchRetriever)
 	t.Log("Checking availability batch1")
-	availRes := retriever.CheckBatchAvailability(h1)
+	availRes := retriever.CheckBatchAvailability(h1.DAPath)
 	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProofs)
 }
 
@@ -233,19 +233,22 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 
 	retriever := dalc.(da.BatchRetriever)
 
-	h1 := &da.DASubmitMetaData{
+	h1 := &celestia.SubmitMetaData{
 		Height:     1,
 		Commitment: commitment,
 		Namespace:  namespace,
+		Index:      0,
+		Length:     0,
+		Root:       []byte("root"),
 	}
-	retrieveRes := retriever.RetrieveBatches(h1)
+	retrieveRes := retriever.RetrieveBatches(h1.ToPath())
 	assert.ErrorIs(retrieveRes.Error, da.ErrBlobNotFound)
 	require.True(len(retrieveRes.Batches) == 0)
 
 	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(testutil.GetMockExtenderHeader(), nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 	mockRPCClient.On("GetProofs", mock.Anything, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("Proofs not found")).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 
-	availRes := retriever.CheckBatchAvailability(h1)
+	availRes := retriever.CheckBatchAvailability(h1.ToPath())
 	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProofs)
 }
 
