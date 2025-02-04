@@ -4,6 +4,7 @@ import (
 	"crypto/sha1" //#nosec
 	"encoding/binary"
 	"math/rand"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -104,26 +105,34 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 	m.daHeight.Store(daHeight + 1) // guaranteed no ABA problem as submit batch is only called when the object is locked
 
+	submitMetadata := &SubmitMetaData{Height: daHeight}
+
 	return da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusSuccess,
 			Message: "OK",
 		},
+
 		SubmitMetaData: &da.DASubmitMetaData{
-			Height: daHeight,
+			DAPath: submitMetadata.ToPath(),
 			Client: da.Mock,
 		},
 	}
 }
 
 // CheckBatchAvailability queries DA layer to check data availability of block corresponding to given header.
-func (m *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-	batchesRes := m.RetrieveBatches(daMetaData)
-	return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: batchesRes.Code, Message: batchesRes.Message, Error: batchesRes.Error}, CheckMetaData: batchesRes.CheckMetaData}
+func (m *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
+	batchesRes := m.RetrieveBatches(daPath)
+	return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: batchesRes.Code, Message: batchesRes.Message, Error: batchesRes.Error}}
 }
 
 // RetrieveBatches returns block at given height from data availability layer.
-func (m *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (m *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
+	daMetaData := &SubmitMetaData{}
+	daMetaData, err := daMetaData.FromPath(daPath)
+	if err != nil {
+		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
+	}
 	if daMetaData.Height >= m.daHeight.Load() {
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "batch not found", Error: da.ErrBlobNotFound}}
 	}
@@ -149,8 +158,7 @@ func (m *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 
 		iter.Next()
 	}
-	DACheckMetaData := &da.DACheckMetaData{Height: daMetaData.Height}
-	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusSuccess}, CheckMetaData: DACheckMetaData, Batches: batches}
+	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusSuccess}, Batches: batches}
 }
 
 func uint64ToBinary(daHeight uint64) []byte {
@@ -181,4 +189,29 @@ func (m *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 		Amount: math.ZeroInt(),
 		Denom:  "adym",
 	}, nil
+}
+
+// SubmitMetaData contains meta data about a batch on the Data Availability Layer.
+type SubmitMetaData struct {
+	// Height is the height of the block in the da layer
+	Height uint64
+}
+
+// ToPath converts a SubmitMetaData to a path.
+func (d *SubmitMetaData) ToPath() string {
+	return strconv.FormatUint(d.Height, 10)
+}
+
+// FromPath parses a path to a SubmitMetaData.
+func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
+	height, err := strconv.ParseUint(path, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	submitData := &SubmitMetaData{
+		Height: height,
+	}
+
+	return submitData, nil
 }
