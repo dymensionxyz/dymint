@@ -99,17 +99,20 @@ func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	// wait a bit more than mockDaBlockTime, so dymint blocks can be "included" in mock block
 	time.Sleep(mockDaBlockTime + 20*time.Millisecond)
 
-	check := dalc.CheckBatchAvailability(h1)
+	check := dalc.CheckBatchAvailability(h1.DAPath)
 	// print the check result
 	t.Logf("CheckBatchAvailability result: %+v", check)
 	assert.Equal(da.StatusSuccess, check.Code)
 
-	check = dalc.CheckBatchAvailability(h2)
+	check = dalc.CheckBatchAvailability(h2.DAPath)
 	assert.Equal(da.StatusSuccess, check.Code)
 
-	h1.Height = h1.Height - 1
+	path := &local.SubmitMetaData{}
+	daMetaData, err := path.FromPath(h1.DAPath)
+	require.NoError(err)
+	daMetaData.Height = daMetaData.Height - 1
 	// this height should not be used by DALC
-	check = dalc.CheckBatchAvailability(h1)
+	check = dalc.CheckBatchAvailability(h1.DAPath)
 	assert.Equal(da.StatusSuccess, check.Code)
 }
 
@@ -174,29 +177,33 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 		assert.Equal(da.StatusSuccess, resp.Code, resp.Message)
 		time.Sleep(time.Duration(rand.Int63() % mockDaBlockTime.Milliseconds()))
 
-		countAtHeight[resp.SubmitMetaData.Height]++
-		batches[batch] = resp.SubmitMetaData.Height
+		path := &local.SubmitMetaData{}
+		daMetaData, err := path.FromPath(resp.SubmitMetaData.DAPath)
+		require.NoError(err)
+
+		countAtHeight[daMetaData.Height]++
+		batches[batch] = daMetaData.Height
 	}
 
 	// wait a bit more than mockDaBlockTime, so mock can "produce" last blocks
 	time.Sleep(mockDaBlockTime + 20*time.Millisecond)
 
 	for h, cnt := range countAtHeight {
-		daMetaData := &da.DASubmitMetaData{
+		daMetaData := &local.SubmitMetaData{
 			Height: h,
 		}
 		t.Log("Retrieving block, DA Height", h)
-		ret := retriever.RetrieveBatches(daMetaData)
+		ret := retriever.RetrieveBatches(daMetaData.ToPath())
 		assert.Equal(da.StatusSuccess, ret.Code, ret.Message)
 		require.NotEmpty(ret.Batches, h)
 		assert.Len(ret.Batches, cnt, h)
 	}
 
 	for b, h := range batches {
-		daMetaData := &da.DASubmitMetaData{
+		daMetaData := &local.SubmitMetaData{
 			Height: h,
 		}
-		ret := retriever.RetrieveBatches(daMetaData)
+		ret := retriever.RetrieveBatches(daMetaData.ToPath())
 		assert.Equal(da.StatusSuccess, ret.Code, h)
 		require.NotEmpty(ret.Batches, h)
 		assert.Contains(ret.Batches, b, h)
@@ -247,8 +254,7 @@ func FuzzDASubmitMetaData(f *testing.F) {
 		if client == "" || strings.Contains(client, da.PathSeparator) || len(commitment) == 0 || len(namespace) == 0 || len(root) == 0 {
 			t.Skip()
 		}
-		data := da.DASubmitMetaData{
-			Client:     da.Client(client),
+		submitMetadata := celestia.SubmitMetaData{
 			Height:     height,
 			Index:      index,
 			Length:     length,
@@ -256,16 +262,26 @@ func FuzzDASubmitMetaData(f *testing.F) {
 			Namespace:  namespace,
 			Root:       root,
 		}
+		daMetaData := da.DASubmitMetaData{
+			Client: da.Client(client),
+			DAPath: submitMetadata.ToPath(),
+		}
 
-		path := data.ToPath()
-		got, err := data.FromPath(path)
+		path := daMetaData.ToPath()
+
+		got, err := daMetaData.FromPath(path)
 		require.NoError(t, err)
-		require.Equal(t, data.Client, got.Client)
-		require.Equal(t, data.Height, got.Height)
-		require.Equal(t, data.Index, got.Index)
-		require.Equal(t, data.Length, got.Length)
-		require.True(t, bytes.Equal(data.Commitment, got.Commitment))
-		require.True(t, bytes.Equal(data.Namespace, got.Namespace))
-		require.True(t, bytes.Equal(data.Root, got.Root))
+
+		require.Equal(t, daMetaData.Client, got.Client)
+
+		gotPath, err := submitMetadata.FromPath(daMetaData.DAPath)
+		require.NoError(t, err)
+
+		require.Equal(t, submitMetadata.Height, gotPath.Height)
+		require.Equal(t, submitMetadata.Index, gotPath.Index)
+		require.Equal(t, submitMetadata.Length, gotPath.Length)
+		require.True(t, bytes.Equal(submitMetadata.Commitment, gotPath.Commitment))
+		require.True(t, bytes.Equal(submitMetadata.Namespace, gotPath.Namespace))
+		require.True(t, bytes.Equal(submitMetadata.Root, gotPath.Root))
 	})
 }

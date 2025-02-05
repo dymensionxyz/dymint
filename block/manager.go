@@ -225,6 +225,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	if m.State.GetProposer() == nil {
 		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
 		err := m.UpdateProposerFromSL()
+		if errors.Is(err, settlement.ErrProposerIsSentinel) {
+			m.logger.Info("No active proposer. Chain is halted. Waiting for a new proposer.", "height", m.State.Height())
+			err = m.WaitForActiveProposer(ctx)
+		}
 		if err != nil {
 			return err
 		}
@@ -253,10 +257,15 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 
-	// send signal to syncing loop with last settlement state update
-	m.triggerSettlementSyncing()
-	// send signal to validation loop with last settlement state update
-	m.triggerSettlementValidation()
+	// we only trigger validation if no syncing is required (otherwise it may cause race condition).
+	// syncing loop will trigger validation after each batch synced.
+	if m.LastSettlementHeight.Load() > m.State.Height() {
+		// send signal to syncing loop with last settlement state update
+		m.triggerSettlementSyncing()
+	} else {
+		// send signal to validation loop with last settlement state update
+		m.triggerSettlementValidation()
+	}
 
 	// This error group is used to control the lifetime of the block manager.
 	// when one of the loops exits with error, the block manager exits
@@ -307,10 +316,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		} else if errors.Is(err, gerrc.ErrFault) {
 			// Here we handle the fault by calling the fraud handler.
 			// it publishes a DataHealthStatus event to the pubsub and stops the block manager.
-			m.logger.Error("block manager exited with fault", "error", err)
+			m.logger.Error("block manager exited with fault")
 			m.FraudHandler.HandleFault(err)
 		} else if err != nil {
-			m.logger.Error("block manager exited with error", "error", err)
+			m.logger.Error("block manager exited with error")
 			m.StopManager(err)
 		}
 	}()
@@ -401,8 +410,7 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.State.RollappParams.Da, m.DAClient.GetClientType())
 	}
 
-	// TODO: proposer only?
-	if m.Conf.BatchSubmitBytes > uint64(m.DAClient.GetMaxBlobSizeBytes()) {
+	if m.Conf.BatchSubmitBytes > m.DAClient.GetMaxBlobSizeBytes() {
 		return fmt.Errorf("batch size above limit: batch size: %d limit: %d: DA %s", m.Conf.BatchSubmitBytes, m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
 	}
 
@@ -416,7 +424,6 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 
 // StopManager sets the node as unhealthy and stops the block manager context
 func (m *Manager) StopManager(err error) {
-	m.logger.Info("Freezing node", "err", err)
 	m.setUnhealthy(err)
 	m.Cancel()
 }

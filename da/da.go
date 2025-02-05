@@ -1,14 +1,10 @@
 package da
 
 import (
-	"encoding/hex"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"cosmossdk.io/math"
-	"github.com/celestiaorg/celestia-openrpc/types/blob"
-	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
 	"github.com/dymensionxyz/dymint/store"
@@ -60,30 +56,6 @@ type BaseResult struct {
 	Error error
 }
 
-// DAMetaData contains meta data about a batch on the Data Availability Layer.
-type DASubmitMetaData struct {
-	// Height is the height of the block in the da layer
-	Height uint64
-	// Namespace ID
-	Namespace []byte
-	// Client is the client to use to fetch data from the da layer
-	Client Client
-	// Share commitment, for each blob, used to obtain blobs and proofs
-	Commitment Commitment
-	// Initial position for each blob in the NMT
-	Index int
-	// Number of shares of each blob
-	Length int
-	// any NMT root for the specific height, necessary for non-inclusion proof
-	Root []byte
-	// WeaveVM arweave block hash means data stored permanently in Arweave block
-	WvmArweaveBlockHash string
-	// WeaveVM tx hash
-	WvmTxHash string
-	// WeaveVM block hash
-	WvmBlockHash string
-}
-
 type Balance struct {
 	Amount math.Int
 	Denom  string
@@ -91,29 +63,15 @@ type Balance struct {
 
 const PathSeparator = "|"
 
+type DASubmitMetaData struct {
+	Client Client
+	DAPath string
+}
+
 // ToPath converts a DAMetaData to a path.
 func (d *DASubmitMetaData) ToPath() string {
-	// convert uint64 to string
-	if d.Commitment != nil {
-		commitment := hex.EncodeToString(d.Commitment)
-		dataroot := hex.EncodeToString(d.Root)
-		path := []string{
-			string((d.Client)),
-			strconv.FormatUint(d.Height, 10),
-			strconv.Itoa(d.Index),
-			strconv.Itoa(d.Length),
-			commitment,
-			hex.EncodeToString(d.Namespace),
-			dataroot,
-		}
-		for i, part := range path {
-			path[i] = strings.Trim(part, PathSeparator)
-		}
-		return strings.Join(path, PathSeparator)
-	} else {
-		path := []string{string(d.Client), PathSeparator, strconv.FormatUint(d.Height, 10)}
-		return strings.Join(path, PathSeparator)
-	}
+	path := []string{string(d.Client), PathSeparator, d.DAPath}
+	return strings.Join(path, PathSeparator)
 }
 
 // FromPath parses a path to a DAMetaData.
@@ -123,72 +81,11 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 		return nil, fmt.Errorf("invalid DA path")
 	}
 
-	height, err := strconv.ParseUint(pathParts[1], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
 	submitData := &DASubmitMetaData{
-		Height: height,
 		Client: Client(pathParts[0]),
+		DAPath: strings.Trim(path, pathParts[0]+PathSeparator),
 	}
-	// TODO: check per DA and panic if not enough parts
-	if len(pathParts) == 7 {
-		submitData.Index, err = strconv.Atoi(pathParts[2])
-		if err != nil {
-			return nil, err
-		}
-		submitData.Length, err = strconv.Atoi(pathParts[3])
-		if err != nil {
-			return nil, err
-		}
-		submitData.Commitment, err = hex.DecodeString(pathParts[4])
-		if err != nil {
-			return nil, err
-		}
-		submitData.Namespace, err = hex.DecodeString(pathParts[5])
-		if err != nil {
-			return nil, err
-		}
-		submitData.Root, err = hex.DecodeString(pathParts[6])
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return submitData, nil
-}
-
-// DAMetaData contains meta data about a batch on the Data Availability Layer.
-type DACheckMetaData struct {
-	// Height is the height of the block in the da layer
-	Height uint64
-	// Client is the client to use to fetch data from the da layer
-	Client Client
-	// Submission index in the Hub
-	SLIndex uint64
-	// Namespace ID
-	Namespace []byte
-	// Share commitment, for each blob, used to obtain blobs and proofs
-	Commitment Commitment
-	// Initial position for each blob in the NMT
-	Index int
-	// Number of shares of each blob
-	Length int
-	// Proofs necessary to validate blob inclusion in the specific height
-	Proofs []*blob.Proof
-	// NMT roots for each NMT Proof
-	NMTRoots []byte
-	// Proofs necessary to validate blob inclusion in the specific height
-	RowProofs []*merkle.Proof
-	// any NMT root for the specific height, necessary for non-inclusion proof
-	Root []byte
-	// WeaveVM arweave block hash means data stored permanently in Arweave block
-	WvmArweaveBlockHash string
-	// WeaveVM tx hash
-	WvmTxHash string
-	// WeaveVM block hash
-	WvmBlockHash string
 }
 
 // ResultSubmitBatch contains information returned from DA layer after block submission.
@@ -201,18 +98,14 @@ type ResultSubmitBatch struct {
 // ResultCheckBatch contains information about block availability, returned from DA layer client.
 type ResultCheckBatch struct {
 	BaseResult
-	// DAHeight informs about a height on Data Availability Layer for given result.
-	CheckMetaData *DACheckMetaData
 }
 
 // ResultRetrieveBatch contains batch of blocks returned from DA layer client.
 type ResultRetrieveBatch struct {
 	BaseResult
-	// Block is the full block retrieved from Data Availability Layer.
+	// Batches are the blob(s) with blocks retrieved from Data Availability Layer.
 	// If Code is not equal to StatusSuccess, it has to be nil.
 	Batches []*types.Batch
-	// DAHeight informs about a height on Data Availability Layer for given result.
-	CheckMetaData *DACheckMetaData
 }
 
 // DataAvailabilityLayerClient defines generic interface for DA layer block submission.
@@ -233,13 +126,10 @@ type DataAvailabilityLayerClient interface {
 	GetClientType() Client
 
 	// CheckBatchAvailability checks the availability of the blob submitted getting proofs and validating them
-	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
-
-	// Used to check when the DA light client finished syncing
-	WaitForSyncing()
+	CheckBatchAvailability(daPath string) ResultCheckBatch
 
 	// Returns the maximum allowed blob size in the DA, used to check the max batch size configured
-	GetMaxBlobSizeBytes() uint32
+	GetMaxBlobSizeBytes() uint64
 
 	// GetSignerBalance returns the balance for a specific address
 	GetSignerBalance() (Balance, error)
@@ -261,7 +151,7 @@ type BatchSubmitter interface {
 // block data from DA layer. This gives the ability to use it for block synchronization.
 type BatchRetriever interface {
 	// RetrieveBatches returns blocks at given data layer height from data availability layer.
-	RetrieveBatches(daMetaData *DASubmitMetaData) ResultRetrieveBatch
+	RetrieveBatches(daPath string) ResultRetrieveBatch
 	// CheckBatchAvailability checks the availability of the blob received getting proofs and validating them
-	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
+	CheckBatchAvailability(daPath string) ResultCheckBatch
 }

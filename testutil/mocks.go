@@ -9,10 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/celestiaorg/celestia-openrpc/types/blob"
-	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/nmt"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
@@ -20,9 +19,10 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"
+	daclient "github.com/dymensionxyz/dymint/da/celestia/client"
 	localda "github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/da/registry"
-	damocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/celestia/types"
+	damocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/celestia/client"
 	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
@@ -186,11 +186,12 @@ func (s *SubscribeMock) Unsubscribe() {
 }
 
 type MockDA struct {
-	DaClient  da.DataAvailabilityLayerClient
-	MockRPC   *damocks.MockCelestiaRPCClient
-	NID       []byte
-	Header    *header.ExtendedHeader
-	BlobProof blob.Proof
+	DaClient   da.DataAvailabilityLayerClient
+	MockRPC    *damocks.MockDAClient
+	NID        []byte
+	Header     *daclient.ExtendedHeader
+	BlobProofs []daclient.Proof
+	IDS        []daclient.ID
 }
 
 func NewMockDA(t *testing.T) (*MockDA, error) {
@@ -214,34 +215,53 @@ func NewMockDA(t *testing.T) (*MockDA, error) {
 		return nil, err
 	}
 
-	mockDA.MockRPC = damocks.NewMockCelestiaRPCClient(t)
+	mockDA.MockRPC = damocks.NewMockDAClient(t)
 	options := []da.Option{
 		celestia.WithRPCClient(mockDA.MockRPC),
 		celestia.WithRPCAttempts(1),
 		celestia.WithRPCRetryDelay(time.Second * 2),
 	}
-	roots := [][]byte{[]byte("apple"), []byte("watermelon"), []byte("kiwi")}
-	dah := &header.DataAvailabilityHeader{
-		RowRoots:    roots,
-		ColumnRoots: roots,
-	}
-	mockDA.Header = &header.ExtendedHeader{
-		DAH: dah,
-	}
 
+	mockDA.Header = GetMockExtenderHeader()
 	mockDA.NID = config.NamespaceID.Bytes()
+
+	mockDA.IDS = []daclient.ID{[]byte("testingIds")}
 
 	nIDSize := 1
 	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
 	// build a proof for an NID that is within the namespace range of the tree
-	proof, _ := tree.ProveNamespace(mockDA.NID)
-	mockDA.BlobProof = blob.Proof([]*nmt.Proof{&proof})
-
+	proof, err := tree.ProveNamespace(mockDA.NID)
+	require.NoError(t, err)
+	jsonProofs, err := GetMockJsonNMTProofs(&proof)
+	require.NoError(t, err)
+	mockDA.BlobProofs = jsonProofs
+	mockDA.Header = GetMockExtenderHeader()
 	err = mockDA.DaClient.Init(conf, nil, store.NewDefaultInMemoryKVStore(), log.TestingLogger(), options...)
 	if err != nil {
 		return nil, err
 	}
 	return mockDA, nil
+}
+
+func GetMockJsonNMTProofs(proof *nmt.Proof) ([]daclient.Proof, error) {
+	var proofs []*nmt.Proof
+	proofs = append(proofs, proof)
+	jsonProofs, err := json.Marshal(proofs)
+	if err != nil {
+		return nil, err
+	}
+	return []daclient.Proof{jsonProofs}, nil
+}
+
+func GetMockExtenderHeader() *daclient.ExtendedHeader {
+	roots := [][]byte{[]byte("apple"), []byte("watermelon"), []byte("kiwi")}
+	dah := &daclient.DataAvailabilityHeader{
+		RowRoots:    roots,
+		ColumnRoots: roots,
+	}
+	return &daclient.ExtendedHeader{
+		DAH: dah,
+	}
 }
 
 // exampleNMT creates a new NamespacedMerkleTree with the given namespace ID size and leaf namespace IDs. Each byte in the leavesNIDs parameter corresponds to one leaf's namespace ID. If nidSize is greater than 1, the function repeats each NID in leavesNIDs nidSize times before prepending it to the leaf data.

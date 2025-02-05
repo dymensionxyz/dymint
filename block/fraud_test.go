@@ -318,9 +318,7 @@ func TestApplyBatchFromSLWithFraud(t *testing.T) {
 		})
 	}
 	slBatch := &settlement.Batch{
-		MetaData: &settlement.BatchMetaData{
-			DA: daResultSubmitBatch.SubmitMetaData,
-		},
+		MetaData:         daResultSubmitBatch.SubmitMetaData,
 		BlockDescriptors: bds,
 	}
 

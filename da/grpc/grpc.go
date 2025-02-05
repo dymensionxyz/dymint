@@ -27,7 +27,6 @@ type DataAvailabilityLayerClient struct {
 
 	conn   *grpc.ClientConn
 	client dalc.DALCServiceClient
-	synced chan struct{}
 	logger types.Logger
 
 	// FIXME: ought to refactor so ctx is given to us by the object creator (same pattern should apply to celestia, avail clients)
@@ -56,7 +55,6 @@ var (
 // Init sets the configuration options.
 func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	d.logger = logger
-	d.synced = make(chan struct{}, 1)
 	d.ctx, d.cancel = context.WithCancel(context.Background())
 	if len(config) == 0 {
 		d.config = DefaultConfig
@@ -68,7 +66,6 @@ func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ st
 // Start creates connection to gRPC server and instantiates gRPC client.
 func (d *DataAvailabilityLayerClient) Start() error {
 	d.logger.Info("starting GRPC DALC", "host", d.config.Host, "port", d.config.Port)
-	d.synced <- struct{}{}
 
 	var err error
 	var opts []grpc.DialOption
@@ -87,11 +84,6 @@ func (d *DataAvailabilityLayerClient) Start() error {
 func (d *DataAvailabilityLayerClient) Stop() error {
 	d.cancel()
 	return d.conn.Close()
-}
-
-// WaitForSyncing is used to check when the DA light client finished syncing
-func (m *DataAvailabilityLayerClient) WaitForSyncing() {
-	<-m.synced
 }
 
 // GetClientType returns client type.
@@ -125,6 +117,9 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				backoff.Sleep()
 				continue
 			}
+
+			submitMetadata := &SubmitMetaData{Height: resp.Result.DataLayerHeight}
+
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusCode(resp.Result.Code),
@@ -132,7 +127,7 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				},
 				SubmitMetaData: &da.DASubmitMetaData{
 					Client: da.Grpc,
-					Height: resp.Result.DataLayerHeight,
+					DAPath: submitMetadata.ToPath(),
 				},
 			}
 		}
@@ -140,9 +135,14 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 }
 
 // CheckBatchAvailability proxies CheckBatchAvailability request to gRPC server.
-func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
 	backoff := d.getBackoff()
 
+	submitMetadata := &SubmitMetaData{}
+	daMetaData, err := submitMetadata.FromPath(daPath)
+	if err != nil {
+		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
+	}
 	for {
 		select {
 		case <-d.ctx.Done():
@@ -166,14 +166,19 @@ func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 }
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
-func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 	return maxBlobSize
 }
 
 // RetrieveBatches proxies RetrieveBlocks request to gRPC server.
-func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (d *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
 	backoff := d.getBackoff()
 
+	daMetaData := &SubmitMetaData{}
+	daMetaData, err := daMetaData.FromPath(daPath)
+	if err != nil {
+		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
+	}
 	for {
 		select {
 		case <-d.ctx.Done():
@@ -204,9 +209,6 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 					Code:    da.StatusCode(resp.Result.Code),
 					Message: resp.Result.Message,
 				},
-				CheckMetaData: &da.DACheckMetaData{
-					Height: daMetaData.Height,
-				},
 				Batches: batches,
 			}
 		}
@@ -227,4 +229,29 @@ func (d *DataAvailabilityLayerClient) getBackoff() uretry.Backoff {
 func errorIsRetryable(err error) bool {
 	// kept it simple for now
 	return true
+}
+
+// SubmitMetaData contains meta data about a batch on the Data Availability Layer.
+type SubmitMetaData struct {
+	// Height is the height of the block in the da layer
+	Height uint64
+}
+
+// ToPath converts a SubmitMetaData to a path.
+func (d *SubmitMetaData) ToPath() string {
+	return strconv.FormatUint(d.Height, 10)
+}
+
+// FromPath parses a path to a SubmitMetaData.
+func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
+	height, err := strconv.ParseUint(path, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	submitData := &SubmitMetaData{
+		Height: height,
+	}
+
+	return submitData, nil
 }

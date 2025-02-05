@@ -40,15 +40,11 @@ func (l Layer) GetClientType() da.Client {
 	panic("implement me")
 }
 
-func (l Layer) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (l Layer) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
 	panic("implement me")
 }
 
-func (l Layer) WaitForSyncing() {
-	panic("implement me")
-}
-
-func (l Layer) GetMaxBlobSizeBytes() uint32 {
+func (l Layer) GetMaxBlobSizeBytes() uint64 {
 	panic("implement me")
 }
 

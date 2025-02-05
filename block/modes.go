@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/p2p"
@@ -43,16 +44,14 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	// Subscribe to P2P received blocks events (used for P2P syncing).
 	go uevent.MustSubscribe(ctx, m.Pubsub, p2pBlocksyncLoop, p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
 
-	// Sequencer must wait till the DA light client is synced. Otherwise it will fail when submitting blocks.
-	// Full-nodes does not need to wait, but if it tries to fetch blocks from DA heights previous to the DA light client height it will fail, and it will retry till it reaches the height.
-	m.DAClient.WaitForSyncing()
-
 	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
 	m.waitForSettlementSyncing()
 
 	// it is checked again whether the node is the active proposer, since this could have changed after syncing.
 	amIProposerOnSL, err := m.AmIProposerOnSL()
-	if err != nil {
+	if errors.Is(err, settlement.ErrProposerIsSentinel) {
+		amIProposerOnSL = false
+	} else if err != nil {
 		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
 	if !amIProposerOnSL {
