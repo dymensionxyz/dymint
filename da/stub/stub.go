@@ -12,7 +12,7 @@ var _ da.DataAvailabilityLayerClient = &Layer{}
 type Layer struct{}
 
 // RetrieveBatches implements da.DataAvailabilityLayerClient.
-func (l *Layer) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (l *Layer) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
 	panic("unimplemented")
 }
 
