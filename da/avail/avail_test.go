@@ -24,7 +24,7 @@ import (
 	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/avail"
 )
 
-// TestSubmitBatch validates the SubmitBatch method
+// TestAvail validates the SubmitBatch and RetrieveBatches method
 func TestAvail(t *testing.T) {
 	mockClient, client := setDAandMock(t)
 
