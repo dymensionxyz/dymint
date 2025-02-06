@@ -33,7 +33,7 @@ const (
 type Config struct {
 	Seed        string `json:"seed"`
 	RpcEndpoint string `json:"endpoint"`
-	AppID       int64  `json:"app_id"`
+	AppID       uint32 `json:"app_id"`
 }
 
 type DataAvailabilityLayerClient struct {
@@ -53,7 +53,7 @@ type DataAvailabilityLayerClient struct {
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
 type SubmitMetaData struct {
 	// Avail App Id
-	AppId int64
+	AppId uint32
 	// Hash that identifies the blob
 	AccountAddress string
 	// Height is the height of the block in the da layer
@@ -62,9 +62,8 @@ type SubmitMetaData struct {
 
 // ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
-
 	path := []string{
-		strconv.FormatInt(d.AppId, 10),
+		strconv.FormatUint(uint64(d.AppId), 10),
 		d.AccountAddress,
 		d.BlockHash,
 	}
@@ -76,18 +75,17 @@ func (d *SubmitMetaData) ToPath() string {
 
 // FromPath parses a path to a SubmitMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
-
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(da.PathSeparator[0]) })
 	if len(pathParts) != 3 {
 		return nil, fmt.Errorf("invalid DA path")
 	}
-	appId, err := strconv.ParseInt(pathParts[0], 10, 64)
+	appId, err := strconv.ParseUint(pathParts[0], 10, 32)
 	if err != nil {
 		return nil, err
 	}
 
 	submitData := &SubmitMetaData{
-		AppId: appId,
+		AppId: uint32(appId),
 	}
 
 	submitData.AccountAddress = pathParts[1]

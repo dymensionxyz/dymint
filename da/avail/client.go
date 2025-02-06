@@ -23,12 +23,11 @@ type Client struct {
 	sdk sdk.SDK
 	AvailClient
 	account subkey.KeyPair
-	appId   int64
+	appId   uint32
 }
 
 // NewClient returns a DA avail client
-func NewClient(endpoint string, seed string, appId int64) (AvailClient, error) {
-
+func NewClient(endpoint string, seed string, appId uint32) (AvailClient, error) {
 	sdk, err := sdk.NewSDK(endpoint)
 	if err != nil {
 		return nil, err
@@ -48,7 +47,7 @@ func NewClient(endpoint string, seed string, appId int64) (AvailClient, error) {
 
 func (c Client) SubmitData(data []byte) (string, error) {
 	tx := c.sdk.Tx.DataAvailability.SubmitData(data)
-	res, err := tx.ExecuteAndWatchInclusion(c.account, availgo.NewTransactionOptions().WithAppId(uint32(c.appId)))
+	res, err := tx.ExecuteAndWatchInclusion(c.account, availgo.NewTransactionOptions().WithAppId(c.appId))
 	if err != nil {
 		return "", err
 	}
@@ -62,12 +61,12 @@ func (c Client) GetFinalizedHead() (prim.H256, error) {
 func (c Client) GetBlock(blockHash string) (sdk.Block, error) {
 	hash, err := prim.NewH256FromHexString(blockHash)
 	if err != nil {
-		errors.Join(da.ErrProofNotMatching, err)
+		return sdk.Block{}, errors.Join(da.ErrProofNotMatching, err)
 	}
 
 	block, err := sdk.NewBlock(c.sdk.Client, hash)
 	if err != nil {
-		errors.Join(da.ErrRetrieval, err)
+		return sdk.Block{}, errors.Join(da.ErrRetrieval, err)
 	}
 	return block, nil
 }
@@ -77,14 +76,13 @@ func (c Client) GetAccountAddress() string {
 }
 
 func (c Client) GetBlobsBySigner(blockHash string, accountAddress string) ([]availgo.DataSubmission, error) {
-
 	block, err := c.GetBlock(blockHash)
 	if err != nil {
 		return nil, err
 	}
 	accountId, err := metadata.NewAccountIdFromAddress(accountAddress)
 	if err != nil {
-		errors.Join(da.ErrRetrieval, err)
+		return nil, errors.Join(da.ErrRetrieval, err)
 	}
 
 	// Block Blobs filtered by Signer
