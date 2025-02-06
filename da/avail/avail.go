@@ -85,7 +85,7 @@ func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	}
 
 	submitData := &SubmitMetaData{
-		AppId: uint32(appId),
+		AppId: uint32(appId), //nolint:gosec
 	}
 
 	submitData.AccountAddress = pathParts[1]
