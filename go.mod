@@ -9,11 +9,7 @@ require (
 	github.com/availproject/avail-go-sdk v0.2.0-rc7
 	github.com/avast/retry-go/v4 v4.5.0
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b
-<<<<<<< HEAD
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1
-=======
-	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
->>>>>>> main
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/cosmos/ibc-go/v6 v6.2.1
 	github.com/dgraph-io/badger/v4 v4.3.0
@@ -41,6 +37,7 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.10.0
 	github.com/tendermint/tendermint v0.34.29
+	github.com/vedhavyas/go-subkey/v2 v2.0.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.30.0
 	gonum.org/v1/gonum v0.14.0
@@ -82,7 +79,6 @@ require (
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
-	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
