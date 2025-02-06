@@ -26,17 +26,17 @@ func (_m *MockDataAvailabilityLayerClient) EXPECT() *MockDataAvailabilityLayerCl
 	return &MockDataAvailabilityLayerClient_Expecter{mock: &_m.Mock}
 }
 
-// CheckBatchAvailability provides a mock function with given fields: daMetaData
-func (_m *MockDataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-	ret := _m.Called(daMetaData)
+// CheckBatchAvailability provides a mock function with given fields: daPath
+func (_m *MockDataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
+	ret := _m.Called(daPath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CheckBatchAvailability")
 	}
 
 	var r0 da.ResultCheckBatch
-	if rf, ok := ret.Get(0).(func(*da.DASubmitMetaData) da.ResultCheckBatch); ok {
-		r0 = rf(daMetaData)
+	if rf, ok := ret.Get(0).(func(string) da.ResultCheckBatch); ok {
+		r0 = rf(daPath)
 	} else {
 		r0 = ret.Get(0).(da.ResultCheckBatch)
 	}
@@ -50,14 +50,14 @@ type MockDataAvailabilityLayerClient_CheckBatchAvailability_Call struct {
 }
 
 // CheckBatchAvailability is a helper method to define mock.On call
-//   - daMetaData *da.DASubmitMetaData
-func (_e *MockDataAvailabilityLayerClient_Expecter) CheckBatchAvailability(daMetaData interface{}) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
-	return &MockDataAvailabilityLayerClient_CheckBatchAvailability_Call{Call: _e.mock.On("CheckBatchAvailability", daMetaData)}
+//   - daPath string
+func (_e *MockDataAvailabilityLayerClient_Expecter) CheckBatchAvailability(daPath interface{}) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
+	return &MockDataAvailabilityLayerClient_CheckBatchAvailability_Call{Call: _e.mock.On("CheckBatchAvailability", daPath)}
 }
 
-func (_c *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call) Run(run func(daMetaData *da.DASubmitMetaData)) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
+func (_c *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call) Run(run func(daPath string)) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*da.DASubmitMetaData))
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -67,7 +67,7 @@ func (_c *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call) Return(_a
 	return _c
 }
 
-func (_c *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call) RunAndReturn(run func(*da.DASubmitMetaData) da.ResultCheckBatch) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
+func (_c *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call) RunAndReturn(run func(string) da.ResultCheckBatch) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
 	_c.Call.Return(run)
 	return _c
 }

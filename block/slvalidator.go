@@ -79,7 +79,7 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 
 		// fraud detected in case no data blob is found for the da tx or commitment
 		if errors.Is(daBatch.BaseResult.Error, da.ErrBlobNotFound) {
-			return types.NewErrStateUpdateBlobCorruptedFraud(batch.StateIndex, string(batch.MetaData.Client), batch.MetaData.DAPath)
+			return types.NewErrStateUpdateBlobNotFoundFraud(batch.StateIndex, string(batch.MetaData.Client), batch.MetaData.DAPath)
 		}
 
 		// fraud detected in case blob data is retrieved but unable to get blocks from it.

@@ -1,7 +1,6 @@
 package avail
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,10 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/availproject/avail-go-sdk/metadata"
-	availgo "github.com/availproject/avail-go-sdk/sdk"
-	"github.com/ethereum/go-ethereum/crypto"
-
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/stub"
@@ -21,7 +16,6 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/metrics"
 	"github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/vedhavyas/go-subkey/v2"
 )
 
 const (
@@ -44,8 +38,7 @@ type Config struct {
 
 type DataAvailabilityLayerClient struct {
 	stub.Layer
-	client             availgo.SDK
-	account            subkey.KeyPair
+	client             AvailClient
 	pubsubServer       *pubsub.Server
 	config             Config
 	logger             types.Logger
@@ -59,20 +52,21 @@ type DataAvailabilityLayerClient struct {
 
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
 type SubmitMetaData struct {
-	// Height is the height of the block in the da layer
-	Height uint32
 	// Avail App Id
 	AppId int64
 	// Hash that identifies the blob
 	AccountAddress string
+	// Height is the height of the block in the da layer
+	BlockHash string
 }
 
 // ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
+
 	path := []string{
-		strconv.FormatUint(uint64(d.Height), 10),
 		strconv.FormatInt(d.AppId, 10),
 		d.AccountAddress,
+		d.BlockHash,
 	}
 	for i, part := range path {
 		path[i] = strings.Trim(part, da.PathSeparator)
@@ -82,26 +76,22 @@ func (d *SubmitMetaData) ToPath() string {
 
 // FromPath parses a path to a SubmitMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
+
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(da.PathSeparator[0]) })
 	if len(pathParts) != 3 {
 		return nil, fmt.Errorf("invalid DA path")
 	}
-
-	height, err := strconv.ParseUint(pathParts[0], 10, 32)
+	appId, err := strconv.ParseInt(pathParts[0], 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
 	submitData := &SubmitMetaData{
-		Height: uint32(height),
+		AppId: appId,
 	}
 
-	submitData.AppId, err = strconv.ParseInt(pathParts[1], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	submitData.AccountAddress = pathParts[2]
+	submitData.AccountAddress = pathParts[1]
+	submitData.BlockHash = pathParts[2]
 	return submitData, nil
 }
 
@@ -109,6 +99,13 @@ var (
 	_ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
 )
+
+// WithRPCClient sets rpc client.
+func WithRPCClient(client AvailClient) da.Option {
+	return func(daLayerClient da.DataAvailabilityLayerClient) {
+		daLayerClient.(*DataAvailabilityLayerClient).client = client
+	}
+}
 
 // WithTxInclusionTimeout is an option which sets the timeout for waiting for transaction inclusion.
 func WithTxInclusionTimeout(timeout time.Duration) da.Option {
@@ -164,16 +161,17 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 func (c *DataAvailabilityLayerClient) Start() error {
 	c.logger.Info("Starting Avail Data Availability Layer Client.")
 	c.ctx, c.cancel = context.WithCancel(context.Background())
-	sdk, err := availgo.NewSDK(c.config.RpcEndpoint)
-	if err != nil {
-		return err
+	// other client has already been set
+	if c.client != nil {
+		c.logger.Info("Celestia-node client already set.")
+		return nil
 	}
-	c.client = sdk
-	acc, err := availgo.Account.NewKeyPair(c.config.Seed)
+
+	client, err := NewClient(c.config.RpcEndpoint, c.config.Seed, c.config.AppID)
 	if err != nil {
-		return err
+		return fmt.Errorf("error while establishing connection to DA layer: %w", err)
 	}
-	c.account = acc
+	c.client = client
 
 	return nil
 }
@@ -208,12 +206,11 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 		case <-c.ctx.Done():
 			return da.ResultSubmitBatch{}
 		default:
-			var daBlockHeight uint32
+			var blockHash string
 			err := retry.Do(
 				func() error {
 					var err error
-					tx := c.client.Tx.DataAvailability.SubmitData(dataBlob)
-					res, err := tx.ExecuteAndWatchInclusion(c.account, availgo.NewTransactionOptions().WithAppId(uint32(c.config.AppID)))
+					blockHash, err = c.client.SubmitData(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
@@ -222,7 +219,6 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 						}
 						return err
 					}
-					daBlockHeight = res.BlockNumber
 					return nil
 				},
 				retry.Context(c.ctx),
@@ -249,9 +245,9 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			}
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 			submitMetadata := &SubmitMetaData{
-				Height:         daBlockHeight,
+				BlockHash:      blockHash,
 				AppId:          c.config.AppID,
-				AccountAddress: c.account.SS58Address(42),
+				AccountAddress: c.client.GetAccountAddress(),
 			}
 
 			c.logger.Debug("Successfully submitted batch.")
@@ -277,26 +273,18 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
 	}
 
-	block, err := c.getBlock(daMetaData.Height)
-
+	blobs, err := c.client.GetBlobsBySigner(daMetaData.BlockHash, daMetaData.AccountAddress)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: err.Error(),
-				Error:   errors.Join(da.ErrRetrieval, err),
+				Message: "Blob not found",
+				Error:   err,
 			},
 		}
 	}
 
-	accountId, err := metadata.NewAccountIdFromAddress(daMetaData.AccountAddress)
-
-	// Convert the data returned to batches
 	var batches []*types.Batch
-
-	// Block Blobs filtered by Signer
-	blobs := block.DataSubmissionBySigner(accountId)
-
 	// Printout Block Blobs filtered by Signer
 	for _, blob := range blobs {
 		batch := &types.Batch{}
@@ -343,67 +331,43 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 	if err != nil {
 		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
 	}
-	//nolint:typecheck
-	block, err := c.getBlock(daMetaData.Height)
+
+	// used to discard any rpc issues before availability checks
+	_, err = c.client.GetFinalizedHead()
 	if err != nil {
-		block, err := c.client.GetBlockLatest()
-		if err != nil {
-			return da.ResultCheckBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-					Error:   errors.Join(da.ErrRetrieval, err),
-				},
-			}
-		}
-		if uint64(block.Block.Header.Number) < daMetaData.Height {
-			return da.ResultCheckBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: "wrong da height",
-					Error:   errors.Join(da.ErrBlobNotIncluded, err),
-				},
-			}
-		}
-	}
-	for _, ext := range block.Block.Extrinsics {
-		// these values below are specific indexes only for data submission, differs with each extrinsic
-		if ext.Signature.AppID.Int64() == c.config.AppID &&
-			ext.Method.CallIndex.SectionIndex == DataCallSectionIndex &&
-			ext.Method.CallIndex.MethodIndex == DataCallMethodIndex {
-			data := ext.Method.Args
-
-			for 0 < len(data) {
-				batch := &types.Batch{}
-				err := batch.UnmarshalBinary(data)
-				if err != nil {
-					// try to parse from the next byte on the next iteration
-					data = data[1:]
-					continue
-				}
-				// if blob unmarshaled successfully, we check is the same batch submitted by the sequencer comparing hashes
-				if bytes.Equal(crypto.Keccak256Hash(data).Bytes(), daMetaData.BlobHash) {
-					return da.ResultCheckBatch{
-						BaseResult: da.BaseResult{
-							Code:    da.StatusSuccess,
-							Message: "Blob available",
-						},
-					}
-				} else {
-					continue
-				}
-			}
-
+		return da.ResultCheckBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   errors.Join(da.ErrRetrieval, err),
+			},
 		}
 	}
 
+	// Block Blobs filtered by Signer
+	blobs, err := c.client.GetBlobsBySigner(daMetaData.BlockHash, daMetaData.AccountAddress)
+	if err != nil {
+		return da.ResultCheckBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Blob not available",
+				Error:   err,
+			},
+		}
+	}
+	if len(blobs) == 0 {
+		return da.ResultCheckBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Blob not available",
+				Error:   da.ErrBlobNotIncluded,
+			},
+		}
+	}
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusSuccess,
-			Message: "not implemented",
-			Code:    da.StatusError,
-			Message: "Blob not available",
-			Error:   da.ErrBlobNotIncluded,
+			Message: "Blob available",
 		},
 	}
 }
@@ -411,12 +375,4 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 	return maxBlobSize
-}
-
-func (c *DataAvailabilityLayerClient) getBlock(height uint32) (availgo.Block, error) {
-	blockHash, err := c.client.Client.BlockHash(height)
-	if err != nil {
-		return availgo.Block{}, err
-	}
-	return availgo.NewBlock(c.client.Client, blockHash)
 }

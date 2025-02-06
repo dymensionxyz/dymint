@@ -3,105 +3,95 @@ package avail_test
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
-	availtypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/avail"
-	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/avail"
+	"github.com/dymensionxyz/dymint/da/registry"
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/types"
+
+	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	availgo "github.com/availproject/avail-go-sdk/sdk"
 	"github.com/tendermint/tendermint/libs/pubsub"
+
+	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/avail"
 )
 
-const (
-	seed = "copper mother insect grunt blue cute tell side welcome domain border oxygen"
-)
+// TestSubmitBatch validates the SubmitBatch method
+func TestAvail(t *testing.T) {
+	mockClient, client := setDAandMock(t)
 
-// TODO: there was another test here, it should be brought back https://github.com/dymensionxyz/dymint/issues/970
-
-// TestRetrieveBatches tests the RetrieveBatches function manages
-// to decode the batches from the block extrinsics and only returns
-// the batches relevant for our app id and method index.
-func TestRetrieveBatches(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	const appId = 123
-	// Set up the config
-	configBytes, err := json.Marshal(avail.Config{
-		Seed:  seed,
-		AppID: int64(appId),
-	})
-	require.NoError(err)
-	// Create mock client
-	mockSubstrateApiClient := mocks.NewMockSubstrateApiI(t)
-	// Configure DALC options
-	options := []da.Option{
-		avail.WithClient(mockSubstrateApiClient),
+	block1 := testutil.GetRandomBlock(1, 1)
+	batch1 := &types.Batch{
+		Blocks: []*types.Block{block1},
 	}
+
+	mockClient.On("SubmitData", mock.Anything, mock.Anything).Return("blockhash", nil)
+	mockClient.On("GetAccountAddress", mock.Anything).Return("address")
+
+	rsubmit := client.SubmitBatch(batch1)
+
+	assert.Equal(t, da.StatusSuccess, rsubmit.Code)
+	assert.NotNil(t, rsubmit.SubmitMetaData)
+
+	data1, err := batch1.MarshalBinary()
+	require.NoError(t, err)
+	getResult := []availgo.DataSubmission{
+		{
+			Data: data1,
+		},
+	}
+	mockClient.On("GetBlobsBySigner", mock.Anything, mock.Anything, mock.Anything).Return(getResult, nil).Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
+
+	retriever := client.(da.BatchRetriever)
+
+	rretrieve := retriever.RetrieveBatches(rsubmit.SubmitMetaData.DAPath)
+	assert.Equal(t, da.StatusSuccess, rretrieve.Code)
+	require.True(t, len(rretrieve.Batches) == 1)
+	assert.Equal(t, batch1.Blocks[0], rretrieve.Batches[0].Blocks[0])
+}
+
+func setDAandMock(t *testing.T) (*mocks.MockAvailClient, da.DataAvailabilityLayerClient) {
+	var err error
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
-	assert.NoError(err)
+	require.NoError(t, err)
+	defer func() {
+		err = pubsubServer.Stop()
+		require.NoError(t, err)
+	}()
 
-	// set mocks for sync flow
-	// Set the mock functions
-	mockSubstrateApiClient.On("GetFinalizedHead", mock.Anything).Return(availtypes.NewHash([]byte("123")), nil)
-	mockSubstrateApiClient.On("GetHeader", mock.Anything).Return(&availtypes.Header{Number: 1}, nil)
-	mockSubstrateApiClient.On("GetBlockLatest", mock.Anything).Return(&availtypes.SignedBlock{Block: availtypes.Block{Header: availtypes.Header{Number: 1}}}, nil)
+	require := require.New(t)
 
-	// Start the DALC
-	dalc := avail.DataAvailabilityLayerClient{}
-	err = dalc.Init(configBytes, pubsubServer, nil, testutil.NewLogger(t), options...)
+	// init avail DA with mock RPC client
+	dalc := registry.GetClient("avail")
+
+	config := avail.Config{
+		Seed:        "awel eardsa dfer",
+		RpcEndpoint: "http://localhost:26658/rpc",
+		AppID:       1,
+	}
+
+	conf, err := json.Marshal(config)
 	require.NoError(err)
+
+	mockRPCClient := mocks.NewMockAvailClient(t)
+	options := []da.Option{
+		avail.WithRPCClient(mockRPCClient),
+	}
+
+	err = dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger(), options...)
+	require.NoError(err)
+
 	err = dalc.Start()
 	require.NoError(err)
 
-	// Build batches for the block extrinsics
-	batch1 := testutil.MustGenerateBatchAndKey(0, 1)
-	batch2 := testutil.MustGenerateBatchAndKey(2, 3)
-	batch1bytes, err := batch1.MarshalBinary()
-	require.NoError(err)
-	batch2bytes, err := batch2.MarshalBinary()
-	require.NoError(err)
-	// Build the signed block
-	signedBlock := &availtypes.SignedBlock{
-		Block: availtypes.Block{
-			Extrinsics: []availtypes.Extrinsic{
-				{
-					Method: availtypes.Call{
-						Args: availtypes.Args(batch1bytes),
-						CallIndex: availtypes.CallIndex{
-							MethodIndex:  avail.DataCallMethodIndex,
-							SectionIndex: avail.DataCallSectionIndex,
-						},
-					},
-					Signature: availtypes.ExtrinsicSignatureV4{
-						AppID: availtypes.NewUCompactFromUInt(uint64(appId)),
-					},
-				},
-				{
-					Method: availtypes.Call{
-						Args: availtypes.Args(batch2bytes),
-						CallIndex: availtypes.CallIndex{
-							MethodIndex:  avail.DataCallMethodIndex,
-							SectionIndex: avail.DataCallMethodIndex,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// Set the mock functions
-	mockSubstrateApiClient.On("GetBlockHash", mock.Anything).Return(availtypes.NewHash([]byte("123")), nil)
-	mockSubstrateApiClient.On("GetBlock", mock.Anything).Return(signedBlock, nil)
-
-	// Retrieve the batches and make sure we only get the batches relevant for our app id
-	daMetaData := &avail.SubmitMetaData{
-		Height: 1,
-	}
-	batchResult := dalc.RetrieveBatches(daMetaData.ToPath())
-	assert.Equal(1, len(batchResult.Batches))
-	assert.Equal(batch1.StartHeight(), batchResult.Batches[0].StartHeight())
+	return mockRPCClient, dalc
 }
