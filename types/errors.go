@@ -649,7 +649,7 @@ func (e ErrStateUpdateBlobCorruptedFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-// ErrStateUpdateBlobNotFoundFraud represents an error where a blob is corrupted in DA.
+// ErrStateUpdateBlobNotFoundFraud represents an error where DA tx/commitment exists but it contains no blob
 type ErrStateUpdateBlobNotFoundFraud struct {
 	StateIndex uint64
 	DA         string
