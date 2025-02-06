@@ -11,7 +11,7 @@ import (
 )
 
 func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
-	m.logger.Debug("trying to retrieve batch from DA", "dametadata", slBatch.MetaData)
+	m.logger.Debug("trying to retrieve batch from DA", "DA Metadata", slBatch.MetaData)
 	batchResp := m.fetchBatch(slBatch.MetaData)
 	if batchResp.Code != da.StatusSuccess {
 		return batchResp.Error

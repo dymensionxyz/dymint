@@ -133,7 +133,7 @@ func TestWebsocketCloseUnsubscribe(t *testing.T) {
 }
 `))
 	assert.NoError(err)
-	// Vaildate we have a new client
+	// Validate we have a new client
 	assert.Eventually(func() bool {
 		return subscribed_clients+1 == local.EventBus.NumClients()
 	}, 3*time.Second, 100*time.Millisecond)

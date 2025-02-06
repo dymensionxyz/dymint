@@ -72,7 +72,7 @@ func (rs *Reports) List() []Report {
 	return rs.l
 }
 
-// ErrorCount returns the number of erronous transactions encountered while creating the report
+// ErrorCount returns the number of erroneous transactions encountered while creating the report
 func (rs *Reports) ErrorCount() int {
 	return rs.errorCount
 }
