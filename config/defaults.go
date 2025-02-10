@@ -44,7 +44,7 @@ func DefaultConfig(home string) *NodeConfig {
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 			ListenAddress:                DefaultListenAddress,
 			BootstrapNodes:               "",
-			AdvertisingEnabled:           true,
+			DiscoveryEnabled:             true,
 			BlockSyncEnabled:             true,
 		},
 		DBConfig: DBConfig{
