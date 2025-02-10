@@ -222,6 +222,7 @@ func fullNodeConfig() config.NodeConfig {
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 			ListenAddress:                config.DefaultListenAddress,
 			BootstrapNodes:               "",
+			DiscoveryEnabled:             true,
 		},
 	}
 }
