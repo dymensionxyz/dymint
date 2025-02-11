@@ -15,7 +15,7 @@ func (l Layer) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV
 	panic("implement me")
 }
 
-func (l Layer) DAPath() string {
+func (l Layer) RollappId() string {
 	return ""
 }
 
