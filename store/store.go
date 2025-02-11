@@ -336,7 +336,6 @@ func (s *DefaultStore) LoadDA(height uint64) (string, error) {
 }
 
 func (s *DefaultStore) SaveDA(height uint64, da string, batch KVBatch) (KVBatch, error) {
-
 	if batch == nil {
 		return nil, s.db.Set(getDAKey(height), []byte(da))
 	}

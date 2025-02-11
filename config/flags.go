@@ -61,7 +61,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
-
 	if err := v.BindPFlag("block_time", cmd.Flags().Lookup(FlagBlockTime)); err != nil {
 		return err
 	}

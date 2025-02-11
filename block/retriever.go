@@ -103,6 +103,7 @@ func (m *Manager) applyLocalBlock() error {
 func (m *Manager) GetRetriever(da da.Client) da.BatchRetriever {
 	return m.DAClients[da]
 }
+
 func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	// Check DA client
 	retriever := m.DAClients[daMetaData.Client]
