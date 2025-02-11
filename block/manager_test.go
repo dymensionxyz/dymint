@@ -63,7 +63,7 @@ func TestInitialState(t *testing.T) {
 	settlementlc := slregistry.GetClient(slregistry.Local)
 	_ = settlementlc.Init(settlement.Config{}, genesis.ChainID, pubsubServer, logger)
 
-	daclient := testutil.GetMockDALC(logger)
+	daclient := []da.DataAvailabilityLayerClient{testutil.GetMockDALC(logger)}
 
 	// Init empty store and full store
 	emptyStore := store.New(store.NewDefaultInMemoryKVStore())
@@ -162,8 +162,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	require.NotNil(t, manager)
 
 	t.Log("Taking the manager out of sync by submitting a batch")
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever[0] = manager.DAClient[0]
+	manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 	numBatchesToAdd := 2
 	nextBatchStartHeight := manager.NextHeightToSubmit()
@@ -175,9 +174,9 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 			lastBlockHeaderHash,
 		)
 		assert.NoError(t, err)
-		daResultSubmitBatch := manager.DAClient[0].SubmitBatch(batch)
+		daResultSubmitBatch := manager.GetActiveDAClient().SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
-		err = manager.SLClient.SubmitBatch(batch, manager.DAClient[0].GetClientType(), &daResultSubmitBatch)
+		err = manager.SLClient.SubmitBatch(batch, manager.GetActiveDAClient().GetClientType(), &daResultSubmitBatch)
 		require.NoError(t, err)
 		nextBatchStartHeight = batch.EndHeight() + 1
 		lastBlockHeaderHash = batch.Blocks[len(batch.Blocks)-1].Header.Hash()
@@ -207,8 +206,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever[0] = manager.DAClient[0]
+	manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 	submitMetadata := local.SubmitMetaData{
 		Height: 1,
@@ -514,8 +512,7 @@ func TestDAFetch(t *testing.T) {
 	require.NoError(err)
 	commitHash := [32]byte{}
 
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever[0] = manager.DAClient[0]
+	manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 
@@ -527,9 +524,9 @@ func TestDAFetch(t *testing.T) {
 		[32]byte{},
 	)
 	require.NoError(err)
-	daResultSubmitBatch := manager.DAClient[0].SubmitBatch(batch)
+	daResultSubmitBatch := manager.GetActiveDAClient().SubmitBatch(batch)
 	require.Equal(daResultSubmitBatch.Code, da.StatusSuccess)
-	err = manager.SLClient.SubmitBatch(batch, manager.DAClient[0].GetClientType(), &daResultSubmitBatch)
+	err = manager.SLClient.SubmitBatch(batch, manager.GetActiveDAClient().GetClientType(), &daResultSubmitBatch)
 	require.NoError(err)
 
 	cases := []struct {

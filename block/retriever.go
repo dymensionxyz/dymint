@@ -100,20 +100,17 @@ func (m *Manager) applyLocalBlock() error {
 	return nil
 }
 
+func (m *Manager) GetRetriever(da da.Client) da.BatchRetriever {
+	return m.DAClients[da]
+}
 func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	// Check DA client
-	var retriever da.BatchRetriever
-	for _, client := range m.DAClient {
-		if daMetaData.Client == client.GetClientType() {
-			retriever = client
-			break
-		}
-	}
+	retriever := m.DAClients[daMetaData.Client]
 	if retriever == nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("DA client for the batch does not match node config: DA client batch: %s", daMetaData.Client),
+				Message: fmt.Sprintf("DA client for the batch is missing in node config: DA client batch: %s", daMetaData.Client),
 				Error:   da.ErrDAMismatch,
 			},
 		}

@@ -61,7 +61,7 @@ type Manager struct {
 	// Clients and servers
 	Pubsub    *pubsub.Server
 	P2PClient *p2p.Client
-	DAClient  []da.DataAvailabilityLayerClient
+	DAClients map[da.Client]da.DataAvailabilityLayerClient
 	SLClient  settlement.ClientI
 
 	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that.
@@ -89,7 +89,7 @@ type Manager struct {
 	IndexerService *txindex.IndexerService
 
 	// used to fetch blocks from DA. Sequencer will only fetch batches in case it requires to re-sync (in case of rollback). Full-node will fetch batches for syncing and validation.
-	Retriever []da.BatchRetriever
+	//Retriever []da.BatchRetriever
 
 	/*
 		Full-node only
@@ -131,7 +131,7 @@ func NewManager(
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
 	settlementClient settlement.ClientI,
-	daClient []da.DataAvailabilityLayerClient,
+	daClients []da.DataAvailabilityLayerClient,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
@@ -167,7 +167,7 @@ func NewManager(
 		Executor:        exec,
 		Sequencers:      types.NewSequencerSet(),
 		SLClient:        settlementClient,
-		DAClient:        daClient,
+		DAClients:       make(map[da.Client]da.DataAvailabilityLayerClient),
 		IndexerService:  indexerService,
 		logger:          logger.With("module", "block_manager"),
 		blockCache: &Cache{
@@ -179,8 +179,8 @@ func NewManager(
 		syncedFromSettlement:  uchannel.NewNudger(),   // used by the sequencer to wait  till the node completes the syncing from settlement.
 	}
 
-	for _, client := range daClient {
-		m.Retriever = append(m.Retriever, client)
+	for _, client := range daClients {
+		m.DAClients[client.GetClientType()] = client
 	}
 
 	err = m.LoadStateOnInit(store, genesis, logger)
@@ -410,13 +410,13 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	/*if da.Client(m.State.RollappParams.Da) != m.DAClient.GetClientType() {
-		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.State.RollappParams.Da, m.DAClient.GetClientType())
+	if m.GetActiveDAClient() == nil {
+		return fmt.Errorf("missing da layer in config. da: %s", m.State.RollappParams.Da)
 	}
 
-	if m.Conf.BatchSubmitBytes > m.DAClient.GetMaxBlobSizeBytes() {
-		return fmt.Errorf("batch size above limit: batch size: %d limit: %d: DA %s", m.Conf.BatchSubmitBytes, m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
-	}*/
+	if m.Conf.BatchSubmitBytes > m.GetActiveDAClient().GetMaxBlobSizeBytes() {
+		return fmt.Errorf("batch size above limit: batch size: %d limit: %d: DA %s", m.Conf.BatchSubmitBytes, m.GetActiveDAClient().GetMaxBlobSizeBytes(), m.GetActiveDAClient().GetClientType())
+	}
 
 	return nil
 }
@@ -438,4 +438,8 @@ func (m *Manager) setUnhealthy(err error) {
 
 func (m *Manager) setHealthy() {
 	uevent.MustPublish(context.Background(), m.Pubsub, &events.DataHealthStatus{Error: nil}, events.HealthStatusList)
+}
+
+func (m *Manager) GetActiveDAClient() da.DataAvailabilityLayerClient {
+	return m.DAClients[da.Client(m.State.RollappParams.Da)]
 }

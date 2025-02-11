@@ -23,6 +23,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 
 	block2 "github.com/dymensionxyz/dymint/block"
+	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
@@ -333,8 +334,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever[0] = manager.DAClient[0]
+	manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())
@@ -464,8 +464,7 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever[0] = manager.DAClient[0]
+	manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 	// Set the initial sequencer set
 	manager.Sequencers.Set([]types.Sequencer{proposer, sequencer})

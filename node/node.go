@@ -237,7 +237,7 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("start pubsub server: %w", err)
 	}
-	for _, daClient := range n.BlockManager.DAClient {
+	for _, daClient := range n.BlockManager.DAClients {
 		err = daClient.Start()
 		if err != nil {
 			return fmt.Errorf("start data availability layer client: %w", err)
@@ -269,7 +269,7 @@ func (n *Node) GetGenesis() *tmtypes.GenesisDoc {
 
 // OnStop is a part of Service interface.
 func (n *Node) OnStop() {
-	for _, daClient := range n.BlockManager.DAClient {
+	for _, daClient := range n.BlockManager.DAClients {
 		err := daClient.Stop()
 		if err != nil {
 			n.Logger.Error("stop data availability layer client", "error", err)

@@ -170,8 +170,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			}
 
 			// Create DA
-			manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-			manager.Retriever[0] = manager.DAClient[0]
+			manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 			// Generate batch
 			var batch *types.Batch
@@ -184,7 +183,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			}
 
 			// Submit batch to DA
-			daResultSubmitBatch := manager.DAClient[0].SubmitBatch(batch)
+			daResultSubmitBatch := manager.GetActiveDAClient().SubmitBatch(batch)
 			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
 			// Create block descriptors
@@ -269,7 +268,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:         "mock",
+			Da:         "celestia",
 			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
@@ -339,10 +338,9 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			require.NoError(t, err)
 
 			// Start DA client
-			manager.DAClient[0] = mockDA.DaClient
-			err = manager.DAClient[0].Start()
+			manager.DAClients[da.Celestia] = mockDA.DaClient
+			err = manager.DAClients[da.Celestia].Start()
 			require.NoError(t, err)
-			manager.Retriever[0] = manager.DAClient[0]
 
 			// RPC calls necessary for blob submission
 			mockDA.MockRPC.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(mockDA.IDS, nil).Once().Run(func(args mock.Arguments) {})
@@ -351,7 +349,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			mockDA.MockRPC.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]bool{true}, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 
 			// Submit batch to DA
-			daResultSubmitBatch := manager.DAClient[0].SubmitBatch(batch)
+			daResultSubmitBatch := manager.DAClients[da.Celestia].SubmitBatch(batch)
 			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
 			// RPC calls for successful blob retrieval

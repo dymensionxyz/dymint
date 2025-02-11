@@ -115,6 +115,8 @@ func TestGenesisChunked(t *testing.T) {
 			MaxSkewTime:                24 * time.Hour,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
+		DALayer:          []string{"mock"},
+		DAConfig:         []string{""},
 		SettlementLayer:  "mock",
 		SettlementConfig: settlement.Config{},
 	}
@@ -1143,6 +1145,8 @@ func TestMempool2Nodes(t *testing.T) {
 			MaxSkewTime:                24 * time.Hour,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
+		DALayer:       []string{"mock"},
+		DAConfig:      []string{""},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 	}, key1, signingKey1, proxy.NewLocalClientCreator(app), genesis, "", log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
@@ -1160,6 +1164,8 @@ func TestMempool2Nodes(t *testing.T) {
 			MaxSkewTime:                24 * time.Hour,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
+		DALayer:  []string{"mock"},
+		DAConfig: []string{""},
 		P2PConfig: config.P2PConfig{
 			ListenAddress:                "/ip4/127.0.0.1/tcp/9002",
 			BootstrapNodes:               "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
