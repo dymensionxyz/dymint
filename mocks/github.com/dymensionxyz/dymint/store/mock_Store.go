@@ -583,6 +583,62 @@ func (_c *MockStore_LoadCommitByHash_Call) RunAndReturn(run func([32]byte) (*typ
 	return _c
 }
 
+// LoadDA provides a mock function with given fields: height
+func (_m *MockStore) LoadDA(height uint64) (string, error) {
+	ret := _m.Called(height)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LoadDA")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64) (string, error)); ok {
+		return rf(height)
+	}
+	if rf, ok := ret.Get(0).(func(uint64) string); ok {
+		r0 = rf(height)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64) error); ok {
+		r1 = rf(height)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_LoadDA_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadDA'
+type MockStore_LoadDA_Call struct {
+	*mock.Call
+}
+
+// LoadDA is a helper method to define mock.On call
+//   - height uint64
+func (_e *MockStore_Expecter) LoadDA(height interface{}) *MockStore_LoadDA_Call {
+	return &MockStore_LoadDA_Call{Call: _e.mock.On("LoadDA", height)}
+}
+
+func (_c *MockStore_LoadDA_Call) Run(run func(height uint64)) *MockStore_LoadDA_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64))
+	})
+	return _c
+}
+
+func (_c *MockStore_LoadDA_Call) Return(_a0 string, _a1 error) *MockStore_LoadDA_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_LoadDA_Call) RunAndReturn(run func(uint64) (string, error)) *MockStore_LoadDA_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LoadDRSVersion provides a mock function with given fields: height
 func (_m *MockStore) LoadDRSVersion(height uint64) (uint32, error) {
 	ret := _m.Called(height)

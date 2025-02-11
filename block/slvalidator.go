@@ -47,6 +47,15 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
+	// validate da in state update matches rollapp param
+	daClient, err := v.blockManager.Store.LoadDA(batch.EndHeight)
+	if err != nil {
+		return err
+	}
+	if daClient != string(batch.MetaData.Client) {
+		return types.NewErrStateUpdateDAFraud(batch.StateIndex, batch.EndHeight, daClient, string(batch.MetaData.Client))
+	}
+
 	// loads blocks applied from P2P, if any.
 	p2pBlocks := make(map[uint64]*types.Block)
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
@@ -102,7 +111,7 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 	}
 
 	// validate DA blocks against the state update
-	err := v.ValidateDaBlocks(batch, daBlocks)
+	err = v.ValidateDaBlocks(batch, daBlocks)
 	if err != nil {
 		return err
 	}
