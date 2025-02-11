@@ -1459,6 +1459,66 @@ func (_c *MockStore_SaveBlockSyncBaseHeight_Call) RunAndReturn(run func(uint64) 
 	return _c
 }
 
+// SaveDA provides a mock function with given fields: height, da, batch
+func (_m *MockStore) SaveDA(height uint64, da string, batch store.KVBatch) (store.KVBatch, error) {
+	ret := _m.Called(height, da, batch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveDA")
+	}
+
+	var r0 store.KVBatch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64, string, store.KVBatch) (store.KVBatch, error)); ok {
+		return rf(height, da, batch)
+	}
+	if rf, ok := ret.Get(0).(func(uint64, string, store.KVBatch) store.KVBatch); ok {
+		r0 = rf(height, da, batch)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.KVBatch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64, string, store.KVBatch) error); ok {
+		r1 = rf(height, da, batch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_SaveDA_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveDA'
+type MockStore_SaveDA_Call struct {
+	*mock.Call
+}
+
+// SaveDA is a helper method to define mock.On call
+//   - height uint64
+//   - da string
+//   - batch store.KVBatch
+func (_e *MockStore_Expecter) SaveDA(height interface{}, da interface{}, batch interface{}) *MockStore_SaveDA_Call {
+	return &MockStore_SaveDA_Call{Call: _e.mock.On("SaveDA", height, da, batch)}
+}
+
+func (_c *MockStore_SaveDA_Call) Run(run func(height uint64, da string, batch store.KVBatch)) *MockStore_SaveDA_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64), args[1].(string), args[2].(store.KVBatch))
+	})
+	return _c
+}
+
+func (_c *MockStore_SaveDA_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveDA_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_SaveDA_Call) RunAndReturn(run func(uint64, string, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveDA_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SaveDRSVersion provides a mock function with given fields: height, version, batch
 func (_m *MockStore) SaveDRSVersion(height uint64, version uint32, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(height, version, batch)

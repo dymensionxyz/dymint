@@ -28,6 +28,7 @@ var (
 	indexerBaseHeightPrefix     = [1]byte{12}
 	drsVersionPrefix            = [1]byte{13}
 	lastBlockSequencerSetPrefix = [1]byte{14}
+	daPrefix                    = [1]byte{15}
 )
 
 // DefaultStore is a default store implementation.
@@ -326,6 +327,23 @@ func (s *DefaultStore) RemoveBlockCid(height uint64) error {
 	return err
 }
 
+func (s *DefaultStore) LoadDA(height uint64) (string, error) {
+	b, err := s.db.Get(getDAKey(height))
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func (s *DefaultStore) SaveDA(height uint64, da string, batch KVBatch) (KVBatch, error) {
+
+	if batch == nil {
+		return nil, s.db.Set(getDAKey(height), []byte(da))
+	}
+	err := batch.Set(getDAKey(height), []byte(da))
+	return batch, err
+}
+
 func (s *DefaultStore) LoadDRSVersion(height uint64) (uint32, error) {
 	b, err := s.db.Get(getDRSVersionKey(height))
 	if err != nil {
@@ -467,6 +485,12 @@ func getDRSVersionKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
 	return append(drsVersionPrefix[:], buf[:]...)
+}
+
+func getDAKey(height uint64) []byte {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, height)
+	return append(daPrefix[:], buf[:]...)
 }
 
 func getProposerKey(height uint64) []byte {

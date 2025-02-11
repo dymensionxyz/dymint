@@ -94,6 +94,8 @@ type Store interface {
 
 	SaveDRSVersion(height uint64, version uint32, batch KVBatch) (KVBatch, error)
 
+	SaveDA(height uint64, da string, batch KVBatch) (KVBatch, error)
+
 	RemoveBlockCid(height uint64) error
 
 	LoadBaseHeight() (uint64, error)
