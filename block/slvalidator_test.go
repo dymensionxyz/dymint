@@ -142,6 +142,13 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			expectedErrType:    &types.ErrInvalidNextSequencersHashFraud{},
 			last:               true,
 		},
+		{
+			name:               "Failed validation wrong DA",
+			p2pBlocks:          true,
+			stateUpdateFraud:   "da",
+			doubleSignedBlocks: nil,
+			expectedErrType:    &types.ErrStateUpdateDAFraud{},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -246,6 +253,8 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			case "nextsequencer":
 				seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(nextProposerKey.PubKey(), 1))
 				slBatch.NextSequencer = seq.SettlementAddress
+			case "da":
+				slBatch.MetaData.Client = "celestia"
 			}
 
 			// validate the state update
