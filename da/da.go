@@ -83,7 +83,7 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 
 	submitData := &DASubmitMetaData{
 		Client: Client(pathParts[0]),
-		DAPath: strings.Trim(path, pathParts[0]+PathSeparator),
+		DAPath: strings.TrimPrefix(path, pathParts[0]+PathSeparator),
 	}
 	return submitData, nil
 }
@@ -135,7 +135,7 @@ type DataAvailabilityLayerClient interface {
 	GetSignerBalance() (Balance, error)
 
 	// Something third parties can use to identify rollapp activity on the DA
-	DAPath() string
+	RollappId() string
 }
 
 // BatchSubmitter is additional interface that can be implemented by Data Availability Layer Client that is able to submit
