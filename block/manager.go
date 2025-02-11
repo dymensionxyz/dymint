@@ -88,9 +88,6 @@ type Manager struct {
 	// indexer
 	IndexerService *txindex.IndexerService
 
-	// used to fetch blocks from DA. Sequencer will only fetch batches in case it requires to re-sync (in case of rollback). Full-node will fetch batches for syncing and validation.
-	//Retriever []da.BatchRetriever
-
 	/*
 		Full-node only
 	*/
