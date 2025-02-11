@@ -115,7 +115,6 @@ func TestGenesisChunked(t *testing.T) {
 			MaxSkewTime:                24 * time.Hour,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
-		DAConfig:         "",
 		SettlementLayer:  "mock",
 		SettlementConfig: settlement.Config{},
 	}
@@ -866,6 +865,8 @@ func TestValidatorSetHandling(t *testing.T) {
 			BootstrapRetryTime:           30 * time.Second,
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
+		DALayer:  []string{"mock"},
+		DAConfig: []string{""},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:                  10 * time.Millisecond,
 			BatchSubmitTime:            60 * time.Second,
@@ -1025,6 +1026,8 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		RPC:           config.RPCConfig{},
+		DALayer:       []string{"mock"},
+		DAConfig:      []string{""},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:                  100 * time.Millisecond,
@@ -1033,7 +1036,6 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 			MaxSkewTime:                24 * time.Hour,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
-		DAConfig:        "",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: proposerKey,

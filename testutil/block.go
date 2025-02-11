@@ -112,7 +112,6 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 
 	config := config.NodeConfig{
 		BlockManagerConfig: conf,
-		DAConfig:           "",
 	}
 
 	indexer, err := createIndexerService()
@@ -148,10 +147,10 @@ func GetManager(conf config.BlockManagerConfig, settlementlc settlement.ClientI,
 	return GetManagerWithProposerKey(conf, proposerKey, settlementlc, genesisHeight, storeInitialHeight, storeLastBlockHeight, proxyAppConns, mockStore)
 }
 
-func GetMockDALC(logger log.Logger) da.DataAvailabilityLayerClient {
+func GetMockDALC(logger log.Logger) []da.DataAvailabilityLayerClient {
 	dalc := &localda.DataAvailabilityLayerClient{}
 	initDALCMock(dalc, pubsub.NewServer(), logger)
-	return dalc
+	return []da.DataAvailabilityLayerClient{dalc}
 }
 
 func initDALCMock(dalc da.DataAvailabilityLayerClient, pubsubServer *pubsub.Server, logger log.Logger) {

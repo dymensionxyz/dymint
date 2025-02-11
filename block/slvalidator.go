@@ -83,7 +83,7 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 		}
 
 		// fraud detected in case availability checks fail and therefore there certainty the blob, according to the state update DA path, is not available.
-		checkBatchResult := v.blockManager.Retriever.CheckBatchAvailability(batch.MetaData.DAPath)
+		checkBatchResult := v.blockManager.Retriever[0].CheckBatchAvailability(batch.MetaData.DAPath)
 		if errors.Is(checkBatchResult.Error, da.ErrBlobNotIncluded) {
 			return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.Client), batch.MetaData.DAPath)
 		}

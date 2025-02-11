@@ -334,7 +334,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	require.NoError(err)
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient
+	manager.Retriever[0] = manager.DAClient[0]
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())
@@ -465,7 +465,7 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	require.NoError(err)
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient
+	manager.Retriever[0] = manager.DAClient[0]
 
 	// Set the initial sequencer set
 	manager.Sequencers.Set([]types.Sequencer{proposer, sequencer})

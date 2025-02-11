@@ -774,7 +774,7 @@ func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 			VotingPower: 1,
 		},
 		DymensionStatus: ctypes.DymensionStatus{
-			DAPath:        c.node.BlockManager.DAClient.DAPath(),
+			DAPath:        c.node.BlockManager.DAClient[0].DAPath(),
 			RollappParams: types.RollappParamsToABCI(state.RollappParams),
 		},
 	}

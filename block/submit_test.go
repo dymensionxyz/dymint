@@ -131,7 +131,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require.NoError(err)
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever[0] = manager.DAClient[0].(da.BatchRetriever)
 
 	// Check initial assertions
 	initialHeight := uint64(0)
@@ -199,7 +199,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require.NoError(err)
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever[0] = manager.DAClient[0].(da.BatchRetriever)
 
 	// Check initial assertions
 	initialHeight := uint64(0)
@@ -266,7 +266,7 @@ func TestSubmissionByTime(t *testing.T) {
 	require.NoError(err)
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever[0] = manager.DAClient[0].(da.BatchRetriever)
 
 	manager.LastSubmissionTime.Store(time.Now().UTC().UnixNano())
 	// Check initial height
@@ -344,7 +344,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		manager.LastSubmissionTime.Store(time.Now().UTC().UnixNano())
 
 		manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-		manager.Retriever = manager.DAClient.(da.BatchRetriever)
+		manager.Retriever[0] = manager.DAClient[0].(da.BatchRetriever)
 
 		assert.Equal(manager.State.Height(), uint64(0))
 

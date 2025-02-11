@@ -171,7 +171,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 
 			// Create DA
 			manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-			manager.Retriever = manager.DAClient
+			manager.Retriever[0] = manager.DAClient[0]
 
 			// Generate batch
 			var batch *types.Batch
@@ -184,7 +184,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			}
 
 			// Submit batch to DA
-			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
+			daResultSubmitBatch := manager.DAClient[0].SubmitBatch(batch)
 			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
 			// Create block descriptors
@@ -339,10 +339,10 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			require.NoError(t, err)
 
 			// Start DA client
-			manager.DAClient = mockDA.DaClient
-			err = manager.DAClient.Start()
+			manager.DAClient[0] = mockDA.DaClient
+			err = manager.DAClient[0].Start()
 			require.NoError(t, err)
-			manager.Retriever = manager.DAClient
+			manager.Retriever[0] = manager.DAClient[0]
 
 			// RPC calls necessary for blob submission
 			mockDA.MockRPC.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(mockDA.IDS, nil).Once().Run(func(args mock.Arguments) {})
@@ -351,7 +351,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			mockDA.MockRPC.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]bool{true}, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 
 			// Submit batch to DA
-			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
+			daResultSubmitBatch := manager.DAClient[0].SubmitBatch(batch)
 			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
 			// RPC calls for successful blob retrieval

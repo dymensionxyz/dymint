@@ -102,18 +102,25 @@ func (m *Manager) applyLocalBlock() error {
 
 func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	// Check DA client
-	if daMetaData.Client != m.DAClient.GetClientType() {
+	var retriever da.BatchRetriever
+	for _, client := range m.DAClient {
+		if daMetaData.Client == client.GetClientType() {
+			retriever = client
+			break
+		}
+	}
+	if retriever == nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("DA client for the batch does not match node config: DA client batch: %s: DA client config: %s", daMetaData.Client, m.DAClient.GetClientType()),
+				Message: fmt.Sprintf("DA client for the batch does not match node config: DA client batch: %s", daMetaData.Client),
 				Error:   da.ErrDAMismatch,
 			},
 		}
 	}
 
 	// batchRes.MetaData includes proofs necessary to open disputes with the Hub
-	batchRes := m.Retriever.RetrieveBatches(daMetaData.DAPath)
+	batchRes := retriever.RetrieveBatches(daMetaData.DAPath)
 	// TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
 	// NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes

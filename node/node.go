@@ -11,6 +11,7 @@ import (
 	leveldb "github.com/ipfs/go-ds-leveldb"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -33,7 +34,6 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
-	"github.com/dymensionxyz/dymint/types"
 )
 
 // prefixes used in KV store to separate main node data from DALC data
@@ -124,19 +124,19 @@ func NewNode(
 	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
 
 	/* ------------------------------ init DA layer ----------------------------- */
-	params, err := types.GetRollappParamsFromGenesis(genesis.AppState)
-	if err != nil {
-		return nil, fmt.Errorf("in genesis doc: %w", err)
-	}
 
-	dalc := registry.GetClient(params.Params.Da)
-	if dalc == nil {
-		return nil, fmt.Errorf("get data availability client named '%s'", params.Params.Da)
-	}
+	var dalcs []da.DataAvailabilityLayerClient
+	for i, daLayer := range conf.DALayer {
+		dalc := registry.GetClient(daLayer)
+		if dalc == nil {
+			return nil, fmt.Errorf("get data availability client named '%s'", daLayer)
+		}
 
-	err = dalc.Init([]byte(conf.DAConfig), pubsubServer, store.NewPrefixKV(baseKV, dalcPrefix), logger.With("module", string(dalc.GetClientType())))
-	if err != nil {
-		return nil, fmt.Errorf("data availability layer client initialization:  %w", err)
+		err := dalc.Init([]byte(conf.DAConfig[i]), pubsubServer, store.NewPrefixKV(baseKV, dalcPrefix), logger.With("module", string(dalc.GetClientType())))
+		if err != nil {
+			return nil, fmt.Errorf("data availability layer client initialization:  %w", err)
+		}
+		dalcs = append(dalcs, dalc)
 	}
 
 	/* -------------------- Init the settlement layer client -------------------- */
@@ -147,7 +147,7 @@ func NewNode(
 	if conf.SettlementLayer == "mock" {
 		conf.SettlementConfig.KeyringHomeDir = conf.RootDir
 	}
-	err = settlementlc.Init(conf.SettlementConfig, genesis.ChainID, pubsubServer, logger.With("module", "settlement_client"))
+	err := settlementlc.Init(conf.SettlementConfig, genesis.ChainID, pubsubServer, logger.With("module", "settlement_client"))
 	if err != nil {
 		return nil, fmt.Errorf("settlement layer client initialization: %w", err)
 	}
@@ -176,7 +176,7 @@ func NewNode(
 		mp,
 		proxyApp,
 		settlementlc,
-		dalc,
+		dalcs,
 		eventBus,
 		pubsubServer,
 		nil, // p2p client is set later
@@ -237,9 +237,11 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("start pubsub server: %w", err)
 	}
-	err = n.BlockManager.DAClient.Start()
-	if err != nil {
-		return fmt.Errorf("start data availability layer client: %w", err)
+	for _, daClient := range n.BlockManager.DAClient {
+		err = daClient.Start()
+		if err != nil {
+			return fmt.Errorf("start data availability layer client: %w", err)
+		}
 	}
 	err = n.settlementlc.Start()
 	if err != nil {
@@ -267,12 +269,14 @@ func (n *Node) GetGenesis() *tmtypes.GenesisDoc {
 
 // OnStop is a part of Service interface.
 func (n *Node) OnStop() {
-	err := n.BlockManager.DAClient.Stop()
-	if err != nil {
-		n.Logger.Error("stop data availability layer client", "error", err)
+	for _, daClient := range n.BlockManager.DAClient {
+		err := daClient.Stop()
+		if err != nil {
+			n.Logger.Error("stop data availability layer client", "error", err)
+		}
 	}
 
-	err = n.settlementlc.Stop()
+	err := n.settlementlc.Stop()
 	if err != nil {
 		n.Logger.Error("stop settlement layer client", "error", err)
 	}

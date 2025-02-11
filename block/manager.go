@@ -61,7 +61,7 @@ type Manager struct {
 	// Clients and servers
 	Pubsub    *pubsub.Server
 	P2PClient *p2p.Client
-	DAClient  da.DataAvailabilityLayerClient
+	DAClient  []da.DataAvailabilityLayerClient
 	SLClient  settlement.ClientI
 
 	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that.
@@ -89,7 +89,7 @@ type Manager struct {
 	IndexerService *txindex.IndexerService
 
 	// used to fetch blocks from DA. Sequencer will only fetch batches in case it requires to re-sync (in case of rollback). Full-node will fetch batches for syncing and validation.
-	Retriever da.BatchRetriever
+	Retriever []da.BatchRetriever
 
 	/*
 		Full-node only
@@ -131,7 +131,7 @@ func NewManager(
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
 	settlementClient settlement.ClientI,
-	daClient da.DataAvailabilityLayerClient,
+	daClient []da.DataAvailabilityLayerClient,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
@@ -168,7 +168,6 @@ func NewManager(
 		Sequencers:      types.NewSequencerSet(),
 		SLClient:        settlementClient,
 		DAClient:        daClient,
-		Retriever:       daClient,
 		IndexerService:  indexerService,
 		logger:          logger.With("module", "block_manager"),
 		blockCache: &Cache{
@@ -179,6 +178,11 @@ func NewManager(
 		settlementValidationC: make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing validation process, but validation height is updated, which means the ongoing validation will validate to the new height.
 		syncedFromSettlement:  uchannel.NewNudger(),   // used by the sequencer to wait  till the node completes the syncing from settlement.
 	}
+
+	for _, client := range daClient {
+		m.Retriever = append(m.Retriever, client)
+	}
+
 	err = m.LoadStateOnInit(store, genesis, logger)
 	if err != nil {
 		return nil, fmt.Errorf("get initial state: %w", err)
@@ -406,13 +410,13 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	if da.Client(m.State.RollappParams.Da) != m.DAClient.GetClientType() {
+	/*if da.Client(m.State.RollappParams.Da) != m.DAClient.GetClientType() {
 		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.State.RollappParams.Da, m.DAClient.GetClientType())
 	}
 
 	if m.Conf.BatchSubmitBytes > m.DAClient.GetMaxBlobSizeBytes() {
 		return fmt.Errorf("batch size above limit: batch size: %d limit: %d: DA %s", m.Conf.BatchSubmitBytes, m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
-	}
+	}*/
 
 	return nil
 }

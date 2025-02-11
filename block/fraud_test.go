@@ -89,7 +89,7 @@ func TestP2PBlockWithFraud(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever[0] = manager.DAClient[0].(da.BatchRetriever)
 
 	// mock executor that returns ErrFault on ExecuteBlock
 	mockExecutor := &blockmocks.MockExecutorI{}
@@ -164,7 +164,7 @@ func TestLocalBlockWithFraud(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever[0] = manager.DAClient[0].(da.BatchRetriever)
 
 	numBatchesToAdd := 2
 	nextBatchStartHeight := manager.NextHeightToSubmit()
@@ -182,10 +182,10 @@ func TestLocalBlockWithFraud(t *testing.T) {
 		_, err = manager.Store.SaveBlock(batch.Blocks[0], batch.Commits[0], nil)
 		require.NoError(t, err)
 
-		daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
+		daResultSubmitBatch := manager.DAClient[0].SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
-		err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
+		err = manager.SLClient.SubmitBatch(batch, manager.DAClient[0].GetClientType(), &daResultSubmitBatch)
 		require.NoError(t, err)
 
 		nextBatchStartHeight = batch.EndHeight() + 1
@@ -281,7 +281,7 @@ func TestApplyBatchFromSLWithFraud(t *testing.T) {
 	require.NoError(err)
 	commitHash := [32]byte{1}
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever[0] = manager.DAClient[0].(da.BatchRetriever)
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 
 	// submit batch
@@ -293,9 +293,9 @@ func TestApplyBatchFromSLWithFraud(t *testing.T) {
 		[32]byte{},
 	)
 	require.NoError(err)
-	daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
+	daResultSubmitBatch := manager.DAClient[0].SubmitBatch(batch)
 	require.Equal(daResultSubmitBatch.Code, da.StatusSuccess)
-	err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
+	err = manager.SLClient.SubmitBatch(batch, manager.DAClient[0].GetClientType(), &daResultSubmitBatch)
 	require.NoError(err)
 
 	// Mock Executor to return ErrFraud

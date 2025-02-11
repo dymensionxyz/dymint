@@ -248,13 +248,13 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 }
 
 func (m *Manager) SubmitBatch(batch *types.Batch) error {
-	resultSubmitToDA := m.DAClient.SubmitBatch(batch)
+	resultSubmitToDA := m.DAClient[0].SubmitBatch(batch)
 	if resultSubmitToDA.Code != da.StatusSuccess {
 		return fmt.Errorf("da client submit batch: %s: %w", resultSubmitToDA.Message, resultSubmitToDA.Error)
 	}
 	m.logger.Info("Submitted batch to DA.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
-	err := m.SLClient.SubmitBatch(batch, m.DAClient.GetClientType(), &resultSubmitToDA)
+	err := m.SLClient.SubmitBatch(batch, m.DAClient[0].GetClientType(), &resultSubmitToDA)
 	if err != nil {
 		return fmt.Errorf("sl client submit batch: start height: %d: end height: %d: %w", batch.StartHeight(), batch.EndHeight(), err)
 	}

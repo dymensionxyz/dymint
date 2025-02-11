@@ -65,7 +65,7 @@ func (m *Manager) checkBalances() (*Balances, error) {
 
 	go func() {
 		defer wg.Done()
-		balance, err := m.DAClient.GetSignerBalance()
+		balance, err := m.DAClient[0].GetSignerBalance()
 		if err != nil {
 			errDA = fmt.Errorf("get DA signer balance: %w", err)
 			return
