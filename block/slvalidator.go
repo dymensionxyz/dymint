@@ -47,7 +47,6 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
-	// validate da in state update matches rollapp param
 	daClient, err := v.blockManager.Store.LoadDA(batch.EndHeight)
 	if err != nil {
 		return err

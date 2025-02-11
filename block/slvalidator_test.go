@@ -219,6 +219,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 
 			for _, bd := range bds {
 				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
+				manager.Store.SaveDA(bd.Height, "mock", nil)
 			}
 
 			// set fraud data
@@ -375,6 +376,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 
 			for _, bd := range bds {
 				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
+				manager.Store.SaveDA(bd.Height, "celestia", nil)
 			}
 
 			// Validate state
