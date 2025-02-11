@@ -70,7 +70,7 @@ type DASubmitMetaData struct {
 
 // ToPath converts a DAMetaData to a path.
 func (d *DASubmitMetaData) ToPath() string {
-	path := []string{string(d.Client), PathSeparator, d.DAPath}
+	path := []string{string(d.Client), d.DAPath}
 	return strings.Join(path, PathSeparator)
 }
 
