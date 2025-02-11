@@ -79,6 +79,7 @@ func TestInitialState(t *testing.T) {
 		BootstrapRetryTime:           30 * time.Second,
 		BlockSyncRequestIntervalTime: 30 * time.Second,
 		BlockSyncEnabled:             true,
+		DiscoveryEnabled:             true,
 	}, privKey, "TestChain", emptyStore, pubsubServer, datastore.NewMapDatastore(), logger)
 	assert.NoError(err)
 	assert.NotNil(p2pClient)

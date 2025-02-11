@@ -104,6 +104,7 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 		GossipSubCacheSize:           50,
 		BootstrapRetryTime:           30 * time.Second,
 		BlockSyncRequestIntervalTime: 30 * time.Second,
+		DiscoveryEnabled:             true,
 		BlockSyncEnabled:             true,
 	}, p2pKey, "TestChain", managerStore, pubsubServer, datastore.NewMapDatastore(), logger)
 	if err != nil {
