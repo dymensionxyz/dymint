@@ -161,7 +161,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// other client has already been set
 	if c.client != nil {
-		c.logger.Info("Celestia-node client already set.")
+		c.logger.Info("Avail client already set.")
 		return nil
 	}
 
@@ -283,12 +283,11 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 	}
 
 	var batches []*types.Batch
-	// Printout Block Blobs filtered by Signer
 	for _, blob := range blobs {
 		batch := &types.Batch{}
 		err = batch.UnmarshalBinary(blob.Data)
 		if err != nil {
-			// try to parse from the next byte on the next iteration
+			c.logger.Error("Unmarshaling blob", "error", err)
 			continue
 		}
 
@@ -297,7 +296,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		// Remove the bytes we just decoded.
 		size := batch.ToProto().Size()
 		if len(blob.Data) < size {
-			// not supposed to happen, additional safety check
+			c.logger.Error("Batch size does not match blob data length", "blob data length", len(blob.Data), "batch size", size)
 			break
 		}
 
