@@ -83,7 +83,7 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 
 	submitData := &DASubmitMetaData{
 		Client: Client(pathParts[0]),
-		DAPath: strings.Trim(path, pathParts[0]+PathSeparator),
+		DAPath: strings.TrimPrefix(path, pathParts[0]+PathSeparator),
 	}
 	return submitData, nil
 }
