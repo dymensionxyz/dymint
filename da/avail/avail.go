@@ -174,6 +174,13 @@ func (c *DataAvailabilityLayerClient) Start() error {
 	return nil
 }
 
+// Stop stops DataAvailabilityLayerClient.
+func (c *DataAvailabilityLayerClient) Stop() error {
+	c.logger.Info("Stopping Avail Data Availability Layer Client.")
+	c.cancel()
+	return nil
+}
+
 // GetClientType returns client type.
 func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Avail
