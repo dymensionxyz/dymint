@@ -130,8 +130,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 	// Check initial assertions
 	initialHeight := uint64(0)
@@ -198,8 +197,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 	// Check initial assertions
 	initialHeight := uint64(0)
@@ -265,8 +263,7 @@ func TestSubmissionByTime(t *testing.T) {
 	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 	manager.LastSubmissionTime.Store(time.Now().UTC().UnixNano())
 	// Check initial height
@@ -343,8 +340,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		require.NoError(err)
 		manager.LastSubmissionTime.Store(time.Now().UTC().UnixNano())
 
-		manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-		manager.Retriever = manager.DAClient.(da.BatchRetriever)
+		manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 		assert.Equal(manager.State.Height(), uint64(0))
 

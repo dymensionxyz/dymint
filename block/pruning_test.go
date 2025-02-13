@@ -40,8 +40,7 @@ func TestPruningRetainHeight(t *testing.T) {
 
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())

@@ -87,7 +87,8 @@ func TestMempoolDirectly(t *testing.T) {
 			MaxSkewTime:                24 * 7 * time.Hour,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
-		DAConfig:         "",
+		DALayer:          []string{"mock"},
+		DAConfig:         []string{""},
 		SettlementLayer:  "mock",
 		SettlementConfig: settlement.Config{},
 	}
