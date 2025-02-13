@@ -548,10 +548,9 @@ func (c *DataAvailabilityLayerClient) processAvailabilityData(data *weaveVMtypes
 }
 
 type WvmSubmitBlobMeta struct {
-	WvmBlockNumber      *big.Int
-	WvmBlockHash        string
-	WvmTxHash           string
-	WvmArweaveBlockHash string
+	WvmBlockNumber *big.Int
+	WvmBlockHash   string
+	WvmTxHash      string
 }
 
 // Submit submits the Blobs to Data Availability layer.

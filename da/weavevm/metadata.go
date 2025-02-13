@@ -27,9 +27,7 @@ func (d *SubmitMetaData) ToPath() string {
 		commitment,
 		d.WvmTxHash,
 	}
-	for i, part := range path {
-		path[i] = strings.Trim(part, da.PathSeparator)
-	}
+
 	return strings.Join(path, da.PathSeparator)
 }
 
