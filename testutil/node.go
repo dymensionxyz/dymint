@@ -65,6 +65,9 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig,
 	// SL config
 	nodeConfig.SettlementConfig = settlement.Config{ProposerPubKey: hex.EncodeToString(pubkeyBytes)}
 
+	nodeConfig.DALayer = []string{"mock"}
+	nodeConfig.DAConfig = []string{""}
+
 	node, err := node.NewNode(
 		context.Background(),
 		nodeConfig,
