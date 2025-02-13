@@ -334,8 +334,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())
@@ -465,8 +464,7 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 	// Set the initial sequencer set
 	manager.Sequencers.Set([]types.Sequencer{proposer, sequencer})

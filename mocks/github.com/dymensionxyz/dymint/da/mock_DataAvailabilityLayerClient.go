@@ -26,17 +26,17 @@ func (_m *MockDataAvailabilityLayerClient) EXPECT() *MockDataAvailabilityLayerCl
 	return &MockDataAvailabilityLayerClient_Expecter{mock: &_m.Mock}
 }
 
-// CheckBatchAvailability provides a mock function with given fields: daMetaData
-func (_m *MockDataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-	ret := _m.Called(daMetaData)
+// CheckBatchAvailability provides a mock function with given fields: daPath
+func (_m *MockDataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
+	ret := _m.Called(daPath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CheckBatchAvailability")
 	}
 
 	var r0 da.ResultCheckBatch
-	if rf, ok := ret.Get(0).(func(*da.DASubmitMetaData) da.ResultCheckBatch); ok {
-		r0 = rf(daMetaData)
+	if rf, ok := ret.Get(0).(func(string) da.ResultCheckBatch); ok {
+		r0 = rf(daPath)
 	} else {
 		r0 = ret.Get(0).(da.ResultCheckBatch)
 	}
@@ -50,14 +50,14 @@ type MockDataAvailabilityLayerClient_CheckBatchAvailability_Call struct {
 }
 
 // CheckBatchAvailability is a helper method to define mock.On call
-//   - daMetaData *da.DASubmitMetaData
-func (_e *MockDataAvailabilityLayerClient_Expecter) CheckBatchAvailability(daMetaData interface{}) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
-	return &MockDataAvailabilityLayerClient_CheckBatchAvailability_Call{Call: _e.mock.On("CheckBatchAvailability", daMetaData)}
+//   - daPath string
+func (_e *MockDataAvailabilityLayerClient_Expecter) CheckBatchAvailability(daPath interface{}) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
+	return &MockDataAvailabilityLayerClient_CheckBatchAvailability_Call{Call: _e.mock.On("CheckBatchAvailability", daPath)}
 }
 
-func (_c *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call) Run(run func(daMetaData *da.DASubmitMetaData)) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
+func (_c *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call) Run(run func(daPath string)) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*da.DASubmitMetaData))
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -67,52 +67,7 @@ func (_c *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call) Return(_a
 	return _c
 }
 
-func (_c *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call) RunAndReturn(run func(*da.DASubmitMetaData) da.ResultCheckBatch) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// DAPath provides a mock function with no fields
-func (_m *MockDataAvailabilityLayerClient) DAPath() string {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for DAPath")
-	}
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
-// MockDataAvailabilityLayerClient_DAPath_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DAPath'
-type MockDataAvailabilityLayerClient_DAPath_Call struct {
-	*mock.Call
-}
-
-// DAPath is a helper method to define mock.On call
-func (_e *MockDataAvailabilityLayerClient_Expecter) DAPath() *MockDataAvailabilityLayerClient_DAPath_Call {
-	return &MockDataAvailabilityLayerClient_DAPath_Call{Call: _e.mock.On("DAPath")}
-}
-
-func (_c *MockDataAvailabilityLayerClient_DAPath_Call) Run(run func()) *MockDataAvailabilityLayerClient_DAPath_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockDataAvailabilityLayerClient_DAPath_Call) Return(_a0 string) *MockDataAvailabilityLayerClient_DAPath_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockDataAvailabilityLayerClient_DAPath_Call) RunAndReturn(run func() string) *MockDataAvailabilityLayerClient_DAPath_Call {
+func (_c *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call) RunAndReturn(run func(string) da.ResultCheckBatch) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -322,6 +277,97 @@ func (_c *MockDataAvailabilityLayerClient_Init_Call) Return(_a0 error) *MockData
 }
 
 func (_c *MockDataAvailabilityLayerClient_Init_Call) RunAndReturn(run func([]byte, *pubsub.Server, store.KV, types.Logger, ...da.Option) error) *MockDataAvailabilityLayerClient_Init_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RetrieveBatches provides a mock function with given fields: daPath
+func (_m *MockDataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
+	ret := _m.Called(daPath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RetrieveBatches")
+	}
+
+	var r0 da.ResultRetrieveBatch
+	if rf, ok := ret.Get(0).(func(string) da.ResultRetrieveBatch); ok {
+		r0 = rf(daPath)
+	} else {
+		r0 = ret.Get(0).(da.ResultRetrieveBatch)
+	}
+
+	return r0
+}
+
+// MockDataAvailabilityLayerClient_RetrieveBatches_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RetrieveBatches'
+type MockDataAvailabilityLayerClient_RetrieveBatches_Call struct {
+	*mock.Call
+}
+
+// RetrieveBatches is a helper method to define mock.On call
+//   - daPath string
+func (_e *MockDataAvailabilityLayerClient_Expecter) RetrieveBatches(daPath interface{}) *MockDataAvailabilityLayerClient_RetrieveBatches_Call {
+	return &MockDataAvailabilityLayerClient_RetrieveBatches_Call{Call: _e.mock.On("RetrieveBatches", daPath)}
+}
+
+func (_c *MockDataAvailabilityLayerClient_RetrieveBatches_Call) Run(run func(daPath string)) *MockDataAvailabilityLayerClient_RetrieveBatches_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockDataAvailabilityLayerClient_RetrieveBatches_Call) Return(_a0 da.ResultRetrieveBatch) *MockDataAvailabilityLayerClient_RetrieveBatches_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockDataAvailabilityLayerClient_RetrieveBatches_Call) RunAndReturn(run func(string) da.ResultRetrieveBatch) *MockDataAvailabilityLayerClient_RetrieveBatches_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RollappId provides a mock function with no fields
+func (_m *MockDataAvailabilityLayerClient) RollappId() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for RollappId")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockDataAvailabilityLayerClient_RollappId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RollappId'
+type MockDataAvailabilityLayerClient_RollappId_Call struct {
+	*mock.Call
+}
+
+// RollappId is a helper method to define mock.On call
+func (_e *MockDataAvailabilityLayerClient_Expecter) RollappId() *MockDataAvailabilityLayerClient_RollappId_Call {
+	return &MockDataAvailabilityLayerClient_RollappId_Call{Call: _e.mock.On("RollappId")}
+}
+
+func (_c *MockDataAvailabilityLayerClient_RollappId_Call) Run(run func()) *MockDataAvailabilityLayerClient_RollappId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockDataAvailabilityLayerClient_RollappId_Call) Return(_a0 string) *MockDataAvailabilityLayerClient_RollappId_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockDataAvailabilityLayerClient_RollappId_Call) RunAndReturn(run func() string) *MockDataAvailabilityLayerClient_RollappId_Call {
 	_c.Call.Return(run)
 	return _c
 }

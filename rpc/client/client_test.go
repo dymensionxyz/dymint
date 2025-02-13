@@ -116,7 +116,8 @@ func TestGenesisChunked(t *testing.T) {
 			MaxSkewTime:                24 * time.Hour,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
-		DAConfig:         "",
+		DALayer:          []string{"mock"},
+		DAConfig:         []string{""},
 		SettlementLayer:  "mock",
 		SettlementConfig: settlement.Config{},
 	}
@@ -868,6 +869,8 @@ func TestValidatorSetHandling(t *testing.T) {
 			DiscoveryEnabled:             true,
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
+		DALayer:  []string{"mock"},
+		DAConfig: []string{""},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:                  10 * time.Millisecond,
 			BatchSubmitTime:            60 * time.Second,
@@ -1028,6 +1031,8 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		RPC:           config.RPCConfig{},
+		DALayer:       []string{"mock"},
+		DAConfig:      []string{""},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:                  100 * time.Millisecond,
@@ -1036,7 +1041,6 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 			MaxSkewTime:                24 * time.Hour,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
-		DAConfig:        "",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: proposerKey,
@@ -1145,6 +1149,8 @@ func TestMempool2Nodes(t *testing.T) {
 			MaxSkewTime:                24 * time.Hour,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
+		DALayer:       []string{"mock"},
+		DAConfig:      []string{""},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 	}, key1, signingKey1, proxy.NewLocalClientCreator(app), genesis, "", log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
@@ -1162,6 +1168,8 @@ func TestMempool2Nodes(t *testing.T) {
 			MaxSkewTime:                24 * time.Hour,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
+		DALayer:  []string{"mock"},
+		DAConfig: []string{""},
 		P2PConfig: config.P2PConfig{
 			ListenAddress:                "/ip4/127.0.0.1/tcp/9002",
 			BootstrapNodes:               "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
