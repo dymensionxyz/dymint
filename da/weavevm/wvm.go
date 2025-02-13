@@ -654,6 +654,6 @@ func isGatewayTransactionNotFoundErr(data *weaveVMtypes.WvmDymintBlob) bool {
 	return data.WvmBlockHash == "0x"
 }
 
-func (c *DataAvailabilityLayerClient) DAPath() string {
+func (c *DataAvailabilityLayerClient) RollappId() string {
 	return fmt.Sprintf("%d", c.config.ChainID)
 }

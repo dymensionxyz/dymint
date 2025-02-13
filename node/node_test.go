@@ -76,6 +76,7 @@ func TestMempoolDirectly(t *testing.T) {
 			BootstrapRetryTime:           30 * time.Second,
 			BootstrapNodes:               "",
 			BlockSyncRequestIntervalTime: 30 * time.Second,
+			DiscoveryEnabled:             true,
 		},
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
@@ -86,7 +87,8 @@ func TestMempoolDirectly(t *testing.T) {
 			MaxSkewTime:                24 * 7 * time.Hour,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
-		DAConfig:         "",
+		DALayer:          []string{"mock"},
+		DAConfig:         []string{""},
 		SettlementLayer:  "mock",
 		SettlementConfig: settlement.Config{},
 	}

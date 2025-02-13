@@ -16,6 +16,7 @@ import (
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
 
+	"github.com/dymensionxyz/dymint/rpc/client"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -110,6 +111,13 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 	// Prevents Internet Explorer from MIME-sniffing a response away
 	// from the declared content-type
 	w.Header().Set("x-content-type-options", "nosniff")
+
+	// it is necessary to return a plain string instead of json object for eth_chainId, since it is required by Metamask to validate chain id
+	if errResult == nil && method == "eth_chainId" {
+		result := (*client.ResultChainId)(rets[0].UnsafePointer())
+		codecReq.WriteResponse(w, result.ChainID)
+		return
+	}
 
 	// Encode the response.
 	if errResult == nil {

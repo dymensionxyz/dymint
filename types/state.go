@@ -108,20 +108,9 @@ func (s *State) NextHeight() uint64 {
 
 // SetRollappParamsFromGenesis sets the rollapp consensus params from genesis
 func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
-	var objmap map[string]json.RawMessage
-	err := json.Unmarshal(appState, &objmap)
+	rollappParams, err := GetRollappParamsFromGenesis(appState)
 	if err != nil {
-		return err
-	}
-	params, ok := objmap[rollappparams_modulename]
-	if !ok {
-		return fmt.Errorf("module not defined in genesis: %s", rollappparams_modulename)
-	}
-
-	var rollappParams RollappParams
-	err = json.Unmarshal(params, &rollappParams)
-	if err != nil {
-		return err
+		return fmt.Errorf("get rollapp params from genesis: %w", err)
 	}
 	s.RollappParams = *rollappParams.Params
 	return nil

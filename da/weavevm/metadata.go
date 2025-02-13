@@ -21,13 +21,11 @@ type SubmitMetaData struct {
 
 // ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
-	commitment := hex.EncodeToString(d.Commitment)
 	path := []string{
 		strconv.FormatUint(d.Height, 10),
-		commitment,
+		hex.EncodeToString(d.Commitment),
 		d.WvmTxHash,
 	}
-
 	return strings.Join(path, da.PathSeparator)
 }
 
