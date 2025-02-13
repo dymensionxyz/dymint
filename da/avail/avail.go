@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"cosmossdk.io/math"
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/stub"
@@ -374,6 +375,15 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 			Message: "Blob available",
 		},
 	}
+}
+
+// GetSignerBalance returns the balance for a specific address
+// TODO implement get balance for avail client
+func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	return da.Balance{
+		Amount: math.ZeroInt(),
+		Denom:  "avail",
+	}, nil
 }
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured

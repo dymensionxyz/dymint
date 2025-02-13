@@ -20,11 +20,12 @@ type AvailClient interface {
 }
 
 type Client struct {
-	sdk sdk.SDK
-	AvailClient
+	sdk     sdk.SDK
 	account subkey.KeyPair
 	appId   uint32
 }
+
+var _ AvailClient = &Client{}
 
 // NewClient returns a DA avail client
 func NewClient(endpoint string, seed string, appId uint32) (AvailClient, error) {
