@@ -82,7 +82,7 @@ func (c Client) GetBlobsBySigner(blockHash string, accountAddress string) ([]ava
 	}
 	accountId, err := metadata.NewAccountIdFromAddress(accountAddress)
 	if err != nil {
-		return nil, errors.Join(da.ErrRetrieval, err)
+		return nil, err
 	}
 
 	// Block Blobs filtered by Signer
