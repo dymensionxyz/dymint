@@ -398,6 +398,8 @@ func TestCheckBatchAvailability(t *testing.T) {
 		{
 			name: "Blob Not Found",
 			setupMocks: func() {
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, errors.New("retrieval failed")).Once()
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(nil, da.ErrRetrieval).Once()
 			},
