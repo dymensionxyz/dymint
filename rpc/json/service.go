@@ -110,6 +110,7 @@ func newService(c *client.Client, l types.Logger, opts ...option) *service {
 		"abci_info":            newMethod(s.ABCIInfo),
 		"broadcast_evidence":   newMethod(s.BroadcastEvidence),
 		"block_validated":      newMethod(s.BlockValidated),
+		"eth_chainId":          newMethod(s.ChainId),
 	}
 
 	for _, opt := range opts {
@@ -294,4 +295,8 @@ func (s *service) BroadcastEvidence(req *http.Request, args *broadcastEvidenceAr
 func (s *service) BlockValidated(req *http.Request, args *blockArgs) (*client.ResultBlockValidated, error) {
 	fmt.Println(args)
 	return s.client.BlockValidated((*int64)(&args.Height))
+}
+
+func (s *service) ChainId(req *http.Request, args *blockArgs) (*client.ResultChainId, error) {
+	return s.client.ChainID()
 }
