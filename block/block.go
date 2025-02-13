@@ -86,7 +86,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 		_, err = m.Store.SaveDA(block.Header.Height, responses.EndBlock.RollappParamUpdates.Da, nil)
 		if err != nil {
-			return fmt.Errorf("add drs version: %w", err)
+			return fmt.Errorf("save DA: %w", err)
 		}
 
 		_, err = m.Store.SaveDRSVersion(block.Header.Height, responses.EndBlock.RollappParamUpdates.DrsVersion, nil)
