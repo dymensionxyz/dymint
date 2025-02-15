@@ -50,7 +50,7 @@ func NewClient(endpoint string, seed string, appId uint32) (AvailClient, error) 
 func (c Client) SubmitData(data []byte) (string, error) {
 	syncing, err := c.IsSyncing()
 	if syncing || err != nil {
-		return "", errors.Join(err, da.ErrStillSyncing)
+		return "", errors.Join(err, da.ErrDANotAvailable)
 	}
 	tx := c.sdk.Tx.DataAvailability.SubmitData(data)
 	res, err := tx.ExecuteAndWatchInclusion(c.account, availgo.NewTransactionOptions().WithAppId(c.appId))
@@ -92,7 +92,7 @@ func (c Client) GetAccountAddress() string {
 func (c Client) GetBlobsBySigner(blockHash string, accountAddress string) ([]availgo.DataSubmission, error) {
 	syncing, err := c.IsSyncing()
 	if syncing || err != nil {
-		return nil, errors.Join(err, da.ErrStillSyncing)
+		return nil, errors.Join(err, da.ErrDANotAvailable)
 	}
 
 	block, err := c.GetBlock(blockHash)
