@@ -3,7 +3,6 @@
 package avail
 
 import (
-	primitives "github.com/availproject/avail-go-sdk/primitives"
 	sdk "github.com/availproject/avail-go-sdk/sdk"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -181,23 +180,23 @@ func (_c *MockAvailClient_GetBlock_Call) RunAndReturn(run func(string) (sdk.Bloc
 	return _c
 }
 
-// GetFinalizedHead provides a mock function with no fields
-func (_m *MockAvailClient) GetFinalizedHead() (primitives.H256, error) {
+// IsSyncing provides a mock function with no fields
+func (_m *MockAvailClient) IsSyncing() (bool, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetFinalizedHead")
+		panic("no return value specified for IsSyncing")
 	}
 
-	var r0 primitives.H256
+	var r0 bool
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (primitives.H256, error)); ok {
+	if rf, ok := ret.Get(0).(func() (bool, error)); ok {
 		return rf()
 	}
-	if rf, ok := ret.Get(0).(func() primitives.H256); ok {
+	if rf, ok := ret.Get(0).(func() bool); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(primitives.H256)
+		r0 = ret.Get(0).(bool)
 	}
 
 	if rf, ok := ret.Get(1).(func() error); ok {
@@ -209,29 +208,29 @@ func (_m *MockAvailClient) GetFinalizedHead() (primitives.H256, error) {
 	return r0, r1
 }
 
-// MockAvailClient_GetFinalizedHead_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFinalizedHead'
-type MockAvailClient_GetFinalizedHead_Call struct {
+// MockAvailClient_IsSyncing_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsSyncing'
+type MockAvailClient_IsSyncing_Call struct {
 	*mock.Call
 }
 
-// GetFinalizedHead is a helper method to define mock.On call
-func (_e *MockAvailClient_Expecter) GetFinalizedHead() *MockAvailClient_GetFinalizedHead_Call {
-	return &MockAvailClient_GetFinalizedHead_Call{Call: _e.mock.On("GetFinalizedHead")}
+// IsSyncing is a helper method to define mock.On call
+func (_e *MockAvailClient_Expecter) IsSyncing() *MockAvailClient_IsSyncing_Call {
+	return &MockAvailClient_IsSyncing_Call{Call: _e.mock.On("IsSyncing")}
 }
 
-func (_c *MockAvailClient_GetFinalizedHead_Call) Run(run func()) *MockAvailClient_GetFinalizedHead_Call {
+func (_c *MockAvailClient_IsSyncing_Call) Run(run func()) *MockAvailClient_IsSyncing_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *MockAvailClient_GetFinalizedHead_Call) Return(_a0 primitives.H256, _a1 error) *MockAvailClient_GetFinalizedHead_Call {
+func (_c *MockAvailClient_IsSyncing_Call) Return(_a0 bool, _a1 error) *MockAvailClient_IsSyncing_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockAvailClient_GetFinalizedHead_Call) RunAndReturn(run func() (primitives.H256, error)) *MockAvailClient_GetFinalizedHead_Call {
+func (_c *MockAvailClient_IsSyncing_Call) RunAndReturn(run func() (bool, error)) *MockAvailClient_IsSyncing_Call {
 	_c.Call.Return(run)
 	return _c
 }

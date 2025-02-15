@@ -31,4 +31,7 @@ var (
 	ErrNameSpace = errors.New("namespace not matching")
 	// ErrDAMismatch is returned when the DA client used does not match the da client specified in the da path of the state update
 	ErrDAMismatch = gerrc.ErrInvalidArgument.Wrap("DA in config not matching DA path")
+
+	// ErrStillSyncing is returend when da client is still syncing
+	ErrStillSyncing = errors.New("DA  still syncing")
 )

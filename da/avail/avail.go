@@ -19,6 +19,8 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
+var AppIdError = errors.New("Transaction is not compatible with non-zero AppIds")
+
 const (
 	keyringNetworkID          uint8 = 42
 	defaultTxInclusionTimeout       = 100 * time.Second
@@ -48,7 +50,6 @@ type DataAvailabilityLayerClient struct {
 	txInclusionTimeout time.Duration
 	batchRetryDelay    time.Duration
 	batchRetryAttempts uint
-	synced             chan struct{}
 }
 
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
@@ -130,7 +131,6 @@ func WithBatchRetryAttempts(attempts uint) da.Option {
 // Init initializes DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
-	c.synced = make(chan struct{}, 1)
 
 	if len(config) > 0 {
 		err := json.Unmarshal(config, &c.config)
@@ -220,7 +220,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
-						if errors.Is(err, da.ErrTxBroadcastConfigError) {
+						if errors.Is(err, da.ErrTxBroadcastConfigError) || errors.Is(err, AppIdError) {
 							err = retry.Unrecoverable(err)
 						}
 						return err
@@ -338,8 +338,8 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 	}
 
 	// used to discard any rpc issues before availability checks
-	_, err = c.client.GetFinalizedHead()
-	if err != nil {
+	syncing, err := c.client.IsSyncing()
+	if syncing || err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,

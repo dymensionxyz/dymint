@@ -13,7 +13,7 @@ import (
 
 type AvailClient interface {
 	SubmitData(data []byte) (string, error)
-	GetFinalizedHead() (prim.H256, error)
+	IsSyncing() (bool, error)
 	GetBlock(blockHash string) (sdk.Block, error)
 	GetAccountAddress() string
 	GetBlobsBySigner(blockHash string, accountAddress string) ([]availgo.DataSubmission, error)
@@ -46,7 +46,12 @@ func NewClient(endpoint string, seed string, appId uint32) (AvailClient, error) 
 	return client, nil
 }
 
+// SubmitData sends blob data to Avail DA
 func (c Client) SubmitData(data []byte) (string, error) {
+	syncing, err := c.IsSyncing()
+	if syncing || err != nil {
+		return "", errors.Join(err, da.ErrStillSyncing)
+	}
 	tx := c.sdk.Tx.DataAvailability.SubmitData(data)
 	res, err := tx.ExecuteAndWatchInclusion(c.account, availgo.NewTransactionOptions().WithAppId(c.appId))
 	if err != nil {
@@ -55,10 +60,7 @@ func (c Client) SubmitData(data []byte) (string, error) {
 	return res.BlockHash.String(), nil
 }
 
-func (c Client) GetFinalizedHead() (prim.H256, error) {
-	return c.sdk.Client.Rpc.Chain.GetFinalizedHead()
-}
-
+// GetBlock retrieves a block from Avail chain by block hash
 func (c Client) GetBlock(blockHash string) (sdk.Block, error) {
 	hash, err := prim.NewH256FromHexString(blockHash)
 	if err != nil {
@@ -72,11 +74,27 @@ func (c Client) GetBlock(blockHash string) (sdk.Block, error) {
 	return block, nil
 }
 
+// IsSyncing returns true if remote rpc node is still syncing
+func (c Client) IsSyncing() (bool, error) {
+	value, err := c.sdk.Client.Rpc.System.Health()
+	if err != nil {
+		return false, err
+	}
+	return value.IsSyncing, nil
+}
+
+// GetAccountAddress returns configured account address
 func (c Client) GetAccountAddress() string {
 	return c.account.SS58Address(42)
 }
 
+// GetBlobsBySigner returns posted blobs filtered by block and sequencer account
 func (c Client) GetBlobsBySigner(blockHash string, accountAddress string) ([]availgo.DataSubmission, error) {
+	syncing, err := c.IsSyncing()
+	if syncing || err != nil {
+		return nil, errors.Join(err, da.ErrStillSyncing)
+	}
+
 	block, err := c.GetBlock(blockHash)
 	if err != nil {
 		return nil, err
