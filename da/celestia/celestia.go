@@ -96,7 +96,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	return nil
 }
 
-func (c DataAvailabilityLayerClient) DAPath() string {
+func (c DataAvailabilityLayerClient) RollappId() string {
 	return c.config.NamespaceIDStr
 }
 

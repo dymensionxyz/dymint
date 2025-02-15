@@ -83,6 +83,8 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 		return nil, err
 	}
 
+	dacl := GetMockDALC(logger)
+
 	var proxyApp proxy.AppConns
 	if proxyAppConns == nil {
 		proxyApp = GetABCIProxyAppMock(logger.With("module", "proxy"))
@@ -102,6 +104,7 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 		GossipSubCacheSize:           50,
 		BootstrapRetryTime:           30 * time.Second,
 		BlockSyncRequestIntervalTime: 30 * time.Second,
+		DiscoveryEnabled:             true,
 		BlockSyncEnabled:             true,
 	}, p2pKey, "TestChain", managerStore, pubsubServer, datastore.NewMapDatastore(), logger)
 	if err != nil {
@@ -110,7 +113,6 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 
 	config := config.NodeConfig{
 		BlockManagerConfig: conf,
-		DAConfig:           "",
 	}
 
 	indexer, err := createIndexerService()
@@ -118,8 +120,8 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 		return nil, err
 	}
 
-	manager, err := block.NewManager(proposerKey, config, genesis, "", managerStore, mp, proxyApp, settlementlc, nil,
-		pubsubServer, p2pClient, nil, indexer, logger)
+	manager, err := block.NewManager(proposerKey, config, genesis, "", managerStore, mp, proxyApp, settlementlc, []da.DataAvailabilityLayerClient{dacl}, nil,
+		pubsubServer, p2pClient, indexer, logger)
 	if err != nil {
 		return nil, err
 	}

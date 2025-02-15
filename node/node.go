@@ -11,6 +11,8 @@ import (
 	leveldb "github.com/ipfs/go-ds-leveldb"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -121,9 +123,23 @@ func NewNode(
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
 	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
 
-	// TODO: dalcKV is needed for mock only. Initialize only if mock used
-	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
-	// Init the settlement layer client
+	/* ------------------------------ init DA layer ----------------------------- */
+
+	var dalcs []da.DataAvailabilityLayerClient
+	for i, daLayer := range conf.DALayer {
+		dalc := registry.GetClient(daLayer)
+		if dalc == nil {
+			return nil, fmt.Errorf("get data availability client named '%s'", daLayer)
+		}
+
+		err := dalc.Init([]byte(conf.DAConfig[i]), pubsubServer, store.NewPrefixKV(baseKV, dalcPrefix), logger.With("module", string(dalc.GetClientType())))
+		if err != nil {
+			return nil, fmt.Errorf("data availability layer client initialization:  %w", err)
+		}
+		dalcs = append(dalcs, dalc)
+	}
+
+	/* -------------------- Init the settlement layer client -------------------- */
 	settlementlc := slregistry.GetClient(slregistry.Client(conf.SettlementLayer))
 	if settlementlc == nil {
 		return nil, fmt.Errorf("get settlement client: named: %s", conf.SettlementLayer)
@@ -160,10 +176,10 @@ func NewNode(
 		mp,
 		proxyApp,
 		settlementlc,
+		dalcs,
 		eventBus,
 		pubsubServer,
 		nil, // p2p client is set later
-		dalcKV,
 		indexerService,
 		logger,
 	)
@@ -221,9 +237,11 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("start pubsub server: %w", err)
 	}
-	err = n.BlockManager.DAClient.Start()
-	if err != nil {
-		return fmt.Errorf("start data availability layer client: %w", err)
+	for _, daClient := range n.BlockManager.DAClients {
+		err = daClient.Start()
+		if err != nil {
+			return fmt.Errorf("start data availability layer client: %w", err)
+		}
 	}
 	err = n.settlementlc.Start()
 	if err != nil {
@@ -251,12 +269,14 @@ func (n *Node) GetGenesis() *tmtypes.GenesisDoc {
 
 // OnStop is a part of Service interface.
 func (n *Node) OnStop() {
-	err := n.BlockManager.DAClient.Stop()
-	if err != nil {
-		n.Logger.Error("stop data availability layer client", "error", err)
+	for _, daClient := range n.BlockManager.DAClients {
+		err := daClient.Stop()
+		if err != nil {
+			n.Logger.Error("stop data availability layer client", "error", err)
+		}
 	}
 
-	err = n.settlementlc.Stop()
+	err := n.settlementlc.Stop()
 	if err != nil {
 		n.Logger.Error("stop settlement layer client", "error", err)
 	}

@@ -702,3 +702,31 @@ func (e ErrStateUpdateDRSVersionFraud) Error() string {
 func (e ErrStateUpdateDRSVersionFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
+
+// ErrStateUpdateDAFraud represents an error where the DA used in the state update does not follow rollapp param.
+type ErrStateUpdateDAFraud struct {
+	StateIndex uint64
+	Height     uint64
+	DA         string
+	DAFraud    string
+}
+
+func NewErrStateUpdateDAFraud(stateIndex uint64, height uint64, da string, daFraud string) error {
+	return &ErrStateUpdateDAFraud{
+		StateIndex: stateIndex,
+		Height:     height,
+		DA:         da,
+		DAFraud:    daFraud,
+	}
+}
+
+func (e ErrStateUpdateDAFraud) Error() string {
+	return fmt.Sprintf(
+		"possible fraud detected: DA Mismatch - StateIndex: %d, Rollapp DA: %s, State Update DA: %s",
+		e.StateIndex, e.DA, e.DAFraud,
+	)
+}
+
+func (e ErrStateUpdateDAFraud) Unwrap() error {
+	return gerrc.ErrFault
+}

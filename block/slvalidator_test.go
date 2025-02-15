@@ -143,6 +143,13 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			expectedErrType:    &types.ErrInvalidNextSequencersHashFraud{},
 			last:               true,
 		},
+		{
+			name:               "Failed validation wrong DA",
+			p2pBlocks:          true,
+			stateUpdateFraud:   "da",
+			doubleSignedBlocks: nil,
+			expectedErrType:    &types.ErrStateUpdateDAFraud{},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -171,8 +178,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			}
 
 			// Create DA
-			manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-			manager.Retriever = manager.DAClient.(da.BatchRetriever)
+			manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 			// Generate batch
 			var batch *types.Batch
@@ -185,7 +191,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			}
 
 			// Submit batch to DA
-			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
+			daResultSubmitBatch := manager.GetActiveDAClient().SubmitBatch(batch)
 			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
 			// Create block descriptors
@@ -221,6 +227,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 
 			for _, bd := range bds {
 				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
+				manager.Store.SaveDA(bd.Height, "mock", nil)
 			}
 
 			// set fraud data
@@ -247,6 +254,8 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			case "nextsequencer":
 				seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(nextProposerKey.PubKey(), 1))
 				slBatch.NextSequencer = seq.SettlementAddress
+			case "da":
+				slBatch.MetaData.Client = "celestia"
 			}
 
 			// validate the state update
@@ -270,7 +279,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:         "mock",
+			Da:         "celestia",
 			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
@@ -340,10 +349,9 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			require.NoError(t, err)
 
 			// Start DA client
-			manager.DAClient = mockDA.DaClient
-			err = manager.DAClient.Start()
+			manager.DAClients[da.Celestia] = mockDA.DaClient
+			err = manager.DAClients[da.Celestia].Start()
 			require.NoError(t, err)
-			manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 			// RPC calls necessary for blob submission
 			mockDA.MockRPC.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(mockDA.IDS, nil).Once().Run(func(args mock.Arguments) {})
@@ -352,7 +360,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			mockDA.MockRPC.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]bool{true}, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 
 			// Submit batch to DA
-			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
+			daResultSubmitBatch := manager.DAClients[da.Celestia].SubmitBatch(batch)
 			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
 			// RPC calls for successful blob retrieval
@@ -378,6 +386,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 
 			for _, bd := range bds {
 				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
+				manager.Store.SaveDA(bd.Height, "celestia", nil)
 			}
 
 			// Validate state

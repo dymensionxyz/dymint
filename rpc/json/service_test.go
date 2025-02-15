@@ -327,10 +327,13 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
 		},
+		DALayer:  []string{"mock"},
+		DAConfig: []string{""},
 		P2PConfig: config.P2PConfig{
 			ListenAddress:                config.DefaultListenAddress,
 			GossipSubCacheSize:           50,
 			BootstrapRetryTime:           30 * time.Second,
+			DiscoveryEnabled:             true,
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 	}

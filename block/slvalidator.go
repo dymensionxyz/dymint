@@ -47,6 +47,14 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
+	daClient, err := v.blockManager.Store.LoadDA(batch.EndHeight)
+	if err != nil {
+		return err
+	}
+	if daClient != string(batch.MetaData.Client) {
+		return types.NewErrStateUpdateDAFraud(batch.StateIndex, batch.EndHeight, daClient, string(batch.MetaData.Client))
+	}
+
 	// loads blocks applied from P2P, if any.
 	p2pBlocks := make(map[uint64]*types.Block)
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
@@ -87,8 +95,12 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 			return types.NewErrStateUpdateBlobCorruptedFraud(batch.StateIndex, string(batch.MetaData.Client), batch.MetaData.DAPath)
 		}
 
+		retriever := v.blockManager.GetRetriever(batch.MetaData.Client)
+		if retriever == nil {
+			return fmt.Errorf("missing DA in config. DA: %s", batch.MetaData.Client)
+		}
 		// fraud detected in case availability checks fail and therefore there certainty the blob, according to the state update DA path, is not available.
-		checkBatchResult := v.blockManager.Retriever.CheckBatchAvailability(batch.MetaData.DAPath)
+		checkBatchResult := retriever.CheckBatchAvailability(batch.MetaData.DAPath)
 		if errors.Is(checkBatchResult.Error, da.ErrBlobNotIncluded) {
 			return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.Client), batch.MetaData.DAPath)
 		}
@@ -103,7 +115,7 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 	}
 
 	// validate DA blocks against the state update
-	err := v.ValidateDaBlocks(batch, daBlocks)
+	err = v.ValidateDaBlocks(batch, daBlocks)
 	if err != nil {
 		return err
 	}

@@ -112,8 +112,8 @@ p2p_gossip_cache_size = {{ .P2PConfig.GossipSubCacheSize }}
 # time interval to check if no p2p nodes are connected to bootstrap again
 p2p_bootstrap_retry_time = "{{ .P2PConfig.BootstrapRetryTime }}"
 
-# set to false to disable advertising the node to the P2P network
-p2p_advertising_enabled= "{{ .P2PConfig.AdvertisingEnabled }}"
+# set to false to disable P2P nodes discovery used to auto-connect to other peers in the P2P network
+p2p_discovery_enabled= "{{ .P2PConfig.DiscoveryEnabled }}"
 
 # set to false to disable block syncing from p2p
 p2p_blocksync_enabled= "{{ .P2PConfig.BlockSyncEnabled }}"
