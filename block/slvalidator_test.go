@@ -3,6 +3,7 @@ package block_test
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -369,7 +370,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 
 			// RPC calls for unavailable blobs
 			if tc.checkAvailability {
-				mockDA.MockRPC.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
+				mockDA.MockRPC.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("retrieval error")).Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 				mockDA.MockRPC.On("GetByHeight", mock.Anything, mock.Anything).Return(mockDA.Header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 				mockDA.MockRPC.On("GetProofs", mock.Anything, mock.Anything, mock.Anything).Return(mockDA.BlobProofs, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 				mockDA.MockRPC.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]bool{false}, nil).Once().Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })

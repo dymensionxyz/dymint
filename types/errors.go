@@ -649,6 +649,32 @@ func (e ErrStateUpdateBlobCorruptedFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
+// ErrStateUpdateBlobNotFoundFraud represents an error where DA tx/commitment exists but it contains no blob
+type ErrStateUpdateBlobNotFoundFraud struct {
+	StateIndex uint64
+	DA         string
+	DAPath     string
+}
+
+func NewErrStateUpdateBlobNotFoundFraud(stateIndex uint64, da string, daPath string) error {
+	return &ErrStateUpdateBlobNotFoundFraud{
+		StateIndex: stateIndex,
+		DA:         da,
+		DAPath:     daPath,
+	}
+}
+
+func (e ErrStateUpdateBlobNotFoundFraud) Error() string {
+	return fmt.Sprintf(
+		"possible fraud detected: no blob data found in DA - StateIndex: %d, DA: %s, DAPath: %s",
+		e.StateIndex, e.DA, e.DAPath,
+	)
+}
+
+func (e ErrStateUpdateBlobNotFoundFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
 // ErrStateUpdateDRSVersionFraud represents an error where the DRS versions do not match in the state update.
 type ErrStateUpdateDRSVersionFraud struct {
 	StateIndex   uint64
