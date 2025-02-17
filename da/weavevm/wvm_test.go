@@ -303,10 +303,10 @@ func TestRetrieveBatches(t *testing.T) {
 			setupMocks: func() {
 				// Mock GetTransactionByHash to return an error
 				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
-					Return(nil, false, errors.New("retrieval failed")).Once()
+					Return(nil, false, da.ErrRetrieval).Once()
 
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
-					Return(nil, errors.New("blob not found")).Once()
+					Return(nil, da.ErrRetrieval).Once()
 			},
 			submitMeta: &weavevm.SubmitMetaData{
 				Height:     123,
@@ -377,6 +377,8 @@ func TestCheckBatchAvailability(t *testing.T) {
 		{
 			name: "Successful Availability Check",
 			setupMocks: func() {
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, da.ErrRetrieval).Once()
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(&weaveVMtypes.WvmDymintBlob{
 						Blob:             batchData,
@@ -396,8 +398,10 @@ func TestCheckBatchAvailability(t *testing.T) {
 		{
 			name: "Blob Not Found",
 			setupMocks: func() {
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, da.ErrRetrieval).Once()
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
-					Return(nil, errors.New("blob not found")).Once()
+					Return(nil, da.ErrRetrieval).Once()
 			},
 			submitMeta: &weavevm.SubmitMetaData{
 				Height:     123,
@@ -405,11 +409,13 @@ func TestCheckBatchAvailability(t *testing.T) {
 				Commitment: batchHash,
 			},
 			expectCode:  da.StatusError,
-			expectError: da.ErrBlobNotFound.Error(),
+			expectError: da.ErrRetrieval.Error(),
 		},
 		{
 			name: "Verification Failure",
 			setupMocks: func() {
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, da.ErrRetrieval).Once()
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(&weaveVMtypes.WvmDymintBlob{
 						Blob:             []byte("corrupted data"),
@@ -430,6 +436,8 @@ func TestCheckBatchAvailability(t *testing.T) {
 		{
 			name: "Context Timeout",
 			setupMocks: func() {
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, da.ErrRetrieval).Once()
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(nil, context.DeadlineExceeded).Once()
 			},
@@ -439,7 +447,7 @@ func TestCheckBatchAvailability(t *testing.T) {
 				Commitment: batchHash,
 			},
 			expectCode:  da.StatusError,
-			expectError: da.ErrBlobNotFound.Error(),
+			expectError: da.ErrRetrieval.Error(),
 		},
 	}
 
