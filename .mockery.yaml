@@ -28,7 +28,7 @@ packages:
       DAClient:
   github.com/dymensionxyz/dymint/da/avail:
     interfaces:
-     SubstrateApiI:
+     AvailClient:
   github.com/dymensionxyz/dymint/da:
     interfaces:
      DataAvailabilityLayerClient:
