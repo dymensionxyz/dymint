@@ -63,8 +63,6 @@ issues:
 
 
 linters-settings:
-  go-version-checker:
-    min-version: "1.22"
   revive:
     rules:
       - name: exported
