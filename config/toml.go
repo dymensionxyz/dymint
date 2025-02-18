@@ -83,17 +83,11 @@ batch_submit_time = "{{ .BlockManagerConfig.BatchSubmitTime }}"
 batch_submit_bytes = {{ .BlockManagerConfig.BatchSubmitBytes }}
 
 ### da config ###
-# this should be json matching the celestia.Config type
-da_config = "{{ .DAConfig }}"
+# da clients
+da_layer = ['celestia','avail','weavevm']
+# this should be json including config matching the da layer
+da_config = ['{"base_url":"http://127.0.0.1:26658","timeout":30000000000,"gas_prices":0.1,"auth_token":"TOKEN","backoff":{"initial_delay":6000000000,"max_delay":6000000000,"growth_factor":2},"retry_attempts":4,"retry_delay":3000000000}','{"seed": "MNEMONIC", "endpoint": "https://turing-rpc.avail.so/rpc", "app_id": 0}','{"endpoint":"https://testnet-rpc.wvm.dev","chain_id":9496,"private_key_hex":"PRIVATE_KEY_HEX"}']
 
-# Celestia config example:
-# da_config = "{\"base_url\":\"http:\/\/127.0.0.1:26658\",\"timeout\":30000000000,\"gas_prices\":0.1,\"auth_token\":\"TOKEN\",\"backoff\":{\"initial_delay\":6000000000,\"max_delay\":6000000000,\"growth_factor\":2},\"retry_attempts\":4,\"retry_delay\":3000000000}"
-# Avail config example:
-# da_config = "{\"seed\": \"MNEMONIC\", \"endpoint\": \"https://turing-rpc.avail.so/rpc\", \"app_id\": 0}"
-# WeaveVM config example:
-# da_config = "{\"endpoint\":\"https://testnet-rpc.wvm.dev\",\"chain_id\":9496,\"timeout\":\"30s\",\"private_key_hex\":\"PRIVATE_KEY_HEX\"}"
-# Or with web3signer:
-# da_config = "{\"endpoint\":\"https://testnet-rpc.wvm.dev\",\"chain_id\":9496,\"timeout\":\"30s\",\"web3_signer_endpoint\":\"http://localhost:9000\"}"
 
 ### p2p config ###
 
