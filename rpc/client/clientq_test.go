@@ -2,17 +2,33 @@ package client
 
 import "testing"
 
-func TestFoo(t *testing.T) {
-
-	a, b, err := filterMinMax(900, 1000, 0, 0)
-	t.Log(a, b, err)
-	a, b, err = filterMinMax(900, 1000, 950, 970)
-	t.Log(a, b, err)
-	a, b, err = filterMinMax(900, 1000, 1000, 1000)
-	t.Log(a, b, err)
-	a, b, err = filterMinMax(900, 1000, 999, 999)
-	t.Log(a, b, err)
-	a, b, err = filterMinMax(1001, 1000, 0, 0)
-	t.Log(a, b, err)
-
+func TestMinMaxFilter(t *testing.T) {
+	_, _, err := filterMinMax(900, 1000, 0, 0)
+	if err != nil {
+		t.FailNow()
+	}
+	_, _, err = filterMinMax(900, 1000, 950, 970)
+	if err != nil {
+		t.FailNow()
+	}
+	_, _, err = filterMinMax(900, 1000, 1000, 1000)
+	if err != nil {
+		t.FailNow()
+	}
+	_, _, err = filterMinMax(900, 1000, 999, 999)
+	if err != nil {
+		t.FailNow()
+	}
+	_, _, err = filterMinMax(1000, 1000, 999, 999)
+	if err != nil {
+		t.FailNow()
+	}
+	_, _, err = filterMinMax(1000, 1000, 1000, 1000)
+	if err != nil {
+		t.FailNow()
+	}
+	_, _, err = filterMinMax(1001, 1000, 0, 0)
+	if err != nil {
+		t.FailNow()
+	}
 }
