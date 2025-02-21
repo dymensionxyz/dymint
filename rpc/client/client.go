@@ -338,9 +338,13 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 	if errors.Is(err, gerrc.ErrNotFound) {
 		baseHeight = 1
 	}
+	bmHeight := int64(c.node.GetBlockManagerHeight()) //nolint:gosec // height is non-negative and falls in int64
+	if uint64(bmHeight) < baseHeight {
+		c.Logger.Error("BlockchainInfo block manager height less than base height", "baseHeight", baseHeight, "bmHeight", bmHeight)
+	}
 	minHeight, maxHeight, err = filterMinMax(
-		int64(baseHeight),                     //nolint:gosec // height is non-negative and falls in int64
-		int64(c.node.GetBlockManagerHeight()), //nolint:gosec // height is non-negative and falls in int64
+		int64(baseHeight), //nolint:gosec // height is non-negative and falls in int64
+		bmHeight,
 		minHeight,
 		maxHeight,
 	)
