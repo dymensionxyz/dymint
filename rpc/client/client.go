@@ -330,7 +330,6 @@ func (c *Client) GenesisChunked(_ context.Context, id uint) (*ctypes.ResultGenes
 
 // BlockchainInfo returns ABCI block meta information for given height range.
 func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
-	const limit int64 = 20
 
 	baseHeight, err := c.node.BlockManager.Store.LoadBaseHeight()
 	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
@@ -344,7 +343,7 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 		int64(c.node.GetBlockManagerHeight()), //nolint:gosec // height is non-negative and falls in int64
 		minHeight,
 		maxHeight,
-		limit)
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -985,7 +984,9 @@ func validateSkipCount(page, perPage int) int {
 	return skipCount
 }
 
-func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
+func filterMinMax(base, height, min, max int64) (int64, int64, error) {
+	const limit int64 = 20
+
 	// filter negatives
 	if min < 0 || max < 0 {
 		return min, max, errors.New("height must be greater than zero")
