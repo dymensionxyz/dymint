@@ -330,8 +330,6 @@ func (c *Client) GenesisChunked(_ context.Context, id uint) (*ctypes.ResultGenes
 
 // BlockchainInfo returns ABCI block meta information for given height range.
 func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
-	const limit int64 = 20
-
 	baseHeight, err := c.node.BlockManager.Store.LoadBaseHeight()
 	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
 		return nil, err
@@ -339,12 +337,14 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 	if errors.Is(err, gerrc.ErrNotFound) {
 		baseHeight = 1
 	}
+	bmHeight := int64(c.node.GetBlockManagerHeight()) //nolint:gosec // height is non-negative and falls in int64
+
 	minHeight, maxHeight, err = filterMinMax(
-		int64(baseHeight),                     //nolint:gosec // height is non-negative and falls in int64
-		int64(c.node.GetBlockManagerHeight()), //nolint:gosec // height is non-negative and falls in int64
+		int64(baseHeight), //nolint:gosec // height is non-negative and falls in int64
+		bmHeight,
 		minHeight,
 		maxHeight,
-		limit)
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -985,7 +985,9 @@ func validateSkipCount(page, perPage int) int {
 	return skipCount
 }
 
-func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
+func filterMinMax(base, height, min, max int64) (int64, int64, error) {
+	const limit int64 = 20
+
 	// filter negatives
 	if min < 0 || max < 0 {
 		return min, max, errors.New("height must be greater than zero")
@@ -1000,7 +1002,7 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 	}
 
 	// limit max to the height
-	max = tmmath.MinInt64(height, max)
+	max = tmmath.MaxInt64(base, tmmath.MinInt64(height, max))
 
 	// limit min to the base
 	min = tmmath.MaxInt64(base, min)
