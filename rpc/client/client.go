@@ -328,7 +328,19 @@ func (c *Client) GenesisChunked(_ context.Context, id uint) (*ctypes.ResultGenes
 	}, nil
 }
 
-// BlockchainInfo returns ABCI block meta information for given height range.
+// BlockchainInfo gets block headers for minHeight <= height <= maxHeight.
+//
+// If maxHeight does not yet exist, blocks up to the current height will be
+// returned. If minHeight does not exist (due to pruning), earliest existing
+// height will be used.
+//
+// At most 20 items will be returned. Block headers are returned in descending
+// order (highest first).
+//
+// More: https://docs.cometbft.com/v0.34/rpc/#/Info/blockchain
+//
+// See https://github.com/dymensionxyz/cometbft/blob/a059b062dcfc719406354e0a80f5f6d3cf7401e1/rpc/core/blocks.go#L26
+// Note: used at least by self relay typescript client
 func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 	baseHeight, err := c.node.BlockManager.Store.LoadBaseHeight()
 	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
@@ -344,6 +356,7 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 		bmHeight,
 		minHeight,
 		maxHeight,
+		20, // hardcoded, return max 20 blocks
 	)
 	if err != nil {
 		return nil, err
@@ -985,8 +998,14 @@ func validateSkipCount(page, perPage int) int {
 	return skipCount
 }
 
-func filterMinMax(base, height, min, max int64) (int64, int64, error) {
-	const limit int64 = 20
+func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
+	if height < min {
+		return 0, 0, fmt.Errorf("height must be greater than min: height %d, min: %d", height, min)
+	}
+
+	if max < base {
+		return 0, 0, fmt.Errorf("max already pruned: base %d, max: %d", base, max)
+	}
 
 	// filter negatives
 	if min < 0 || max < 0 {
