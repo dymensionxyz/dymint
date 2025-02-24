@@ -999,7 +999,6 @@ func validateSkipCount(page, perPage int) int {
 }
 
 func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
-
 	if height < min {
 		return 0, 0, fmt.Errorf("height must be greater than min: height %d, min: %d", height, min)
 	}
