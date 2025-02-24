@@ -64,7 +64,7 @@ func (s *DefaultStore) PruneHeights(from, to uint64, logger types.Logger) (uint6
 	return pruned, err
 }
 
-// prune is the function  that iterates through all heights and prunes according to the pruning function set
+// prune is the function  that iterates through all heights and prunes according to the pruning function set, doesn't include 'to'
 func (s *DefaultStore) prune(from, to uint64, prune func(batch KVBatch, height uint64) error, logger types.Logger) (uint64, error) {
 	pruned := uint64(0)
 	batch := s.db.NewBatch()
