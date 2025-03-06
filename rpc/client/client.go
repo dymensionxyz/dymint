@@ -1054,12 +1054,12 @@ func (c *Client) EthGetBlockByNumber(ctx context.Context, height *int64) (*Resul
 
 	// return if requested block height is greater than the current one
 	if resBlock == nil || resBlock.Block == nil {
-		return nil, fmt.Errorf("failed to fetch block result from Tendermint", "height", height)
+		return nil, fmt.Errorf("failed to fetch block result from Tendermint. height:%d", height)
 	}
 
 	blockRes, err := c.BlockResults(ctx, height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch block result from Tendermint", "height", height, "error", err.Error())
+		return nil, fmt.Errorf("failed to fetch block result from Tendermint. height:%d error:%s", height, err.Error())
 	}
 
 	res, err := c.RPCBlockFromTendermintBlock(resBlock, blockRes)
