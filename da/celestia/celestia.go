@@ -394,7 +394,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *SubmitMetaData
 	var batches []*types.Batch
 
 	id := makeID(daMetaData.Height, daMetaData.Commitment)
-	blob, err := c.client.Get(ctx, []daclient.ID{id}, c.config.NamespaceID.Bytes())
+	blob, err := c.client.Get(ctx, []daclient.ID{id}, daMetaData.Namespace)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -471,7 +471,7 @@ func (c *DataAvailabilityLayerClient) getDAAvailabilityMetaData(daMetaData *Subm
 	}
 
 	ids := []daclient.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
-	daProofs, err := c.client.GetProofs(ctx, ids, c.config.NamespaceID.Bytes())
+	daProofs, err := c.client.GetProofs(ctx, ids, daMetaData.Namespace)
 	if err != nil || daProofs[0] == nil {
 		// TODO (srene): Not getting proof means there is no existing data for the namespace and commitment (the commitment is not valid).
 		// Therefore we need to prove whether the commitment is wrong or the span does not exists.
@@ -529,7 +529,7 @@ func (c *DataAvailabilityLayerClient) validateInclusion(daMetaData *CheckMetaDat
 	defer cancel()
 
 	ids := []daclient.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
-	included, err := c.client.Validate(ctx, ids, daMetaData.Proofs, c.config.NamespaceID.Bytes())
+	included, err := c.client.Validate(ctx, ids, daMetaData.Proofs, daMetaData.Namespace)
 	if err != nil {
 		return err
 	}
