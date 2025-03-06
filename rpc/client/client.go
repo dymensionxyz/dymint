@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -28,6 +29,11 @@ import (
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/version"
+
+	ethctypes "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+
+	evmosrpctypes "github.com/evmos/evmos/v12/rpc/types"
 )
 
 const (
@@ -68,8 +74,8 @@ type ResultBlockValidated struct {
 	Result  BlockValidationStatus
 }
 
-type ResultChainId struct {
-	ChainID string
+type ResultEthMethod struct {
+	Result string
 }
 
 // NewClient returns Client working with given node.
@@ -841,12 +847,12 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
 }
 
-func (c *Client) ChainID() (*ResultChainId, error) {
+func (c *Client) ChainID() (*ResultEthMethod, error) {
 	eip155ChainID, err := evmostypes.ParseChainID(c.node.BlockManager.State.ChainID)
 	if err != nil {
-		return &ResultChainId{}, nil
+		return &ResultEthMethod{}, nil
 	}
-	return &ResultChainId{ChainID: fmt.Sprintf("0x%x", eip155ChainID)}, nil
+	return &ResultEthMethod{Result: fmt.Sprintf("0x%x", eip155ChainID)}, nil
 }
 
 func (c *Client) BlockValidated(height *int64) (*ResultBlockValidated, error) {
@@ -1035,4 +1041,51 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 			errors.New("invalid request"), min, max)
 	}
 	return min, max, nil
+}
+
+func (c *Client) BlockNumber(ctx context.Context) (*ResultEthMethod, error) {
+	blockNumber := fmt.Sprintf("0x%x", c.node.GetBlockManagerHeight())
+	return &ResultEthMethod{Result: blockNumber}, nil
+}
+
+func (c *Client) EthGetBlockByNumber(ctx context.Context, height *int64) (*ResultEthMethod, error) {
+
+	resBlock, err := c.Block(ctx, height)
+
+	// return if requested block height is greater than the current one
+	if resBlock == nil || resBlock.Block == nil {
+		return nil, fmt.Errorf("failed to fetch block result from Tendermint", "height", height)
+	}
+
+	blockRes, err := c.BlockResults(ctx, height)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch block result from Tendermint", "height", height, "error", err.Error())
+	}
+
+	res, err := c.RPCBlockFromTendermintBlock(resBlock, blockRes)
+	if err != nil {
+		return nil, err
+	}
+	result, err := json.Marshal(res)
+	if err != nil {
+		return nil, err
+	}
+	return &ResultEthMethod{Result: string(result)}, nil
+}
+
+// RPCBlockFromTendermintBlock returns a JSON-RPC compatible Ethereum block from a
+// given Tendermint block and its block result.
+func (c *Client) RPCBlockFromTendermintBlock(
+	resBlock *ctypes.ResultBlock,
+	blockRes *ctypes.ResultBlockResults,
+) (map[string]interface{}, error) {
+	ethRPCTxs := []interface{}{}
+	block := resBlock.Block
+
+	formattedBlock := evmosrpctypes.FormatBlock(
+		block.Header, block.Size(),
+		c.node.BlockManager.State.ConsensusParams.Block.MaxGas, nil,
+		ethRPCTxs, ethtypes.Bloom{}, ethctypes.BytesToAddress(block.ProposerAddress.Bytes()), nil,
+	)
+	return formattedBlock, nil
 }

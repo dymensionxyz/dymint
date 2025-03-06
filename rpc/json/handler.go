@@ -62,6 +62,7 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 	codecReq := h.codec.NewRequest(r)
 	// Get service method to be called.
 	method, err := codecReq.Method()
+	fmt.Println(method)
 	if err != nil {
 		if e, ok := err.(*json2.Error); method == "" && ok && e.Message == "EOF" {
 			// just serve empty page if request is empty
@@ -113,9 +114,9 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 	w.Header().Set("x-content-type-options", "nosniff")
 
 	// it is necessary to return a plain string instead of json object for eth_chainId, since it is required by Metamask to validate chain id
-	if errResult == nil && method == "eth_chainId" {
-		result := (*client.ResultChainId)(rets[0].UnsafePointer())
-		codecReq.WriteResponse(w, result.ChainID)
+	if errResult == nil && strings.HasPrefix(method, "eth") {
+		result := (*client.ResultEthMethod)(rets[0].UnsafePointer())
+		codecReq.WriteResponse(w, result.Result)
 		return
 	}
 

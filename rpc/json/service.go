@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"cosmossdk.io/errors"
@@ -110,7 +111,9 @@ func newService(c *client.Client, l types.Logger, opts ...option) *service {
 		"abci_info":            newMethod(s.ABCIInfo),
 		"broadcast_evidence":   newMethod(s.BroadcastEvidence),
 		"block_validated":      newMethod(s.BlockValidated),
-		"eth_chainId":          newMethod(s.ChainId),
+		"eth_chainId":          newMethod(s.EthChainId),
+		"eth_getBlockByNumber": newMethod(s.EthGetBlockByNumber),
+		"eth_blockNumber":      newMethod(s.EthBlockNumber),
 	}
 
 	for _, opt := range opts {
@@ -297,6 +300,20 @@ func (s *service) BlockValidated(req *http.Request, args *blockArgs) (*client.Re
 	return s.client.BlockValidated((*int64)(&args.Height))
 }
 
-func (s *service) ChainId(req *http.Request, args *blockArgs) (*client.ResultChainId, error) {
+func (s *service) EthChainId(req *http.Request, args *blockArgs) (*client.ResultEthMethod, error) {
 	return s.client.ChainID()
+}
+
+func (s *service) EthBlockNumber(req *http.Request, args *blockArgs) (*client.ResultEthMethod, error) {
+	return s.client.BlockNumber(req.Context())
+}
+
+func (s *service) EthGetBlockByNumber(req *http.Request, args *ethBlockArgs) (*client.ResultEthMethod, error) {
+	//result := "{\"baseFeePerGas\":\"0x4a817c800\",\"difficulty\":\"0x0\",\"extraData\":\"0x\",\"gasLimit\":\"0x17d78400\",\"gasUsed\":\"0x0\",\"hash\":\"0x2477b299e7b4fe3e05bb67b6bfad8d74f28917c5757b6aad628faf9875df2f96\",\"logsBloom\":\"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\",\"miner\":\"0x3e139812318d1a1ab0eba11ac20eeda63ae4324d\",\"mixHash\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"0x0000000000000000\",\"number\":\"0x1\",\"parentHash\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"receiptsRoot\":\"0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421\",\"sha3Uncles\":\"0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347\",\"size\":\"0x20a\",\"stateRoot\":\"0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"timestamp\":\"0x67c83b35\",\"totalDifficulty\":\"0x0\",\"transactions\":[],\"transactionsRoot\":\"0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421\",\"uncles\":[]}"
+	heightStr := strings.Replace(args.Height, "0x", "", -1)
+	height, err := strconv.ParseInt(heightStr, 16, 64)
+	if err != nil {
+		return &client.ResultEthMethod{Result: ""}, nil
+	}
+	return s.client.EthGetBlockByNumber(req.Context(), &height)
 }
