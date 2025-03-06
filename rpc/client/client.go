@@ -1049,11 +1049,9 @@ func (c *Client) BlockNumber(ctx context.Context) (*ResultEthMethod, error) {
 }
 
 func (c *Client) EthGetBlockByNumber(ctx context.Context, height *int64) (*ResultEthMethod, error) {
-
 	resBlock, err := c.Block(ctx, height)
-
 	// return if requested block height is greater than the current one
-	if resBlock == nil || resBlock.Block == nil {
+	if resBlock == nil || resBlock.Block == nil || err != nil {
 		return nil, fmt.Errorf("failed to fetch block result from Tendermint. height:%d", height)
 	}
 
