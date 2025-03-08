@@ -15,10 +15,7 @@ import (
 )
 
 func BenchmarkTxSearch(b *testing.B) {
-	dbDir, err := os.MkdirTemp("", "benchmark_tx_search_test")
-	if err != nil {
-		b.Errorf("create temporary directory: %s", err)
-	}
+	dbDir := b.TempDir()
 
 	db := store.NewDefaultKVStore(dbDir, "db", "benchmark_tx_search_test")
 	if err != nil {
