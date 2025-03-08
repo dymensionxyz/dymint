@@ -38,14 +38,7 @@ func TestStoreLoad(t *testing.T) {
 		//}},
 	}
 
-	tmpDir, err := os.MkdirTemp("", "optimint_test")
-	require.NoError(t, err)
-	defer func() {
-		err := os.RemoveAll(tmpDir)
-		if err != nil {
-			t.Log("failed to remove temporary directory", err)
-		}
-	}()
+	tmpdir := t.TempDir()
 
 	for _, kv := range []store.KV{store.NewDefaultInMemoryKVStore(), store.NewDefaultKVStore(tmpDir, "db", "test")} {
 		for _, c := range cases {
