@@ -1051,11 +1051,12 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 	return min, max, nil
 }
 
-func (c *Client) BlockNumber(ctx context.Context) (*ResultEthMethod, error) {
-	blockNumber := fmt.Sprintf("0x%x", c.node.GetBlockManagerHeight())
-	return &ResultEthMethod{Result: blockNumber}, nil
+// EthBlockNumber returns the height of the block manager.
+func (c *Client) EthBlockNumber(ctx context.Context) (*ResultEthMethod, error) {
+	return &ResultEthMethod{Result: fmt.Sprintf("0x%x", c.node.GetBlockManagerHeight())}, nil
 }
 
+// EthGetBalance returns the block for the height provided.
 func (c *Client) EthGetBlockByNumber(ctx context.Context, height *int64) (*ResultEthMethod, error) {
 	resBlock, err := c.Block(ctx, height)
 	// return if requested block height is greater than the current one
@@ -1063,23 +1064,23 @@ func (c *Client) EthGetBlockByNumber(ctx context.Context, height *int64) (*Resul
 		return nil, fmt.Errorf("failed to fetch block result from Tendermint. height:%d", height)
 	}
 
-	blockRes, err := c.BlockResults(ctx, height)
+	blockResults, err := c.BlockResults(ctx, height)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch block result from Tendermint. height:%d error:%s", height, err.Error())
 	}
 
-	res, err := c.RPCBlockFromTendermintBlock(resBlock, blockRes)
+	ethFormatBlock, err := c.RPCBlockFromTendermintBlock(resBlock, blockResults)
 	if err != nil {
 		return nil, err
 	}
-	result, err := json.Marshal(res)
+	result, err := json.Marshal(ethFormatBlock)
 	if err != nil {
 		return nil, err
 	}
 	return &ResultEthMethod{Result: string(result)}, nil
 }
 
-// GetBalance returns the provided account's balance up to the provided block number.
+// EthGetBalance returns the provided account's balance (for the native denom) up to the provided block number.
 func (c *Client) EthGetBalance(ctx context.Context, address string, height *int64) (*ResultEthMethod, error) {
 	nativeDenom, err := c.getNativeDenom(ctx)
 	if err != nil {

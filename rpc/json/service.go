@@ -306,7 +306,7 @@ func (s *service) EthChainId(req *http.Request, args *blockArgs) (*client.Result
 }
 
 func (s *service) EthBlockNumber(req *http.Request, args *blockArgs) (*client.ResultEthMethod, error) {
-	return s.client.BlockNumber(req.Context())
+	return s.client.EthBlockNumber(req.Context())
 }
 
 func (s *service) EthGetBlockByNumber(req *http.Request, args *ethBlockArgs) (*client.ResultEthMethod, error) {
