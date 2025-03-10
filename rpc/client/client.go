@@ -11,6 +11,7 @@ import (
 
 	sdkerrors "cosmossdk.io/errors"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	evmostypes "github.com/evmos/evmos/v12/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -1093,7 +1094,7 @@ func (c *Client) EthGetBalance(ctx context.Context, address string, height *int6
 		return nil, err
 	}
 
-	bech32Addr, err := bech32.ConvertAndEncode(sdktypes.GetConfig().GetBech32ValidatorAddrPrefix(), bz)
+	bech32Addr, err := bech32.ConvertAndEncode(sdktypes.GetConfig().GetBech32AccountAddrPrefix(), bz)
 	if err != nil {
 		return nil, err
 	}
@@ -1115,7 +1116,8 @@ func (c *Client) EthGetBalance(ctx context.Context, address string, height *int6
 	if err != nil {
 		return nil, err
 	}
-	return &ResultEthMethod{Result: respBalance.Balance.Amount.String()}, nil
+
+	return &ResultEthMethod{Result: string(hexutil.EncodeBig(respBalance.Balance.Amount.BigInt()))}, nil
 }
 
 // RPCBlockFromTendermintBlock returns a JSON-RPC compatible Ethereum block from a
