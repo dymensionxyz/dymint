@@ -1154,6 +1154,7 @@ func (c *Client) getNativeDenom(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fmt.Println("MintDenom: ", respDenom.Params.MintDenom)
 
 	if respDenom.Params.MintDenom != "" {
 		return respDenom.Params.MintDenom, nil
@@ -1164,7 +1165,7 @@ func (c *Client) getNativeDenom(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	resValue, err = c.ABCIQueryWithOptions(ctx, "/rollapp.staking.v1beta1.Query/Params", dataDenom, rpcclient.DefaultABCIQueryOptions)
+	resValue, err = c.ABCIQueryWithOptions(ctx, "/cosmos.staking.v1beta1.Query/Params", dataDenom, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
 		return "", err
 	}
@@ -1174,5 +1175,6 @@ func (c *Client) getNativeDenom(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fmt.Println("Bonddenom: ", respStDenom.Params.BondDenom)
 	return respStDenom.Params.BondDenom, nil
 }
