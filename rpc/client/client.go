@@ -11,7 +11,6 @@ import (
 
 	sdkerrors "cosmossdk.io/errors"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"github.com/dymensionxyz/rollapp-evm/app"
 	evmostypes "github.com/evmos/evmos/v12/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -37,6 +36,7 @@ import (
 
 	evmosrpctypes "github.com/evmos/evmos/v12/rpc/types"
 
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/bech32"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	minttypes "github.com/dymensionxyz/dymension-rdk/x/mint/types"
@@ -109,7 +109,6 @@ func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexByt
 
 // ABCIQueryWithOptions queries for data from application.
 func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmbytes.HexBytes, opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
-	fmt.Println(path)
 	resQuery, err := c.Query().QuerySync(abci.RequestQuery{
 		Path:   path,
 		Data:   data,
@@ -1093,7 +1092,8 @@ func (c *Client) EthGetBalance(ctx context.Context, address string, height *int6
 	if err != nil {
 		return nil, err
 	}
-	bech32Addr, err := bech32.ConvertAndEncode(app.AccountAddressPrefix, bz)
+
+	bech32Addr, err := bech32.ConvertAndEncode(sdktypes.GetConfig().GetBech32ValidatorAddrPrefix(), bz)
 	if err != nil {
 		return nil, err
 	}
