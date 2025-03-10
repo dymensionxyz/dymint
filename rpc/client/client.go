@@ -40,6 +40,7 @@ import (
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/bech32"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	minttypes "github.com/dymensionxyz/dymension-rdk/x/mint/types"
 )
 
@@ -1154,5 +1155,24 @@ func (c *Client) getNativeDenom(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	return respDenom.Params.MintDenom, nil
+	if respDenom.Params.MintDenom != "" {
+		return respDenom.Params.MintDenom, nil
+	}
+
+	reqStDenom := &stakingtypes.QueryParamsRequest{}
+	dataDenom, err = reqStDenom.Marshal()
+	if err != nil {
+		return "", err
+	}
+	resValue, err = c.ABCIQueryWithOptions(ctx, "/rollapp.staking.v1beta1.Query/Params", dataDenom, rpcclient.DefaultABCIQueryOptions)
+	if err != nil {
+		return "", err
+	}
+	respStDenom := &stakingtypes.QueryParamsResponse{}
+
+	err = respStDenom.Unmarshal(resValue.Response.Value)
+	if err != nil {
+		return "", err
+	}
+	return respStDenom.Params.BondDenom, nil
 }
