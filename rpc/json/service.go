@@ -322,8 +322,7 @@ func (s *service) EthGetBalance(req *http.Request, args *ethBalanceArgs) (*clien
 	heightStr := strings.Replace(args.Height, "0x", "", -1)
 	height, err := strconv.ParseInt(heightStr, 16, 64)
 	if err != nil {
-		//return &client.ResultEthMethod{Result: ""}, nil
-		height = -1
+		height = 0
 	}
 	addrStr := strings.Replace(args.Address, "0x", "", -1)
 

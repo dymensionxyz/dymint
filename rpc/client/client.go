@@ -1108,7 +1108,9 @@ func (c *Client) EthGetBalance(ctx context.Context, address string, height *int6
 	if err != nil {
 		return nil, err
 	}
-	res, err := c.ABCIQueryWithOptions(ctx, "/cosmos.bank.v1beta1.Query/Balance", data, rpcclient.DefaultABCIQueryOptions)
+	res, err := c.ABCIQueryWithOptions(ctx, "/cosmos.bank.v1beta1.Query/Balance", data, rpcclient.ABCIQueryOptions{
+		Height: *height,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -1139,6 +1141,19 @@ func (c *Client) RPCBlockFromTendermintBlock(
 }
 
 func (c *Client) getNativeDenom(ctx context.Context) (string, error) {
+
+	mintDenom, err := c.getNativeDenom(ctx)
+	if err != nil {
+		return "", err
+	}
+	if mintDenom != "" {
+		return mintDenom, nil
+	}
+
+	return c.getStakingDenom(ctx)
+}
+
+func (c *Client) getMintDenom(ctx context.Context) (string, error) {
 	reqDenom := &minttypes.QueryParamsRequest{}
 	dataDenom, err := reqDenom.Marshal()
 	if err != nil {
@@ -1154,18 +1169,16 @@ func (c *Client) getNativeDenom(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("MintDenom: ", respDenom.Params.MintDenom)
+	return respDenom.Params.MintDenom, nil
+}
 
-	if respDenom.Params.MintDenom != "" {
-		return respDenom.Params.MintDenom, nil
-	}
-
+func (c *Client) getStakingDenom(ctx context.Context) (string, error) {
 	reqStDenom := &stakingtypes.QueryParamsRequest{}
-	dataDenom, err = reqStDenom.Marshal()
+	dataDenom, err := reqStDenom.Marshal()
 	if err != nil {
 		return "", err
 	}
-	resValue, err = c.ABCIQueryWithOptions(ctx, "/cosmos.staking.v1beta1.Query/Params", dataDenom, rpcclient.DefaultABCIQueryOptions)
+	resValue, err := c.ABCIQueryWithOptions(ctx, "/cosmos.staking.v1beta1.Query/Params", dataDenom, rpcclient.DefaultABCIQueryOptions)
 	if err != nil {
 		return "", err
 	}
@@ -1175,6 +1188,5 @@ func (c *Client) getNativeDenom(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("Bonddenom: ", respStDenom.Params.BondDenom)
 	return respStDenom.Params.BondDenom, nil
 }
