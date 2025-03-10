@@ -1081,7 +1081,6 @@ func (c *Client) EthGetBlockByNumber(ctx context.Context, height *int64) (*Resul
 
 // GetBalance returns the provided account's balance up to the provided block number.
 func (c *Client) EthGetBalance(ctx context.Context, address string, height *int64) (*ResultEthMethod, error) {
-
 	nativeDenom, err := c.getNativeDenom(ctx)
 	if err != nil {
 		return nil, err
@@ -1120,7 +1119,7 @@ func (c *Client) EthGetBalance(ctx context.Context, address string, height *int6
 		return nil, err
 	}
 
-	return &ResultEthMethod{Result: string(hexutil.EncodeBig(respBalance.Balance.Amount.BigInt()))}, nil
+	return &ResultEthMethod{Result: hexutil.EncodeBig(respBalance.Balance.Amount.BigInt())}, nil
 }
 
 // RPCBlockFromTendermintBlock returns a JSON-RPC compatible Ethereum block from a
@@ -1141,8 +1140,7 @@ func (c *Client) RPCBlockFromTendermintBlock(
 }
 
 func (c *Client) getNativeDenom(ctx context.Context) (string, error) {
-
-	mintDenom, err := c.getNativeDenom(ctx)
+	mintDenom, err := c.getMintDenom(ctx)
 	if err != nil {
 		return "", err
 	}
