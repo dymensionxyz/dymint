@@ -3,7 +3,6 @@ package kv
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
@@ -418,15 +417,9 @@ func randomTxHash() string {
 }
 
 func benchmarkTxIndex(txsCount int64, b *testing.B) {
-	dir, err := os.MkdirTemp("", "tx_index_db")
-	require.NoError(b, err)
-	defer func() {
-		err := os.RemoveAll(dir)
-		require.NoError(b, err)
-	}()
+	dir := b.TempDir()
 
 	store := store.NewDefaultKVStore(dir, "db", "tx_index")
-	require.NoError(b, err)
 	indexer := NewTxIndex(store)
 
 	batch := txindex.NewBatch(txsCount, int64(0))
@@ -451,7 +444,7 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	}
 
 	b.ResetTimer()
-
+	var err error
 	for n := 0; n < b.N; n++ {
 		err = indexer.AddBatch(batch)
 	}
