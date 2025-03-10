@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 
 	sdkerrors "cosmossdk.io/errors"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/dymensionxyz/rollapp-evm/app"
 	evmostypes "github.com/evmos/evmos/v12/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -34,6 +36,10 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	evmosrpctypes "github.com/evmos/evmos/v12/rpc/types"
+
+	"github.com/cosmos/cosmos-sdk/types/bech32"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	minttypes "github.com/dymensionxyz/dymension-rdk/x/mint/types"
 )
 
 const (
@@ -103,6 +109,7 @@ func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexByt
 
 // ABCIQueryWithOptions queries for data from application.
 func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmbytes.HexBytes, opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+	fmt.Println(path)
 	resQuery, err := c.Query().QuerySync(abci.RequestQuery{
 		Path:   path,
 		Data:   data,
@@ -112,7 +119,7 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 	if err != nil {
 		return nil, err
 	}
-	c.Logger.Debug("ABCIQuery", "path", path, "height", resQuery.Height)
+	c.Logger.Debug("ABCIQuery", "path", path, "height", resQuery.Value)
 	return &ctypes.ResultABCIQuery{Response: *resQuery}, nil
 }
 
@@ -1071,6 +1078,46 @@ func (c *Client) EthGetBlockByNumber(ctx context.Context, height *int64) (*Resul
 	return &ResultEthMethod{Result: string(result)}, nil
 }
 
+// GetBalance returns the provided account's balance up to the provided block number.
+func (c *Client) EthGetBalance(ctx context.Context, address string, height *int64) (*ResultEthMethod, error) {
+
+	nativeDenom, err := c.getNativeDenom(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if nativeDenom == "" {
+		return nil, fmt.Errorf("no native denom found")
+	}
+
+	bz, err := hex.DecodeString(address)
+	if err != nil {
+		return nil, err
+	}
+	bech32Addr, err := bech32.ConvertAndEncode(app.AccountAddressPrefix, bz)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &banktypes.QueryBalanceRequest{
+		Address: bech32Addr,
+		Denom:   nativeDenom,
+	}
+	data, err := req.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.ABCIQueryWithOptions(ctx, "/cosmos.bank.v1beta1.Query/Balance", data, rpcclient.DefaultABCIQueryOptions)
+	if err != nil {
+		return nil, err
+	}
+	respBalance := &banktypes.QueryBalanceResponse{}
+	err = respBalance.Unmarshal(res.Response.Value)
+	if err != nil {
+		return nil, err
+	}
+	return &ResultEthMethod{Result: respBalance.Balance.Amount.String()}, nil
+}
+
 // RPCBlockFromTendermintBlock returns a JSON-RPC compatible Ethereum block from a
 // given Tendermint block and its block result.
 func (c *Client) RPCBlockFromTendermintBlock(
@@ -1086,4 +1133,24 @@ func (c *Client) RPCBlockFromTendermintBlock(
 		ethRPCTxs, ethtypes.Bloom{}, ethctypes.BytesToAddress(block.ProposerAddress.Bytes()), nil,
 	)
 	return formattedBlock, nil
+}
+
+func (c *Client) getNativeDenom(ctx context.Context) (string, error) {
+	reqDenom := &minttypes.QueryParamsRequest{}
+	dataDenom, err := reqDenom.Marshal()
+	if err != nil {
+		return "", err
+	}
+	resValue, err := c.ABCIQueryWithOptions(ctx, "/rollapp.mint.v1beta1.Query/Params", dataDenom, rpcclient.DefaultABCIQueryOptions)
+	if err != nil {
+		return "", err
+	}
+	respDenom := &minttypes.QueryParamsResponse{}
+
+	err = respDenom.Unmarshal(resValue.Response.Value)
+	if err != nil {
+		return "", err
+	}
+
+	return respDenom.Params.MintDenom, nil
 }

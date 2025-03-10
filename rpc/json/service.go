@@ -114,6 +114,7 @@ func newService(c *client.Client, l types.Logger, opts ...option) *service {
 		"eth_chainId":          newMethod(s.EthChainId),
 		"eth_getBlockByNumber": newMethod(s.EthGetBlockByNumber),
 		"eth_blockNumber":      newMethod(s.EthBlockNumber),
+		"eth_getBalance":       newMethod(s.EthGetBalance),
 	}
 
 	for _, opt := range opts {
@@ -315,4 +316,15 @@ func (s *service) EthGetBlockByNumber(req *http.Request, args *ethBlockArgs) (*c
 		return &client.ResultEthMethod{Result: ""}, nil
 	}
 	return s.client.EthGetBlockByNumber(req.Context(), &height)
+}
+
+func (s *service) EthGetBalance(req *http.Request, args *ethBalanceArgs) (*client.ResultEthMethod, error) {
+	heightStr := strings.Replace(args.Height, "0x", "", -1)
+	height, err := strconv.ParseInt(heightStr, 16, 64)
+	if err != nil {
+		return &client.ResultEthMethod{Result: ""}, nil
+	}
+	addrStr := strings.Replace(args.Address, "0x", "", -1)
+
+	return s.client.EthGetBalance(req.Context(), addrStr, &height)
 }
