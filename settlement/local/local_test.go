@@ -2,7 +2,6 @@ package local_test
 
 import (
 	"encoding/hex"
-	"os"
 	"testing"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -122,9 +121,7 @@ func TestPersistency(t *testing.T) {
 	require.NoError(err)
 
 	sllayer := local.Client{}
-	tmpdir, err := os.MkdirTemp("/tmp", "")
-	defer os.RemoveAll(tmpdir) // Clean up after the test
-	require.NoError(err)
+	tmpdir := t.TempDir()
 
 	cfg := settlement.Config{KeyringHomeDir: tmpdir, ProposerPubKey: hex.EncodeToString(pubKeybytes)}
 	err = sllayer.Init(cfg, "rollappTest", pubsubServer, logger)
