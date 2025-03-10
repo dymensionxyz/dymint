@@ -120,7 +120,7 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 	if err != nil {
 		return nil, err
 	}
-	c.Logger.Debug("ABCIQuery", "path", path, "height", resQuery.Value)
+	c.Logger.Debug("ABCIQuery", "path", path, "height", resQuery.Height)
 	return &ctypes.ResultABCIQuery{Response: *resQuery}, nil
 }
 
