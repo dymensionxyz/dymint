@@ -45,6 +45,9 @@ type DAClient interface {
 	// Balance returns the celestia light client account balance
 	Balance(context.Context) (*Balance, error)
 
+	// Address returns the celestia light client account address
+	Address(ctx context.Context) (Address, error)
+
 	// MaxBlobSize returns the max blob size allowed in celestia
 	MaxBlobSize(ctx context.Context) (uint64, error)
 }
@@ -67,6 +70,9 @@ type Proof = []byte
 
 // Balance is an alias to the Coin type from Cosmos-SDK.
 type Balance = sdk.Coin
+
+// Address is an alias to the Address type from Cosmos-SDK.
+type Address = sdk.Address
 
 // GetIDsResult holds the result of GetIDs call: IDs and timestamp of corresponding block.
 type GetIDsResult struct {
@@ -143,11 +149,16 @@ func (api *HeadersAPI) GetByHeight(ctx context.Context, height uint64) (*Extende
 // API defines the jsonrpc service module API
 type StateAPI struct {
 	Internal struct {
-		Balance func(context.Context) (*Balance, error) `perm:"read"`
+		Balance        func(context.Context) (*Balance, error)    `perm:"read"`
+		AccountAddress func(ctx context.Context) (Address, error) `perm:"read"`
 	}
 }
 
 // GetByHeight submits the Blobs to Data Availability layer.
 func (api *StateAPI) Balance(ctx context.Context) (*Balance, error) {
 	return api.Internal.Balance(ctx)
+}
+
+func (api *StateAPI) AccountAddress(ctx context.Context) (Address, error) {
+	return api.Internal.AccountAddress(ctx)
 }

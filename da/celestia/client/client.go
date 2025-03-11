@@ -21,6 +21,11 @@ func (c Client) Balance(ctx context.Context) (*Balance, error) {
 	return c.State.Balance(ctx)
 }
 
+// Address returns celestia light client address.
+func (c Client) Address(ctx context.Context) (Address, error) {
+	return c.State.AccountAddress(ctx)
+}
+
 // Commit implements DAClient.
 func (c Client) Commit(ctx context.Context, blobs []Blob, namespace Namespace) ([]Commitment, error) {
 	return c.DA.Commit(ctx, blobs, namespace)
