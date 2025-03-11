@@ -353,16 +353,16 @@ func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 }
 
 // GetSignerBalance returns the balance for a specific address
-func (c *DataAvailabilityLayerClient) GetSignerAddress() (client.Address, error) {
+func (c *DataAvailabilityLayerClient) GetSignerAddress() (string, error) {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
 	address, err := c.client.Address(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get address: %w", err)
+		return "", fmt.Errorf("get address: %w", err)
 	}
 
-	return address, nil
+	return address.String(), nil
 }
 
 // submit submits a blob to celestia, including data bytes.

@@ -386,6 +386,11 @@ func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	}, nil
 }
 
+// GetSignerAddress returns avail address
+func (d *DataAvailabilityLayerClient) GetSignerAddress() (string, error) {
+	return d.client.GetAccountAddress(), nil
+}
+
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 	return maxBlobSize
