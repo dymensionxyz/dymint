@@ -285,7 +285,7 @@ require (
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/danwt/gerr v1.0.0 // indirect
-	github.com/evmos/evmos/v12 v12.1.6 // indirect
+	github.com/evmos/evmos/v12 v12.1.6
 	github.com/getsentry/sentry-go v0.23.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/holiman/uint256 v1.2.2 // indirect
@@ -322,5 +322,5 @@ replace (
 	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2
-	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20250109171128-0ea81b630cbc
+	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20250311112105-7ffb18eeafe5
 )

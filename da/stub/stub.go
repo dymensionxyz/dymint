@@ -51,3 +51,7 @@ func (l Layer) GetMaxBlobSizeBytes() uint64 {
 func (l Layer) GetSignerBalance() (da.Balance, error) {
 	panic("implement me")
 }
+
+func (l Layer) GetSignerAddress() (string, error) {
+	panic("implement me")
+}

@@ -352,6 +352,19 @@ func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	return daBalance, nil
 }
 
+// GetSignerBalance returns the balance for a specific address
+func (c *DataAvailabilityLayerClient) GetSignerAddress() (string, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
+	defer cancel()
+
+	address, err := c.client.Address(ctx)
+	if err != nil {
+		return "", fmt.Errorf("get address: %w", err)
+	}
+
+	return address.String(), nil
+}
+
 // submit submits a blob to celestia, including data bytes.
 func (c *DataAvailabilityLayerClient) submit(data []byte) (*SubmitMetaData, error) {
 	// TODO(srene):  Split batch in multiple blobs if necessary when supported

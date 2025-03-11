@@ -627,6 +627,11 @@ func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	return da.Balance{}, nil
 }
 
+// GetSignerAddress returns weavevm address
+func (c *DataAvailabilityLayerClient) GetSignerAddress() (string, error) {
+	return "", nil
+}
+
 func generateCommitment(data []byte) []byte {
 	return crypto.Keccak256(data)
 }

@@ -25,6 +25,64 @@ func (_m *MockDAClient) EXPECT() *MockDAClient_Expecter {
 	return &MockDAClient_Expecter{mock: &_m.Mock}
 }
 
+// Address provides a mock function with given fields: ctx
+func (_m *MockDAClient) Address(ctx context.Context) (types.Address, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Address")
+	}
+
+	var r0 types.Address
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (types.Address, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) types.Address); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(types.Address)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockDAClient_Address_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Address'
+type MockDAClient_Address_Call struct {
+	*mock.Call
+}
+
+// Address is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockDAClient_Expecter) Address(ctx interface{}) *MockDAClient_Address_Call {
+	return &MockDAClient_Address_Call{Call: _e.mock.On("Address", ctx)}
+}
+
+func (_c *MockDAClient_Address_Call) Run(run func(ctx context.Context)) *MockDAClient_Address_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockDAClient_Address_Call) Return(_a0 types.Address, _a1 error) *MockDAClient_Address_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockDAClient_Address_Call) RunAndReturn(run func(context.Context) (types.Address, error)) *MockDAClient_Address_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Balance provides a mock function with given fields: _a0
 func (_m *MockDAClient) Balance(_a0 context.Context) (*types.Coin, error) {
 	ret := _m.Called(_a0)

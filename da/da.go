@@ -134,6 +134,9 @@ type DataAvailabilityLayerClient interface {
 	// GetSignerBalance returns the balance for a specific address
 	GetSignerBalance() (Balance, error)
 
+	// GetSignerAddress returns the light client address
+	GetSignerAddress() (string, error)
+
 	// Something third parties can use to identify rollapp activity on the DA
 	RollappId() string
 }

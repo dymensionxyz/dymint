@@ -755,6 +755,11 @@ func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 	id, addr, network := c.node.P2P.Info()
 	txIndexerStatus := "on"
 
+	daAddress, err := c.node.BlockManager.GetActiveDAClient().GetSignerAddress()
+	if err != nil {
+		daAddress = ""
+	}
+
 	result := &ctypes.ResultStatus{
 		// TODO(ItzhakBokris): update NodeInfo fields
 		NodeInfo: p2p.DefaultNodeInfo{
@@ -793,6 +798,7 @@ func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 		DymensionStatus: ctypes.DymensionStatus{
 			DAPath:        c.node.BlockManager.GetActiveDAClient().RollappId(),
 			RollappParams: types.RollappParamsToABCI(state.RollappParams),
+			DAAddress:     daAddress,
 		},
 	}
 	return result, nil
