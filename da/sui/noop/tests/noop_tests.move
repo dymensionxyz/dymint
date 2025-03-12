@@ -1,18 +1,11 @@
-/*
 #[test_only]
 module noop::noop_tests;
-// uncomment this line to import the module
-// use noop::noop;
-
-const ENotImplemented: u64 = 0;
+use noop::noop;
 
 #[test]
 fun test_noop() {
-    // pass
+    let ctx = tx_context::dummy(); // Create a dummy TxContext
+    let data = vector::empty<u8>(); // Create an empty vector<u8>
+    noop::noop(data, &ctx); // Call the noop function
+    // No assertions needed since the function does nothing
 }
-
-#[test, expected_failure(abort_code = ::noop::noop_tests::ENotImplemented)]
-fun test_noop_fail() {
-    abort ENotImplemented
-}
-*/
