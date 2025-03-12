@@ -48,14 +48,16 @@ func (c *Client) TestMoveCall(ctx context.Context) error {
 
 		txs = append(txs, models.RPCTransactionRequestParams{
 			MoveCallRequestParams: &models.MoveCallRequest{
-				Signer:          c.signer.Address,
-				PackageObjectId: "0xeebcec2b40048c86facb2eb51e8c1c39ca0ed536b96f6f1d1fb58451f538299d", // standard address for the Move standard library
+				Signer: c.signer.Address,
+				// Noop contract package ID. The code is available in `noop` folder.
+				PackageObjectId: "0xeebcec2b40048c86facb2eb51e8c1c39ca0ed536b96f6f1d1fb58451f538299d",
 				Module:          "noop",
 				Function:        "noop",
 				TypeArguments:   []interface{}{}, // no type args; the slice must be non-nil
 				Arguments: []interface{}{
 					rawData,
 				},
+				Gas:           nil,        // pick the gas object automatically
 				GasBudget:     "10000000", // 0.01 SUI
 				ExecutionMode: models.TransactionExecutionCommit,
 			},
