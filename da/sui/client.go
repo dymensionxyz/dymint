@@ -5,15 +5,98 @@ import (
 	"fmt"
 	"os"
 
+	"cosmossdk.io/math"
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
 	suisigner "github.com/block-vision/sui-go-sdk/signer"
 	"github.com/block-vision/sui-go-sdk/sui"
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/dymint/types"
 )
+
+const (
+	// 128KB
+	maxSuiTxSizeBytes = 128 * 1024
+	// In fact, it's less, but we want to be safe. This includes the tx metadata and signatures.
+	suiReservedTxBytes = 2 * 1024
+	// around 126KB
+	maxBlobSizeBytes = maxSuiTxSizeBytes - suiReservedTxBytes
+	// 16KB minus 4 bytes for the length prefix in the BCS encoding
+	inputMaxSizeBytes = 16*1024 - 4
+)
+
+var _ da.DataAvailabilityLayerClient = new(Client)
+var _ da.BatchSubmitter = new(Client)
+var _ da.BatchRetriever = new(Client)
 
 type Client struct {
 	cli    sui.ISuiAPI
 	signer *suisigner.Signer
+}
+
+func (c *Client) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Client) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Client) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
+	data, err := batch.MarshalBinary()
+	if err != nil {
+		return da.ResultSubmitBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   err,
+			},
+		}
+	}
+}
+
+func (c *Client) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Client) Start() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Client) Stop() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Client) GetClientType() da.Client {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Client) GetMaxBlobSizeBytes() uint64 {
+	return maxBlobSizeBytes
+}
+
+func (c *Client) GetSignerBalance() (da.Balance, error) {
+	ctx := context.Background()
+	c.cli.SuiXGetBalance(ctx, models.SuiXGetBalanceRequest{
+		Owner:    c.signer.Address,
+		CoinType: "", // empty string means SUI coin by default
+	})
+	return da.Balance{
+		Amount: math.Int{},
+		Denom:  "",
+	}, nil
+}
+
+func (c *Client) RollappId() string {
+	//TODO implement me
+	panic("implement me")
 }
 
 func NewClient(rpcUrl string, mnemonicEnvVar string) (*Client, error) {
