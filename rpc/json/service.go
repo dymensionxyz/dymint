@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"cosmossdk.io/errors"
@@ -110,7 +111,10 @@ func newService(c *client.Client, l types.Logger, opts ...option) *service {
 		"abci_info":            newMethod(s.ABCIInfo),
 		"broadcast_evidence":   newMethod(s.BroadcastEvidence),
 		"block_validated":      newMethod(s.BlockValidated),
-		"eth_chainId":          newMethod(s.ChainId),
+		"eth_chainId":          newMethod(s.EthChainId),
+		"eth_getBlockByNumber": newMethod(s.EthGetBlockByNumber),
+		"eth_blockNumber":      newMethod(s.EthBlockNumber),
+		"eth_getBalance":       newMethod(s.EthGetBalance),
 	}
 
 	for _, opt := range opts {
@@ -297,6 +301,30 @@ func (s *service) BlockValidated(req *http.Request, args *blockArgs) (*client.Re
 	return s.client.BlockValidated((*int64)(&args.Height))
 }
 
-func (s *service) ChainId(req *http.Request, args *blockArgs) (*client.ResultChainId, error) {
+func (s *service) EthChainId(req *http.Request, args *blockArgs) (*client.ResultEthMethod, error) {
 	return s.client.ChainID()
+}
+
+func (s *service) EthBlockNumber(req *http.Request, args *blockArgs) (*client.ResultEthMethod, error) {
+	return s.client.EthBlockNumber(req.Context())
+}
+
+func (s *service) EthGetBlockByNumber(req *http.Request, args *ethBlockArgs) (*client.ResultEthMethod, error) {
+	heightStr := strings.Replace(args.Height, "0x", "", -1)
+	height, err := strconv.ParseInt(heightStr, 16, 64)
+	if err != nil {
+		return &client.ResultEthMethod{Result: ""}, nil
+	}
+	return s.client.EthGetBlockByNumber(req.Context(), &height)
+}
+
+func (s *service) EthGetBalance(req *http.Request, args *ethBalanceArgs) (*client.ResultEthMethod, error) {
+	heightStr := strings.Replace(args.Height, "0x", "", -1)
+	height, err := strconv.ParseInt(heightStr, 16, 64)
+	if err != nil {
+		height = 0
+	}
+	addrStr := strings.Replace(args.Address, "0x", "", -1)
+
+	return s.client.EthGetBalance(req.Context(), addrStr, &height)
 }

@@ -52,12 +52,13 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
+	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1 // indirect
 	github.com/coinbase/rosetta-sdk-go v0.7.9 // indirect
 	github.com/cosmos/cosmos-db v1.0.0 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
-	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
+	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.3 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -66,17 +67,23 @@ require (
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/huandu/xstrings v1.3.1 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 	github.com/itering/scale.go v1.9.14 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-runewidth v0.0.14 // indirect
+	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opencontainers/runc v1.1.5 // indirect
+	github.com/prometheus/tsdb v0.10.0 // indirect
 	github.com/rakyll/statik v0.1.7 // indirect
 	github.com/regen-network/cosmos-proto v0.3.1 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/zerolog v1.29.1 // indirect
-	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
+	github.com/shirou/gopsutil v3.21.6+incompatible // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
+	github.com/status-im/keycard-go v0.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
@@ -285,7 +292,7 @@ require (
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/danwt/gerr v1.0.0 // indirect
-	github.com/evmos/evmos/v12 v12.1.6 // indirect
+	github.com/evmos/evmos/v12 v12.1.6
 	github.com/getsentry/sentry-go v0.23.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/holiman/uint256 v1.2.2 // indirect
@@ -313,6 +320,7 @@ require (
 
 replace (
 	github.com/CosmWasm/wasmd => github.com/decentrio/wasmd v0.33.0-sdk46.2
+	github.com/ethereum/go-ethereum => github.com/evmos/go-ethereum v1.10.26
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 )
 
