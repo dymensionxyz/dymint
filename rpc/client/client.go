@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -9,6 +11,7 @@ import (
 
 	sdkerrors "cosmossdk.io/errors"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	evmostypes "github.com/evmos/evmos/v12/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -28,6 +31,17 @@ import (
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/version"
+
+	ethctypes "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+
+	evmosrpctypes "github.com/evmos/evmos/v12/rpc/types"
+
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/bech32"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	minttypes "github.com/dymensionxyz/dymension-rdk/x/mint/types"
 )
 
 const (
@@ -68,8 +82,8 @@ type ResultBlockValidated struct {
 	Result  BlockValidationStatus
 }
 
-type ResultChainId struct {
-	ChainID string
+type ResultEthMethod struct {
+	Result string
 }
 
 // NewClient returns Client working with given node.
@@ -841,12 +855,12 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
 }
 
-func (c *Client) ChainID() (*ResultChainId, error) {
+func (c *Client) ChainID() (*ResultEthMethod, error) {
 	eip155ChainID, err := evmostypes.ParseChainID(c.node.BlockManager.State.ChainID)
 	if err != nil {
-		return &ResultChainId{}, nil
+		return &ResultEthMethod{}, nil
 	}
-	return &ResultChainId{ChainID: fmt.Sprintf("0x%x", eip155ChainID)}, nil
+	return &ResultEthMethod{Result: fmt.Sprintf("0x%x", eip155ChainID)}, nil
 }
 
 func (c *Client) BlockValidated(height *int64) (*ResultBlockValidated, error) {
@@ -1035,4 +1049,145 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 			errors.New("invalid request"), min, max)
 	}
 	return min, max, nil
+}
+
+// EthBlockNumber returns the height of the block manager.
+func (c *Client) EthBlockNumber(ctx context.Context) (*ResultEthMethod, error) {
+	return &ResultEthMethod{Result: fmt.Sprintf("0x%x", c.node.GetBlockManagerHeight())}, nil
+}
+
+// EthGetBalance returns the block for the height provided.
+func (c *Client) EthGetBlockByNumber(ctx context.Context, height *int64) (*ResultEthMethod, error) {
+	resBlock, err := c.Block(ctx, height)
+	// return if requested block height is greater than the current one
+	if resBlock == nil || resBlock.Block == nil || err != nil {
+		return nil, fmt.Errorf("failed to fetch block result from Tendermint. height:%d", height)
+	}
+
+	blockResults, err := c.BlockResults(ctx, height)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch block result from Tendermint. height:%d error:%s", height, err.Error())
+	}
+
+	ethFormatBlock, err := c.RPCBlockFromTendermintBlock(resBlock, blockResults)
+	if err != nil {
+		return nil, err
+	}
+	result, err := json.Marshal(ethFormatBlock)
+	if err != nil {
+		return nil, err
+	}
+	return &ResultEthMethod{Result: string(result)}, nil
+}
+
+// EthGetBalance returns the provided account's balance (for the native denom) up to the provided block number.
+func (c *Client) EthGetBalance(ctx context.Context, address string, height *int64) (*ResultEthMethod, error) {
+	nativeDenom, err := c.getNativeDenom(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if nativeDenom == "" {
+		return nil, fmt.Errorf("no native denom found")
+	}
+
+	bz, err := hex.DecodeString(address)
+	if err != nil {
+		return nil, err
+	}
+
+	bech32Addr, err := bech32.ConvertAndEncode(sdktypes.GetConfig().GetBech32AccountAddrPrefix(), bz)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &banktypes.QueryBalanceRequest{
+		Address: bech32Addr,
+		Denom:   nativeDenom,
+	}
+	data, err := req.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.ABCIQueryWithOptions(ctx, "/cosmos.bank.v1beta1.Query/Balance", data, rpcclient.ABCIQueryOptions{
+		Height: *height,
+	})
+	if err != nil {
+		return nil, err
+	}
+	respBalance := &banktypes.QueryBalanceResponse{}
+	err = respBalance.Unmarshal(res.Response.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ResultEthMethod{Result: hexutil.EncodeBig(respBalance.Balance.Amount.BigInt())}, nil
+}
+
+// RPCBlockFromTendermintBlock returns a JSON-RPC compatible Ethereum block from a
+// given Tendermint block and its block result.
+// Only basic header information is attached for metamask compatibility.
+// It does not include txs info or base fees.
+func (c *Client) RPCBlockFromTendermintBlock(
+	resBlock *ctypes.ResultBlock,
+	blockRes *ctypes.ResultBlockResults,
+) (map[string]interface{}, error) {
+	ethRPCTxs := []interface{}{}
+	block := resBlock.Block
+
+	formattedBlock := evmosrpctypes.FormatBlock(
+		block.Header, block.Size(),
+		c.node.BlockManager.State.ConsensusParams.Block.MaxGas, nil,
+		ethRPCTxs, ethtypes.Bloom{}, ethctypes.BytesToAddress(block.ProposerAddress.Bytes()), nil,
+	)
+	return formattedBlock, nil
+}
+
+func (c *Client) getNativeDenom(ctx context.Context) (string, error) {
+	mintDenom, err := c.getMintDenom(ctx)
+	if err != nil {
+		return "", err
+	}
+	if mintDenom != "" {
+		return mintDenom, nil
+	}
+
+	return c.getStakingDenom(ctx)
+}
+
+func (c *Client) getMintDenom(ctx context.Context) (string, error) {
+	reqDenom := &minttypes.QueryParamsRequest{}
+	dataDenom, err := reqDenom.Marshal()
+	if err != nil {
+		return "", err
+	}
+	resValue, err := c.ABCIQueryWithOptions(ctx, "/rollapp.mint.v1beta1.Query/Params", dataDenom, rpcclient.DefaultABCIQueryOptions)
+	if err != nil {
+		return "", err
+	}
+	respDenom := &minttypes.QueryParamsResponse{}
+
+	err = respDenom.Unmarshal(resValue.Response.Value)
+	if err != nil {
+		return "", err
+	}
+	return respDenom.Params.MintDenom, nil
+}
+
+func (c *Client) getStakingDenom(ctx context.Context) (string, error) {
+	reqStDenom := &stakingtypes.QueryParamsRequest{}
+	dataDenom, err := reqStDenom.Marshal()
+	if err != nil {
+		return "", err
+	}
+	resValue, err := c.ABCIQueryWithOptions(ctx, "/cosmos.staking.v1beta1.Query/Params", dataDenom, rpcclient.DefaultABCIQueryOptions)
+	if err != nil {
+		return "", err
+	}
+	respStDenom := &stakingtypes.QueryParamsResponse{}
+
+	err = respStDenom.Unmarshal(resValue.Response.Value)
+	if err != nil {
+		return "", err
+	}
+	return respStDenom.Params.BondDenom, nil
 }
