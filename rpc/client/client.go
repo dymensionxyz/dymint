@@ -1125,6 +1125,8 @@ func (c *Client) EthGetBalance(ctx context.Context, address string, height *int6
 
 // RPCBlockFromTendermintBlock returns a JSON-RPC compatible Ethereum block from a
 // given Tendermint block and its block result.
+// Only basic header information is attached for metamask compatibility.
+// It does not include txs info or base fees.
 func (c *Client) RPCBlockFromTendermintBlock(
 	resBlock *ctypes.ResultBlock,
 	blockRes *ctypes.ResultBlockResults,
