@@ -19,7 +19,10 @@ func TestClient(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	err = client.TestMoveCall(ctx)
+	digest, err := client.TestMoveCall(ctx)
+	require.NoError(t, err)
+
+	err = client.TestGetTransaction(ctx, digest)
 	require.NoError(t, err)
 }
 

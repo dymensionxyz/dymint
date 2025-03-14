@@ -4,8 +4,7 @@ use noop::noop;
 
 #[test]
 fun test_noop() {
-    let ctx = tx_context::dummy();
     let data = vector::empty<u8>();
-    noop::noop(data, &ctx);
+    noop::noop(data);
     // No assertions needed since the function does nothing
 }
