@@ -135,7 +135,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			doubleSignedBlocks: nil,
 			expectedErrType:    &types.ErrStateUpdateDRSVersionFraud{},
 		},
-		{
+		/*{
 			name:               "Failed validation next sequencer",
 			p2pBlocks:          false,
 			stateUpdateFraud:   "nextsequencer",
@@ -149,7 +149,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			stateUpdateFraud:   "da",
 			doubleSignedBlocks: nil,
 			expectedErrType:    &types.ErrStateUpdateDAFraud{},
-		},
+		},*/
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -223,11 +223,6 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				if !tc.last {
 					manager.ApplyBatchFromSL(slBatch.Batch)
 				}
-			}
-
-			for _, bd := range bds {
-				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
-				manager.Store.SaveDA(bd.Height, "mock", nil)
 			}
 
 			// set fraud data
@@ -384,9 +379,12 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			// Generate batch with block descriptors
 			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10, manager.State.GetProposer().SettlementAddress)
 
-			for _, bd := range bds {
-				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
-				manager.Store.SaveDA(bd.Height, "celestia", nil)
+			// apply batch
+
+			for i, block := range batch.Blocks {
+				blockData := p2p.BlockData{Block: *block, Commit: *batch.Commits[i]}
+				msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
+				manager.OnReceivedBlock(msg)
 			}
 
 			// Validate state

@@ -328,37 +328,19 @@ func (s *DefaultStore) RemoveBlockCid(height uint64) error {
 }
 
 func (s *DefaultStore) LoadDA(height uint64) (string, error) {
-	b, err := s.db.Get(getDAKey(height))
+	resp, err := s.LoadBlockResponses(height)
 	if err != nil {
 		return "", err
 	}
-	return string(b), nil
-}
-
-func (s *DefaultStore) SaveDA(height uint64, da string, batch KVBatch) (KVBatch, error) {
-	if batch == nil {
-		return nil, s.db.Set(getDAKey(height), []byte(da))
-	}
-	err := batch.Set(getDAKey(height), []byte(da))
-	return batch, err
+	return resp.EndBlock.RollappParamUpdates.Da, nil
 }
 
 func (s *DefaultStore) LoadDRSVersion(height uint64) (uint32, error) {
-	b, err := s.db.Get(getDRSVersionKey(height))
+	resp, err := s.LoadBlockResponses(height)
 	if err != nil {
 		return 0, err
 	}
-	return binary.LittleEndian.Uint32(b), nil
-}
-
-func (s *DefaultStore) SaveDRSVersion(height uint64, version uint32, batch KVBatch) (KVBatch, error) {
-	b := make([]byte, 8)
-	binary.LittleEndian.PutUint32(b, version)
-	if batch == nil {
-		return nil, s.db.Set(getDRSVersionKey(height), b)
-	}
-	err := batch.Set(getDRSVersionKey(height), b)
-	return batch, err
+	return resp.EndBlock.RollappParamUpdates.DrsVersion, nil
 }
 
 func (s *DefaultStore) LoadBaseHeight() (uint64, error) {
