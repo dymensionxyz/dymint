@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	near "github.com/near/rollup-data-availability/gopkg/da-rpc"
 
 	"cosmossdk.io/math"
 	"github.com/dymensionxyz/dymint/da"
