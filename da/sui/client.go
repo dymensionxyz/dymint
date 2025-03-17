@@ -25,16 +25,25 @@ const (
 	// In fact, it's less, but we want to be safe. This includes the tx metadata and signatures.
 	suiReservedTxBytes = 2 * 1024
 	// around 126KB
-	maxBlobSizeBytes = maxSuiTxSizeBytes - suiReservedTxBytes
-	// 16KB minus 4 bytes for the length prefix in the BCS encoding
-	inputMaxSizeBytes = 16*1024 - 4
+	freeTxSpace = maxSuiTxSizeBytes - suiReservedTxBytes
+	// 16KB is the default size of pure input in Sui
+	maxInputSize = 16 * 1024
+	// maximum number of chunks that can be submitted in a single transaction
+	maxChunks = freeTxSpace / maxInputSize
+	// 16KB is the default size. BCS encoding takes around 5 bytes, but we reserve 16 just to have some room.
+	// Base64 encoding increases the size by 4/3, so we need to reserve some space for that.
+	// Finally, max input is around 11.99KB.
+	inputMaxSizeBytes = (16*1024 - 16) * 3 / 4
+	// around 94.7KB
+	maxBlobSizeBytes = (freeTxSpace - 16*8) * 3 / 4
 )
 
-var _ da.DataAvailabilityLayerClient = new(Client)
-var _ da.BatchSubmitter = new(Client)
-var _ da.BatchRetriever = new(Client)
+var _ da.DataAvailabilityLayerClient = new(DataAvailabilityLayerClient)
+var _ da.BatchSubmitter = new(DataAvailabilityLayerClient)
+var _ da.BatchRetriever = new(DataAvailabilityLayerClient)
 
-type Client struct {
+// DataAvailabilityLayerClient implements the Data Availability Layer Client interface for Sui
+type DataAvailabilityLayerClient struct {
 	cli          sui.ISuiAPI
 	signer       *suisigner.Signer
 	logger       types.Logger
@@ -45,7 +54,7 @@ type Client struct {
 }
 
 // RetrieveBatches retrieves batch data from Sui using the transaction digest
-func (c *Client) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
 	// Parse the DA path to get the transaction digest
 	submitMetaData := &da.DASubmitMetaData{}
 	daMetaData, err := submitMetaData.FromPath(daPath)
@@ -79,7 +88,7 @@ func (c *Client) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
 }
 
 // retrieveBatches downloads a batch from Sui and returns the batch included
-func (c *Client) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -87,7 +96,8 @@ func (c *Client) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetri
 	resp, err := c.cli.SuiGetTransactionBlock(ctx, models.SuiGetTransactionBlockRequest{
 		Digest: daMetaData.DAPath,
 		Options: models.SuiTransactionBlockOptions{
-			ShowInput: true, // we need to retrieve the input to get the data chunks
+			ShowEffects: true, // fetch effects to verify the transaction status
+			ShowInput:   true, // retrieve the input to get the data chunks
 		},
 	})
 	if err != nil {
@@ -100,23 +110,13 @@ func (c *Client) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetri
 		}
 	}
 
-	if !resp.ConfirmedLocalExecution {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Transaction not confirmed locally",
-				Error:   fmt.Errorf("transaction not confirmed locally"),
-			},
-		}
-	}
-
 	// Status might be either "success" or "failure": https://docs.sui.io/sui-api-ref#executionstatus
 	if resp.Effects.Status.Status != "success" {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("Transaction failed: %s", resp.Effects.Status.Error),
-				Error:   fmt.Errorf("transaction failed: %s", resp.Effects.Status.Error),
+				Message: fmt.Sprintf("Transaction failed: status: %s: error: %s", resp.Effects.Status.Status, resp.Effects.Status.Error),
+				Error:   fmt.Errorf("transaction failed: status: %s: error: %s", resp.Effects.Status.Status, resp.Effects.Status.Error),
 			},
 		}
 	}
@@ -178,7 +178,7 @@ func (c *Client) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetri
 
 // collectChunks collects all the data chunks from the transaction inputs and concatenates them into a single batch.
 // Each input is expected to be a Base64-BCS-encoded vector<u8> containing a chunk of the batch data.
-func (c *Client) collectChunks(inputs []models.SuiCallArg) ([]byte, error) {
+func (c *DataAvailabilityLayerClient) collectChunks(inputs []models.SuiCallArg) ([]byte, error) {
 	var batchData []byte
 	for _, input := range inputs {
 		if input["type"] != "pure" {
@@ -213,7 +213,7 @@ func (c *Client) collectChunks(inputs []models.SuiCallArg) ([]byte, error) {
 }
 
 // parseBatch parses the raw batch data into a types.Batch
-func (c *Client) parseBatch(batchData []byte) (*types.Batch, error) {
+func (c *DataAvailabilityLayerClient) parseBatch(batchData []byte) (*types.Batch, error) {
 	var batch pb.Batch
 	err := proto.Unmarshal(batchData, &batch)
 	if err != nil {
@@ -231,7 +231,7 @@ func (c *Client) parseBatch(batchData []byte) (*types.Batch, error) {
 }
 
 // CheckBatchAvailability checks if a batch is available on Sui by verifying the transaction exists
-func (c *Client) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
 	// Parse the DA path to get the transaction digest
 	submitMetaData := &da.DASubmitMetaData{}
 	daMetaData, err := submitMetaData.FromPath(daPath)
@@ -263,7 +263,7 @@ func (c *Client) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
 }
 
 // checkBatchAvailability checks if a batch is available on Sui by verifying the transaction exists
-func (c *Client) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -280,16 +280,6 @@ func (c *Client) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.Resu
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("Transaction not found: %v", err),
 				Error:   err,
-			},
-		}
-	}
-
-	if !resp.ConfirmedLocalExecution {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Transaction not confirmed locally",
-				Error:   fmt.Errorf("transaction not confirmed locally"),
 			},
 		}
 	}
@@ -313,7 +303,7 @@ func (c *Client) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.Resu
 	}
 }
 
-func (c *Client) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
+func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	data, err := batch.MarshalBinary()
 	if err != nil {
 		return da.ResultSubmitBatch{
@@ -340,14 +330,14 @@ func (c *Client) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 				continue
 			}
 
-			c.logger.Debug("Submitted blob to DA successfully.")
-
 			result := c.checkBatchAvailability(daMetaData)
 			if result.Error != nil {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", result.Error)
 				backoff.Sleep()
 				continue
 			}
+
+			c.logger.Debug("Submitted blob to Sui DA successfully.", "blob_size", len(data), "digest", daMetaData.DAPath)
 
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
@@ -364,7 +354,11 @@ func (c *Client) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 }
 
 // submit submits a blob to Sui, including data bytes
-func (c *Client) submit(data []byte) (*da.DASubmitMetaData, error) {
+func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData, error) {
+	if len(data) > maxBlobSizeBytes {
+		return nil, fmt.Errorf("dbatch do not fit into tx: %d bytes: limit: %d bytes", len(data), maxBlobSizeBytes)
+	}
+
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -389,7 +383,7 @@ func (c *Client) submit(data []byte) (*da.DASubmitMetaData, error) {
 		txs = append(txs, models.RPCTransactionRequestParams{
 			MoveCallRequestParams: &models.MoveCallRequest{
 				Signer:          c.signer.Address,
-				PackageObjectId: "0xeebcec2b40048c86facb2eb51e8c1c39ca0ed536b96f6f1d1fb58451f538299d", // Noop contract package ID
+				PackageObjectId: c.config.NoopContractAddress,
 				Module:          "noop",
 				Function:        "noop",
 				TypeArguments:   []interface{}{}, // no type args; the slice must be non-nil
@@ -406,8 +400,8 @@ func (c *Client) submit(data []byte) (*da.DASubmitMetaData, error) {
 	unsignedTx, err := c.cli.BatchTransaction(ctx, models.BatchTransactionRequest{
 		Signer:                         c.signer.Address,
 		RPCTransactionRequestParams:    txs,
-		Gas:                            nil,        // pick the gas object automatically
-		GasBudget:                      "10000000", // 0.01 SUI TODO: think how to set this value dynamically; config?
+		Gas:                            nil, // pick the gas object automatically
+		GasBudget:                      c.config.GasBudget,
 		SuiTransactionBlockBuilderMode: "Commit",
 	})
 	if err != nil {
@@ -416,8 +410,9 @@ func (c *Client) submit(data []byte) (*da.DASubmitMetaData, error) {
 
 	// TODO: What will happen if the transaction fails?
 	// - insufficient balance to pay for the gas
-	// - to low gas budget
-	// - too big transaction / too big inputs
+	// - too low gas budget
+
+	// If one of the input arguments is too big or the tx is too big, the transaction will fail.
 	//
 	// SignAndExecuteTransactionBlock uses WaitForLocalExecution request type, which ensures
 	// that the transaction is executed on the local node and is accessible for querying.
@@ -447,7 +442,7 @@ func (c *Client) submit(data []byte) (*da.DASubmitMetaData, error) {
 			ShowInput:    true,
 			ShowRawInput: true,
 		},
-		RequestType: "WaitForEffectsCert",
+		RequestType: "WaitForLocalExecution",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("sign and execute transaction block: %v", err)
@@ -458,7 +453,7 @@ func (c *Client) submit(data []byte) (*da.DASubmitMetaData, error) {
 	// Reference: https://docs.sui.io/sui-api-ref#sui_executetransactionblock
 	//
 	// TODO: What is "timely manner"? What to do if ConfirmLocalExecution == false?
-	// Wait for a while (until the checkpoint end?) and retry? Or retry immediately? -> Increased gas costs
+	// For now, just retry.
 	if !res.ConfirmedLocalExecution {
 		return nil, fmt.Errorf("transaction not confirmed locally")
 	}
@@ -476,7 +471,7 @@ func (c *Client) submit(data []byte) (*da.DASubmitMetaData, error) {
 }
 
 // Init initializes the Sui DataAvailabilityLayerClient instance.
-func (c *Client) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
+func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 	var err error
 	c.config, err = createConfig(config)
@@ -496,7 +491,7 @@ func (c *Client) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, lo
 }
 
 // Start prepares the Sui client to work.
-func (c *Client) Start() error {
+func (c *DataAvailabilityLayerClient) Start() error {
 	c.logger.Info("Starting Sui Data Availability Layer Client.")
 
 	// client has already been set (likely through options)
@@ -523,7 +518,7 @@ func (c *Client) Start() error {
 }
 
 // Stop stops the Sui Data Availability Layer Client.
-func (c *Client) Stop() error {
+func (c *DataAvailabilityLayerClient) Stop() error {
 	c.logger.Info("Stopping Sui Data Availability Layer Client.")
 	if c.cancel != nil {
 		c.cancel()
@@ -532,22 +527,22 @@ func (c *Client) Stop() error {
 }
 
 // GetClientType returns client type.
-func (c *Client) GetClientType() da.Client {
+func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Sui
 }
 
-func (c *Client) RollappId() string {
+func (c *DataAvailabilityLayerClient) RollappId() string {
 	return fmt.Sprintf("%d", c.config.ChainID)
 }
 
 // GetSignerBalance returns the balance for the Sui account.
-func (c *Client) GetSignerBalance() (da.Balance, error) {
+func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
 	resp, err := c.cli.SuiXGetBalance(ctx, models.SuiXGetBalanceRequest{
 		Owner:    c.signer.Address,
-		CoinType: "", // empty string means SUI coin by default
+		CoinType: "0x2::sui::SUI",
 	})
 	if err != nil {
 		return da.Balance{}, fmt.Errorf("get balance: %w", err)
@@ -560,16 +555,26 @@ func (c *Client) GetSignerBalance() (da.Balance, error) {
 
 	return da.Balance{
 		Amount: amount,
-		Denom:  "SUI",
+		Denom:  suiSymbol,
 	}, nil
 }
 
-func (c *Client) GetMaxBlobSizeBytes() uint64 {
+func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 	return maxBlobSizeBytes
 }
 
-// TODO: remove; this is for testing purposes only
-func (c *Client) TestGetTransaction(ctx context.Context, digest string) error {
+// TestRequestCoins requests coins from the Sui faucet. Only for testing purposes.
+func (c *DataAvailabilityLayerClient) TestRequestCoins() error {
+	//testnetFaucet, _ := sui.GetFaucetHost(constant.SuiTestnet)
+	err := sui.RequestSuiFromFaucet("https://faucet.devnet.sui.io", c.signer.Address, map[string]string{})
+	if err != nil {
+		return fmt.Errorf("request coins: %w", err)
+	}
+	return nil
+}
+
+// TestGetTransaction retrieves a transaction from Sui by digest. Only for testing purposes.
+func (c *DataAvailabilityLayerClient) TestGetTransaction(ctx context.Context, digest string) error {
 	resp, err := c.cli.SuiGetTransactionBlock(ctx, models.SuiGetTransactionBlockRequest{
 		Digest: digest,
 		Options: models.SuiTransactionBlockOptions{
@@ -587,8 +592,8 @@ func (c *Client) TestGetTransaction(ctx context.Context, digest string) error {
 	return nil
 }
 
-// TODO: remove; this is for testing purposes only
-func (c *Client) TestMoveCall(ctx context.Context) (string, error) {
+// TestMoveCall submits a Move call to the Sui network. Only for testing purposes.
+func (c *DataAvailabilityLayerClient) TestMoveCall(ctx context.Context) (string, error) {
 	var txs []models.RPCTransactionRequestParams
 	for i := range 3 {
 		value := fmt.Sprintf("Hello World %d", i)

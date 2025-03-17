@@ -10,8 +10,11 @@ import (
 )
 
 const (
+	defaultGasBudget        = "10000000" // 0.01 SUI
 	defaultRpcRetryDelay    = 3 * time.Second
 	defaultRpcRetryAttempts = 5
+
+	suiSymbol = "SUI"
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -21,19 +24,23 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 
 // Config stores Sui DALC configuration parameters.
 type Config struct {
-	ChainID       int64                `json:"chain_id,omitempty"`
-	RPCURL        string               `json:"rpc_url,omitempty"`
-	Timeout       time.Duration        `json:"timeout,omitempty"`
-	MnemonicEnv   string               `json:"mnemonic_env,omitempty"`
-	Backoff       uretry.BackoffConfig `json:"backoff,omitempty"`
-	RetryAttempts *int                 `json:"retry_attempts,omitempty"`
-	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`
+	ChainID             int64                `json:"chain_id,omitempty"`
+	RPCURL              string               `json:"rpc_url,omitempty"`
+	NoopContractAddress string               `json:"noop_contract_address,omitempty"`
+	GasBudget           string               `json:"gas_budget,omitempty"`
+	Timeout             time.Duration        `json:"timeout,omitempty"`
+	MnemonicEnv         string               `json:"mnemonic_env,omitempty"`
+	Backoff             uretry.BackoffConfig `json:"backoff,omitempty"`
+	RetryAttempts       *int                 `json:"retry_attempts,omitempty"`
+	RetryDelay          time.Duration        `json:"retry_delay,omitempty"`
 }
 
 var TestConfig = Config{
-	RPCURL:      "https://fullnode.testnet.sui.io:443",
-	Timeout:     5 * time.Second,
-	MnemonicEnv: "SUI_MNEMONIC",
+	RPCURL:              "https://fullnode.devnet.sui.io:443",
+	NoopContractAddress: "0x45d86eb334f15b3a5145c0b7012dae3bf16de58ab4777ae31d184e9baf91c420",
+	GasBudget:           "10000000", // 0.01 SUI
+	Timeout:             5 * time.Second,
+	MnemonicEnv:         "SUI_MNEMONIC",
 }
 
 func createConfig(bz []byte) (c Config, err error) {
@@ -45,6 +52,9 @@ func createConfig(bz []byte) (c Config, err error) {
 		return c, fmt.Errorf("json unmarshal: %w", err)
 	}
 
+	if c.GasBudget == "" {
+		c.GasBudget = defaultGasBudget
+	}
 	if c.RetryDelay == 0 {
 		c.RetryDelay = defaultRpcRetryDelay
 	}
