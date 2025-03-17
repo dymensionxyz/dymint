@@ -36,6 +36,15 @@ type (
 	}
 )
 
+type ethBlockArgs struct {
+	Height string
+}
+
+type ethBalanceArgs struct {
+	Address string
+	Height  string
+}
+
 type blockArgs struct {
 	Height StrInt64 `json:"height"`
 }
