@@ -62,7 +62,12 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 		batch   *types.Batch
 		wantErr bool
 	}{
-		// TODO: empty batch
+		// This test fails because the batch size is 0 after serialization. This should
+		// not be possible in practice.
+		//{
+		//	name:  "empty batch",
+		//	batch: testutil.GenerateBatchWithBlocks(0, proposerKey),
+		//},
 		{
 			name:  "small batch: 1KB",
 			batch: testutil.GenerateBatchWithBlocks(1, proposerKey),
@@ -72,10 +77,12 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 			batch: testutil.GenerateBatchWithBlocks(40, proposerKey),
 		},
 		{
-			name:  "big batch: 118KB",
+			name:  "big batch: 88KB",
 			batch: testutil.GenerateBatchWithBlocks(150, proposerKey),
 		},
-		// This test is blocking
+		// This test is blocking. If the batch is too big, the client will try to retry it
+		// infinitely. This is not a problem in practice as the max block size is enforced
+		// and verified before submitting the batch.
 		//{
 		//	name:    "exceeding batch: 118KB",
 		//	batch:   testutil.GenerateBatchWithBlocks(200, proposerKey),

@@ -26,15 +26,13 @@ const (
 	suiReservedTxBytes = 2 * 1024
 	// around 126KB
 	freeTxSpace = maxSuiTxSizeBytes - suiReservedTxBytes
-	// 16KB is the default size of pure input in Sui
-	maxInputSize = 16 * 1024
-	// maximum number of chunks that can be submitted in a single transaction
-	maxChunks = freeTxSpace / maxInputSize
 	// 16KB is the default size. BCS encoding takes around 5 bytes, but we reserve 16 just to have some room.
 	// Base64 encoding increases the size by 4/3, so we need to reserve some space for that.
 	// Finally, max input is around 11.99KB.
 	inputMaxSizeBytes = (16*1024 - 16) * 3 / 4
-	// around 94.7KB
+	// 16*8 bytes is a space reserved for BCS encoding given that the max number of inputs is 8: we might have
+	// max 8 inputs of the maximum size. Base64 encoding increases the size by 4/3, so we need to reserve
+	// some space for that. Finally, max blob size is around 94.7KB.
 	maxBlobSizeBytes = (freeTxSpace - 16*8) * 3 / 4
 )
 
@@ -408,11 +406,11 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 		return nil, fmt.Errorf("batch transaction: %v", err)
 	}
 
-	// TODO: What will happen if the transaction fails?
-	// - insufficient balance to pay for the gas
-	// - too low gas budget
-
-	// If one of the input arguments is too big or the tx is too big, the transaction will fail.
+	// Transaction fails if:
+	// - Insufficient balance to pay for the gas
+	// - Too low gas budget
+	// - One of the arguments is too big after encoding
+	// - The transaction is too big
 	//
 	// SignAndExecuteTransactionBlock uses WaitForLocalExecution request type, which ensures
 	// that the transaction is executed on the local node and is accessible for querying.
@@ -453,7 +451,7 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 	// Reference: https://docs.sui.io/sui-api-ref#sui_executetransactionblock
 	//
 	// TODO: What is "timely manner"? What to do if ConfirmLocalExecution == false?
-	// For now, just retry.
+	//  For now, just retry.
 	if !res.ConfirmedLocalExecution {
 		return nil, fmt.Errorf("transaction not confirmed locally")
 	}
