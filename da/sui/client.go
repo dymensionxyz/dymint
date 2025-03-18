@@ -559,7 +559,6 @@ func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 
 // TestRequestCoins requests coins from the Sui faucet. Only for testing purposes.
 func (c *DataAvailabilityLayerClient) TestRequestCoins() error {
-	//testnetFaucet, _ := sui.GetFaucetHost(constant.SuiTestnet)
 	err := sui.RequestSuiFromFaucet("https://faucet.devnet.sui.io", c.signer.Address, map[string]string{})
 	if err != nil {
 		return fmt.Errorf("request coins: %w", err)
