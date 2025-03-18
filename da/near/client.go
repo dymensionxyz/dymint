@@ -10,15 +10,6 @@ type NearClient interface {
 	GetAccountAddress() string
 }
 
-type NearConfig struct {
-	Enable    bool
-	Account   string
-	Network   string
-	Contract  string
-	Key       string
-	Namespace uint32
-}
-
 type Client struct {
 	near near.Config
 }

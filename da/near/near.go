@@ -25,10 +25,12 @@ const (
 	defaultBatchRetryAttempts = 10
 )
 
-type Config struct {
-	Seed        string `json:"seed"`
-	RpcEndpoint string `json:"endpoint"`
-	AppID       uint32 `json:"app_id"`
+type NearConfig struct {
+	Account   string `json:"account"`
+	Network   string `json:"network"`
+	Contract  string `json:"contract"`
+	Key       string `json:"key"`
+	Namespace uint32 `json:"namespace"`
 }
 
 // ToPath converts a SubmitMetaData to a path.
