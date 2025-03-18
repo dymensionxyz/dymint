@@ -6,6 +6,7 @@ import (
 	"github.com/dymensionxyz/dymint/da/celestia"
 	"github.com/dymensionxyz/dymint/da/grpc"
 	"github.com/dymensionxyz/dymint/da/local"
+	"github.com/dymensionxyz/dymint/da/near"
 	"github.com/dymensionxyz/dymint/da/weavevm"
 )
 
@@ -16,6 +17,7 @@ var clients = map[string]func() da.DataAvailabilityLayerClient{
 	"celestia": func() da.DataAvailabilityLayerClient { return &celestia.DataAvailabilityLayerClient{} },
 	"avail":    func() da.DataAvailabilityLayerClient { return &avail.DataAvailabilityLayerClient{} },
 	"weavevm":  func() da.DataAvailabilityLayerClient { return &weavevm.DataAvailabilityLayerClient{} },
+	"near":     func() da.DataAvailabilityLayerClient { return &near.DataAvailabilityLayerClient{} },
 }
 
 // GetClient returns client identified by name.
