@@ -116,6 +116,9 @@ type Manager struct {
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
+
+	// stores healthy state
+	healthy bool
 }
 
 // NewManager creates new block Manager.
@@ -174,6 +177,7 @@ func NewManager(
 		settlementSyncingC:    make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing syncing process, but syncing height is updated, which means the ongoing syncing will sync to the new height.
 		settlementValidationC: make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing validation process, but validation height is updated, which means the ongoing validation will validate to the new height.
 		syncedFromSettlement:  uchannel.NewNudger(),   // used by the sequencer to wait  till the node completes the syncing from settlement.
+		healthy:               true,
 	}
 
 	for _, client := range daClients {
@@ -430,11 +434,17 @@ func (m *Manager) StopManager(err error) {
 }
 
 func (m *Manager) setUnhealthy(err error) {
+	m.healthy = false
 	uevent.MustPublish(context.Background(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 }
 
 func (m *Manager) setHealthy() {
+	m.healthy = true
 	uevent.MustPublish(context.Background(), m.Pubsub, &events.DataHealthStatus{Error: nil}, events.HealthStatusList)
+}
+
+func (m *Manager) IsHealthy() bool {
+	return m.healthy
 }
 
 func (m *Manager) GetActiveDAClient() da.DataAvailabilityLayerClient {

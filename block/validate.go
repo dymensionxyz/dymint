@@ -29,19 +29,18 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 			targetValidationHeight := min(m.LastSettlementHeight.Load(), m.State.Height())
 			m.logger.Info("validating state updates to target height", "targetHeight", targetValidationHeight)
 
-			healthy := true
 			for currH := m.SettlementValidator.NextValidationHeight(); currH <= targetValidationHeight; currH = m.SettlementValidator.NextValidationHeight() {
 				// get next batch that needs to be validated from SL
 				batch, err := m.SLClient.GetBatchAtHeight(currH)
 				if err != nil {
 					m.logger.Error("Getting batch from SL", "height", currH, "error", err)
-					if healthy {
+					if m.IsHealthy() {
 						err := fmt.Errorf("Unable to get state from SL. Err:%w", err)
 						m.setUnhealthy(err)
 					}
 					continue
 				}
-				if !healthy {
+				if !m.IsHealthy() {
 					m.setHealthy()
 				}
 				// validate batch
