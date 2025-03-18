@@ -430,12 +430,8 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 	//
 	// The call is blocking.
 	res, err := c.cli.SignAndExecuteTransactionBlock(ctx, models.SignAndExecuteTransactionBlockRequest{
-		TxnMetaData: models.TxnMetaData{
-			Gas:          unsignedTx.Gas,
-			InputObjects: unsignedTx.InputObjects,
-			TxBytes:      unsignedTx.TxBytes,
-		},
-		PriKey: c.signer.PriKey,
+		TxnMetaData: models.TxnMetaData(unsignedTx),
+		PriKey:      c.signer.PriKey,
 		Options: models.SuiTransactionBlockOptions{
 			ShowInput:    true,
 			ShowRawInput: true,
@@ -569,110 +565,4 @@ func (c *DataAvailabilityLayerClient) TestRequestCoins() error {
 		return fmt.Errorf("request coins: %w", err)
 	}
 	return nil
-}
-
-// TestGetTransaction retrieves a transaction from Sui by digest. Only for testing purposes.
-func (c *DataAvailabilityLayerClient) TestGetTransaction(ctx context.Context, digest string) error {
-	resp, err := c.cli.SuiGetTransactionBlock(ctx, models.SuiGetTransactionBlockRequest{
-		Digest: digest,
-		Options: models.SuiTransactionBlockOptions{
-			ShowInput:    true,
-			ShowRawInput: true,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("get transaction block: %w", err)
-	}
-	fmt.Println(resp.Transaction.Data.Transaction.Kind) // Kind should be programmable
-	for _, input := range resp.Transaction.Data.Transaction.Inputs {
-		fmt.Println(input)
-	}
-	return nil
-}
-
-// TestMoveCall submits a Move call to the Sui network. Only for testing purposes.
-func (c *DataAvailabilityLayerClient) TestMoveCall(ctx context.Context) (string, error) {
-	var txs []models.RPCTransactionRequestParams
-	for i := range 3 {
-		value := fmt.Sprintf("Hello World %d", i)
-		rawData, err := mystenbcs.Marshal(value)
-		if err != nil {
-			return "", fmt.Errorf("marshal to BCS: %w", err)
-		}
-
-		txs = append(txs, models.RPCTransactionRequestParams{
-			MoveCallRequestParams: &models.MoveCallRequest{
-				Signer: c.signer.Address,
-				// Noop contract package ID. The code is available in `noop` folder.
-				PackageObjectId: "0xfc77c7cf837bdad12f49a2d6a8b19d77c5307730bda1fcd6cafebd7df9142b4f",
-				Module:          "noop",
-				Function:        "noop",
-				TypeArguments:   []interface{}{}, // no type args; the slice must be non-nil
-				Arguments: []interface{}{
-					rawData,
-				},
-				Gas:           nil,        // pick the gas object automatically
-				GasBudget:     "10000000", // 0.01 SUI
-				ExecutionMode: models.TransactionExecutionCommit,
-			},
-		})
-	}
-
-	unsignedTx, err := c.cli.BatchTransaction(ctx, models.BatchTransactionRequest{
-		Signer:                         c.signer.Address,
-		RPCTransactionRequestParams:    txs,
-		Gas:                            nil,        // pick the gas object automatically
-		GasBudget:                      "10000000", // 0.01 SUI
-		SuiTransactionBlockBuilderMode: "Commit",
-	})
-	if err != nil {
-		return "", fmt.Errorf("batch transaction: %w", err)
-	}
-
-	// SignAndExecuteTransactionBlock uses WaitForLocalExecution request type, which ensures
-	// that the transaction is executed on the local node and is accessible for querying.
-	// At this point, it reaches Settlement Finality:
-	// https://docs.sui.io/concepts/sui-architecture/transaction-lifecycle#settlement-finality
-	//
-	// The noop smart contract is as follows:
-	//
-	//   module noop::noop {
-	//      public fun noop(_: vector<u8>) {
-	//          // Do nothing
-	//      }
-	//   }
-	//
-	// It does not have any shared objects, that require consensus validation, thus the transaction
-	// can achieve fast finality in under half a second.
-	//
-	// The call is blocking.
-	res, err := c.cli.SignAndExecuteTransactionBlock(ctx, models.SignAndExecuteTransactionBlockRequest{
-		TxnMetaData: models.TxnMetaData{
-			Gas:          unsignedTx.Gas,
-			InputObjects: unsignedTx.InputObjects,
-			TxBytes:      unsignedTx.TxBytes,
-		},
-		PriKey: c.signer.PriKey,
-		Options: models.SuiTransactionBlockOptions{
-			ShowInput:    true,
-			ShowRawInput: true,
-		},
-		RequestType: "WaitForLocalExecution",
-	})
-	if err != nil {
-		return "", fmt.Errorf("sign and execute transaction block: %w", err)
-	}
-	// > If the node fails to execute the transaction locally in a timely manner, a bool type in
-	// the response is set to `false` to indicate the case.
-	// Reference: https://docs.sui.io/sui-api-ref#sui_executetransactionblock
-	//
-	// What is "timely manner"? What to do if ConfirmLocalExecution == false?
-	// Wait for a while (until the checkpoint end?) and retry? Or retry immediately? -> Increased gas costs
-	if !res.ConfirmedLocalExecution {
-
-	}
-
-	fmt.Printf("Transaction block executed: %v\n", res)
-
-	return res.Digest, nil
 }

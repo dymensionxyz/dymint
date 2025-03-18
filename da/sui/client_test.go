@@ -123,23 +123,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	}
 }
 
-//func TestClient(t *testing.T) {
-//	mnemonicEnv := "SUI_MNEMONIC"
-//	err := os.Setenv(mnemonicEnv, "catalog phone awful abuse derive type verb betray foil salad street scrub")
-//	require.NoError(t, err)
-//
-//	client, err := sui.NewClient("https://fullnode.devnet.sui.io", mnemonicEnv)
-//	require.NoError(t, err)
-//
-//	ctx := context.Background()
-//	digest, err := client.TestMoveCall(ctx)
-//	require.NoError(t, err)
-//
-//	err = client.TestGetTransaction(ctx, digest)
-//	require.NoError(t, err)
-//}
-
-func TestDecerializePureArg(t *testing.T) {
+func TestDeserializePureArg(t *testing.T) {
 	expected := "A0FBQQ=="
 
 	input := "CEEwRkJRUT09"
