@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -35,6 +36,7 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 				if err != nil {
 					m.logger.Error("Getting batch from SL", "height", currH, "error", err)
 					if healthy {
+						err := fmt.Errorf("Unable to get state from SL. Err:%w", err)
 						m.setUnhealthy(err)
 					}
 					continue
