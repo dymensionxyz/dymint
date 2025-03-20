@@ -1,4 +1,4 @@
-package near
+package bnb
 
 import (
 	"context"
@@ -26,10 +26,16 @@ const (
 )
 
 type BNBConfig struct {
-	Account  string `json:"account"`
-	Network  string `json:"network"`
-	Contract string `json:"contract"`
-	Key      string `json:"key"`
+	Account               string  `json:"account"`
+	Network               string  `json:"network"`
+	Endpoint              string  `json:"endpoint"`
+	Contract              string  `json:"contract"`
+	PrivateKey            string  `json:"key"`
+	FeeLimitMultiplier    uint64  `json:"fee_limit_multiplier"`
+	FeeLimitThresholdGwei float64 `json:"fee_limit_threshold_gwei"`
+	BlobGasPriceLimitGwei float64 `json:"blob_gas_price_limit_gwei"`
+	MinBaseFeeGwei        float64 `json:"min_base_fee_gwei"`
+	MinTipCapGwei         float64 `json:"min_tip_cap_gwei"`
 }
 
 // ToPath converts a SubmitMetaData to a path.
@@ -65,7 +71,7 @@ var (
 
 type DataAvailabilityLayerClient struct {
 	stub.Layer
-	client             NearClient
+	client             BNBClient
 	pubsubServer       *pubsub.Server
 	config             BNBConfig
 	logger             types.Logger
@@ -83,7 +89,7 @@ type SubmitMetaData struct {
 }
 
 // WithRPCClient sets rpc client.
-func WithRPCClient(client NearClient) da.Option {
+func WithRPCClient(client BNBClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).client = client
 	}
@@ -148,7 +154,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	client, err := NewClient(c.config)
+	client, err := NewClient(c.ctx, c.config, c.logger)
 	if err != nil {
 		return fmt.Errorf("error while establishing connection to DA layer: %w", err)
 	}
@@ -197,7 +203,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			err := retry.Do(
 				func() error {
 					var err error
-					frameBytes, err = c.client.SubmitData(dataBlob)
+					frameBytes, err = c.client.SubmitBlob(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
