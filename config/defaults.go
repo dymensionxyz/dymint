@@ -72,7 +72,7 @@ func DefaultConfig(home string) *NodeConfig {
 		DymAccountName:          "sequencer",
 		GasPrices:               "1000000000adym",
 		SLGrpc:                  defaultSlGrpcConfig,
-		RetryMinDelay:           1 * time.Second,
+		RetryMinDelay:           5 * time.Second,
 		RetryMaxDelay:           10 * time.Second,
 		BatchAcceptanceTimeout:  120 * time.Second,
 		BatchAcceptanceAttempts: 5,

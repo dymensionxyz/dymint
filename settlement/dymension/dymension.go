@@ -229,10 +229,6 @@ func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGet
 	}
 	err = c.RunWithRetry(func() error {
 		res, err = c.rollappQueryClient.StateInfo(c.ctx, req)
-
-		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
-		}
 		return err
 	})
 	if err != nil {
