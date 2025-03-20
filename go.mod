@@ -6,6 +6,7 @@ toolchain go1.23.6
 
 require (
 	cosmossdk.io/errors v1.0.1
+	github.com/aptos-labs/aptos-go-sdk v1.5.0
 	github.com/availproject/avail-go-sdk v0.2.0-rc7
 	github.com/avast/retry-go/v4 v4.5.0
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b
@@ -53,7 +54,6 @@ require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
-	github.com/aptos-labs/aptos-go-sdk v1.5.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1 // indirect
 	github.com/coder/websocket v1.8.12 // indirect
@@ -65,6 +65,7 @@ require (
 	github.com/dgraph-io/badger/v3 v3.2103.3 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/go-playground/validator/v10 v10.12.0 // indirect
 	github.com/gogo/gateway v1.1.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect

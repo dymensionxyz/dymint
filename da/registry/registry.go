@@ -2,6 +2,7 @@ package registry
 
 import (
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/aptos"
 	"github.com/dymensionxyz/dymint/da/avail"
 	"github.com/dymensionxyz/dymint/da/celestia"
 	"github.com/dymensionxyz/dymint/da/grpc"
@@ -16,6 +17,7 @@ var clients = map[string]func() da.DataAvailabilityLayerClient{
 	"celestia": func() da.DataAvailabilityLayerClient { return &celestia.DataAvailabilityLayerClient{} },
 	"avail":    func() da.DataAvailabilityLayerClient { return &avail.DataAvailabilityLayerClient{} },
 	"weavevm":  func() da.DataAvailabilityLayerClient { return &weavevm.DataAvailabilityLayerClient{} },
+	"aptos":    func() da.DataAvailabilityLayerClient { return &aptos.DataAvailabilityLayerClient{} },
 }
 
 // GetClient returns client identified by name.
