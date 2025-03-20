@@ -54,6 +54,18 @@ func (c *DataAvailabilityClient) TestSendTx(data []byte) (string, error) {
 		return "", fmt.Errorf("serialize data: %w", err)
 	}
 
+	//hexStr := hex.EncodeToString(raw)
+	hexData := make([]byte, hex.EncodedLen(len(raw)))
+	_ = hex.Encode(hexData, raw)
+	fmt.Println("Data Bytes        : ", data)
+	fmt.Println("BCS  Bytes        : ", raw)
+	fmt.Println("Data Str          : ", string(data))
+	fmt.Println("BCS  Str          : ", string(raw))
+	fmt.Println("Encoded Hex Bytes : ", hexData)
+	fmt.Println("Encoded Hex Str   : ", string(hexData))
+	//fmt.Println(hex.DecodeString(hexStr))
+	//fmt.Println(hex.DecodeString(string(raw)))
+
 	tx, err := c.cli.BuildSignAndSubmitTransaction(c.singer, aptos.TransactionPayload{
 		Payload: &aptos.EntryFunction{
 			Module: aptos.ModuleId{
@@ -74,7 +86,7 @@ func (c *DataAvailabilityClient) TestSendTx(data []byte) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("wait for transaction: %w", err)
 	}
-	
+
 	fmt.Println(userTx)
 
 	return tx.Hash, nil
@@ -130,5 +142,12 @@ func (c *DataAvailabilityClient) TestRetrieveBatch(txHash string) ([]byte, error
 		return nil, fmt.Errorf("decode argument hex: %w", err)
 	}
 
-	return bcs.NewDeserializer(rawArgument).ReadBytes(), nil
+	deserializer := bcs.NewDeserializer(rawArgument)
+	b := deserializer.ReadFixedBytes(len(rawArgument))
+	err = deserializer.Error()
+	if err != nil {
+		return nil, fmt.Errorf("deserialize argument: %w", err)
+	}
+
+	return b, nil
 }
