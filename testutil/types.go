@@ -397,3 +397,15 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 
 	return block
 }
+
+func GenerateBatchWithBlocks(numBlocks uint64, proposerKey crypto.PrivKey) *types.Batch {
+	if numBlocks == 0 {
+		return &types.Batch{
+			Blocks:     []*types.Block{},
+			Commits:    []*types.Commit{},
+			DRSVersion: []uint32{},
+			Revision:   1,
+		}
+	}
+	return MustGenerateBatch(0, numBlocks, proposerKey)
+}
