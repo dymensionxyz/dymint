@@ -524,7 +524,7 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 }
 
 func (c *DataAvailabilityLayerClient) RollappId() string {
-	return fmt.Sprintf("%d", c.config.ChainID)
+	return ""
 }
 
 // GetSignerBalance returns the balance for the Sui account.
