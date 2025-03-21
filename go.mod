@@ -6,9 +6,9 @@ toolchain go1.23.6
 
 require (
 	cosmossdk.io/errors v1.0.1
-	github.com/aptos-labs/aptos-go-sdk v1.5.0
 	github.com/availproject/avail-go-sdk v0.2.0-rc7
 	github.com/avast/retry-go/v4 v4.5.0
+	github.com/block-vision/sui-go-sdk v1.0.7-0.20250131122505-89eddd839b21
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/cosmos/ibc-go/v6 v6.2.1
@@ -17,7 +17,7 @@ require (
 	github.com/dymensionxyz/dymension-rdk v1.8.1-rc02
 	github.com/dymensionxyz/gerr-cosmos v1.0.0
 	github.com/go-kit/kit v0.12.0
-	github.com/gofrs/uuid v4.3.1+incompatible
+	github.com/gofrs/uuid v4.3.0+incompatible
 	github.com/gogo/protobuf v1.3.3
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.6.0
@@ -56,7 +56,6 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1 // indirect
-	github.com/coder/websocket v1.8.12 // indirect
 	github.com/coinbase/rosetta-sdk-go v0.7.9 // indirect
 	github.com/cosmos/cosmos-db v1.0.0 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
@@ -65,17 +64,19 @@ require (
 	github.com/dgraph-io/badger/v3 v3.2103.3 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/go-playground/locales v0.14.1 // indirect
+	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.12.0 // indirect
 	github.com/gogo/gateway v1.1.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hasura/go-graphql-client v0.13.1 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/huandu/xstrings v1.3.1 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 	github.com/itering/scale.go v1.9.14 // indirect
+	github.com/leodido/go-urn v1.2.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
@@ -90,11 +91,12 @@ require (
 	github.com/status-im/keycard-go v0.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
+	golang.org/x/time v0.5.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
+	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.1 // indirect
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
@@ -114,7 +116,7 @@ require (
 	github.com/creachadair/taskgroup v0.3.2 // indirect
 	github.com/decred/base58 v1.0.4 // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/filecoin-project/go-jsonrpc v0.6.0
 	github.com/ghodss/yaml v1.0.0 // indirect
@@ -199,7 +201,7 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hdevalence/ed25519consensus v0.2.0 // indirect
+	github.com/hdevalence/ed25519consensus v0.0.0-20220222234857-c00d1f31bab3 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/go-cid v0.4.1
@@ -270,11 +272,11 @@ require (
 	go.etcd.io/bbolt v1.3.8 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/mod v0.21.0 // indirect
 	golang.org/x/sync v0.10.0
-	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/term v0.28.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

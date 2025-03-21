@@ -50,9 +50,7 @@ func (s *DefaultStore) PruneHeights(from, to uint64, logger types.Logger) (uint6
 		if err := batch.Delete(getResponsesKey(height)); err != nil {
 			logger.Error("delete responses", "error", err)
 		}
-		if err := batch.Delete(getDRSVersionKey(height)); err != nil {
-			logger.Error("delete drs", "error", err)
-		}
+
 		if err := batch.Delete(getProposerKey(height)); err != nil {
 			logger.Error("delete proposer", "error", err)
 		}

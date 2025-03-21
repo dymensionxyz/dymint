@@ -41,6 +41,7 @@ const (
 	Avail    Client = "avail"
 	Grpc     Client = "grpc"
 	WeaveVM  Client = "weavevm"
+	Sui      Client = "sui"
 	Aptos    Client = "aptos"
 )
 

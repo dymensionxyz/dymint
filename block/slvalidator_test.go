@@ -2,14 +2,10 @@ package block_test
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/da"
@@ -51,13 +47,6 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.NoError(t, err)
-
-	fakeProposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.NoError(t, err)
-
-	nextProposerKey := ed25519.GenPrivKey()
-	nextSequencerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 
 	doubleSigned, err := testutil.GenerateBlocks(1, 10, proposerKey, [32]byte{})
@@ -137,7 +126,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 		},
 		{
 			name:               "Failed validation next sequencer",
-			p2pBlocks:          false,
+			p2pBlocks:          true,
 			stateUpdateFraud:   "nextsequencer",
 			doubleSignedBlocks: nil,
 			expectedErrType:    &types.ErrInvalidNextSequencersHashFraud{},
@@ -159,36 +148,13 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, manager)
 
-			if tc.last {
-				proposerPubKey := nextProposerKey.PubKey()
-				pubKeybytes := proposerPubKey.Bytes()
-				if err != nil {
-					panic(err)
-				}
-
-				// Set next sequencer
-				raw, _ := nextSequencerKey.GetPublic().Raw()
-				pubkey := ed25519.PubKey(raw)
-				manager.State.SetProposer(types.NewSequencer(pubkey, hex.EncodeToString(pubKeybytes), "", nil))
-
-				// set proposer
-				raw, _ = proposerKey.GetPublic().Raw()
-				pubkey = ed25519.PubKey(raw)
-				manager.State.Proposer.Store(types.NewSequencer(pubkey, "", "", nil))
-			}
-
 			// Create DA
 			manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
 
 			// Generate batch
 			var batch *types.Batch
-			if tc.last {
-				batch, err = testutil.GenerateLastBatch(1, 10, proposerKey, fakeProposerKey, [32]byte{})
-				assert.NoError(t, err)
-			} else {
-				batch, err = testutil.GenerateBatch(1, 10, proposerKey, [32]byte{})
-				assert.NoError(t, err)
-			}
+			batch, err = testutil.GenerateBatch(1, 10, proposerKey, [32]byte{})
+			assert.NoError(t, err)
 
 			// Submit batch to DA
 			daResultSubmitBatch := manager.GetActiveDAClient().SubmitBatch(batch)
@@ -225,11 +191,6 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				}
 			}
 
-			for _, bd := range bds {
-				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
-				manager.Store.SaveDA(bd.Height, "mock", nil)
-			}
-
 			// set fraud data
 			switch tc.stateUpdateFraud {
 			case "drs":
@@ -252,8 +213,13 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				// add blockdescriptor with wrong height
 				slBatch.BlockDescriptors[0].Height = 2
 			case "nextsequencer":
-				seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(nextProposerKey.PubKey(), 1))
-				slBatch.NextSequencer = seq.SettlementAddress
+				nextProposer := testutil.GenerateSequencer()
+				slBatch.NextSequencer = nextProposer.SettlementAddress
+				manager.State.Proposer.Store(&nextProposer)
+				manager.State.SetProposer(&nextProposer)
+				seqs := manager.Sequencers.GetAll()
+				seqs = append(seqs, nextProposer)
+				manager.Sequencers.Set(seqs)
 			case "da":
 				slBatch.MetaData.Client = "celestia"
 			}
@@ -384,9 +350,12 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			// Generate batch with block descriptors
 			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10, manager.State.GetProposer().SettlementAddress)
 
-			for _, bd := range bds {
-				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
-				manager.Store.SaveDA(bd.Height, "celestia", nil)
+			// apply batch
+
+			for i, block := range batch.Blocks {
+				blockData := p2p.BlockData{Block: *block, Commit: *batch.Commits[i]}
+				msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
+				manager.OnReceivedBlock(msg)
 			}
 
 			// Validate state
