@@ -1,4 +1,4 @@
-package weavevm
+package loadnetwork
 
 import (
 	"bytes"
@@ -12,10 +12,10 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/weavevm/gateway"
-	"github.com/dymensionxyz/dymint/da/weavevm/rpc"
-	"github.com/dymensionxyz/dymint/da/weavevm/signer"
-	weaveVMtypes "github.com/dymensionxyz/dymint/da/weavevm/types"
+	"github.com/dymensionxyz/dymint/da/loadnetwork/gateway"
+	"github.com/dymensionxyz/dymint/da/loadnetwork/rpc"
+	"github.com/dymensionxyz/dymint/da/loadnetwork/signer"
+	loadnetworktypes "github.com/dymensionxyz/dymint/da/loadnetwork/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/metrics"
@@ -29,14 +29,14 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-type WeaveVM interface {
+type LoadNetwork interface {
 	SendTransaction(ctx context.Context, to string, data []byte) (string, error)
 	GetTransactionReceipt(ctx context.Context, txHash string) (*ethtypes.Receipt, error)
 	GetTransactionByHash(ctx context.Context, txHash string) (*ethtypes.Transaction, bool, error)
 }
 
 type Gateway interface {
-	RetrieveFromGateway(ctx context.Context, txHash string) (*weaveVMtypes.WvmDymintBlob, error)
+	RetrieveFromGateway(ctx context.Context, txHash string) (*loadnetworktypes.LNDymintBlob, error)
 }
 
 // TODO: adjust
@@ -53,10 +53,10 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
-	client       WeaveVM
+	client       LoadNetwork
 	gateway      Gateway
 	pubsubServer *pubsub.Server
-	config       *weaveVMtypes.Config
+	config       *loadnetworktypes.Config
 	logger       types.Logger
 	ctx          context.Context
 	cancel       context.CancelFunc
@@ -75,7 +75,7 @@ func WithGatewayClient(gateway Gateway) da.Option {
 }
 
 // WithRPCClient sets rpc client.
-func WithRPCClient(rpc WeaveVM) da.Option {
+func WithRPCClient(rpc LoadNetwork) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).client = rpc
 	}
@@ -102,10 +102,10 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 	}
 }
 
-// Init initializes the WeaveVM DA client
+// Init initializes the LoadNetwork DA client
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
-	logger.Debug("Initializing WeaveVM DA client", "config", string(config))
-	var cfg weaveVMtypes.Config
+	logger.Debug("Initializing LoadNetwork DA client", "config", string(config))
+	var cfg loadnetworktypes.Config
 	if len(config) > 0 {
 		err := json.Unmarshal(config, &cfg)
 		if err != nil {
@@ -156,7 +156,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 			if err != nil {
 				return fmt.Errorf("failed to initialize web3signer client: %w", err)
 			}
-			client, err := rpc.NewWvmRPCClient(logger, &cfg, web3signer)
+			client, err := rpc.NewLNRPCClient(logger, &cfg, web3signer)
 			if err != nil {
 				return fmt.Errorf("failed to initialize rpc client: %w", err)
 			}
@@ -164,7 +164,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		} else if cfg.PrivateKeyHex != "" {
 			// Initialize with private key
 			privateKeySigner := signer.NewPrivateKeySigner(cfg.PrivateKeyHex, logger, cfg.ChainID)
-			client, err := rpc.NewWvmRPCClient(logger, &cfg, privateKeySigner)
+			client, err := rpc.NewLNRPCClient(logger, &cfg, privateKeySigner)
 			if err != nil {
 				return fmt.Errorf("failed to initialize rpc client: %w", err)
 			}
@@ -190,7 +190,7 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 
 // GetClientType returns client type.
 func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
-	return da.WeaveVM
+	return da.LoadNetwork
 }
 
 // SubmitBatch submits a batch to the DA layer.
@@ -208,11 +208,11 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 	commitment := generateCommitment(data)
 
-	if len(data) > weaveVMtypes.WeaveVMMaxTransactionSize {
+	if len(data) > loadnetworktypes.LoadNetworkMaxTransactionSize {
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("size bigger than maximum blob size: max n bytes: %d", weaveVMtypes.WeaveVMMaxTransactionSize),
+				Message: fmt.Sprintf("size bigger than maximum blob size: max n bytes: %d", loadnetworktypes.LoadNetworkMaxTransactionSize),
 				Error:   errors.New("blob size too big"),
 			},
 		}
@@ -246,9 +246,9 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 
 			daMetaData := &SubmitMetaData{
-				Height:     submitMeta.WvmBlockNumber.Uint64(),
+				Height:     submitMeta.LNBlockNumber.Uint64(),
 				Commitment: commitment,
-				WvmTxHash:  submitMeta.WvmTxHash,
+				LNTxHash:   submitMeta.LNTxHash,
 			}
 
 			c.logger.Debug("Submitted blob to DA successfully.")
@@ -260,7 +260,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					Message: "Submission successful",
 				},
 				SubmitMetaData: &da.DASubmitMetaData{
-					Client: da.WeaveVM,
+					Client: da.LoadNetwork,
 					DAPath: daMetaData.ToPath(),
 				},
 			}
@@ -315,10 +315,10 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *SubmitMetaData) da.ResultRetrieveBatch {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
-	c.logger.Debug("Getting blob from weaveVM DA.")
+	c.logger.Debug("Getting blob from LoadNetwork DA.")
 
-	// 1. Try WeaveVM RPC first
-	data, errRpc := c.retrieveFromWeaveVM(ctx, daMetaData.WvmTxHash)
+	// 1. Try LoadNetwork RPC first
+	data, errRpc := c.retrieveFromLoadNetwork(ctx, daMetaData.LNTxHash)
 	if errRpc == nil {
 		return c.processRetrievedData(data, daMetaData)
 	}
@@ -326,23 +326,23 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *SubmitMetaData
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Errorf("failed to find transaction data in weavevm: %w", errRpc).Error(),
+				Message: fmt.Errorf("failed to find transaction data in loadnetwork: %w", errRpc).Error(),
 				Error:   da.ErrBlobNotFound,
 			},
 		}
 	}
 
-	c.logger.Error("Failed to retrieve blob from weavevm rpc, we will try to use weavevm gateway",
-		"wvm_tx_hash", daMetaData.WvmTxHash, "error", errRpc)
+	c.logger.Error("Failed to retrieve blob from loadnetwork rpc, we will try to use loadnetwork gateway",
+		"loadnetwork_tx_hash", daMetaData.LNTxHash, "error", errRpc)
 
 	// 2. Try gateway
-	data, errGateway := c.gateway.RetrieveFromGateway(ctx, daMetaData.WvmTxHash)
+	data, errGateway := c.gateway.RetrieveFromGateway(ctx, daMetaData.LNTxHash)
 	if errGateway == nil {
 		if isGatewayTransactionNotFoundErr(data) {
 			return da.ResultRetrieveBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusError,
-					Message: "failed to find transaction data in weavevm using gateway",
+					Message: "failed to find transaction data in loadnetwork using gateway",
 					Error:   da.ErrBlobNotFound,
 				},
 			}
@@ -353,22 +353,22 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *SubmitMetaData
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusError,
-			Message: fmt.Errorf("failed to retrieve data from weave vm gateway: %w", errGateway).Error(),
+			Message: fmt.Errorf("failed to retrieve data from loadnetwork gateway: %w", errGateway).Error(),
 			Error:   da.ErrRetrieval,
 		},
 	}
 }
 
-func (c *DataAvailabilityLayerClient) retrieveFromWeaveVM(ctx context.Context, txHash string) (*weaveVMtypes.WvmDymintBlob, error) {
+func (c *DataAvailabilityLayerClient) retrieveFromLoadNetwork(ctx context.Context, txHash string) (*loadnetworktypes.LNDymintBlob, error) {
 	tx, _, err := c.client.GetTransactionByHash(ctx, txHash)
 	if err != nil {
 		return nil, err
 	}
 
-	return &weaveVMtypes.WvmDymintBlob{Blob: tx.Data(), WvmTxHash: txHash}, nil
+	return &loadnetworktypes.LNDymintBlob{Blob: tx.Data(), LNTxHash: txHash}, nil
 }
 
-func (c *DataAvailabilityLayerClient) processRetrievedData(data *weaveVMtypes.WvmDymintBlob, daMetaData *SubmitMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) processRetrievedData(data *loadnetworktypes.LNDymintBlob, daMetaData *SubmitMetaData) da.ResultRetrieveBatch {
 	var batches []*types.Batch
 	if len(data.Blob) == 0 {
 		return da.ResultRetrieveBatch{
@@ -394,8 +394,8 @@ func (c *DataAvailabilityLayerClient) processRetrievedData(data *weaveVMtypes.Wv
 	err := proto.Unmarshal(data.Blob, &batch)
 	if err != nil {
 		c.logger.Error("Unmarshal blob.",
-			"wvm_block_number", daMetaData.Height,
-			"wvm_tx_hash", daMetaData.WvmTxHash,
+			"ln_block_number", daMetaData.Height,
+			"ln_tx_hash", daMetaData.LNTxHash,
 		)
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -406,7 +406,7 @@ func (c *DataAvailabilityLayerClient) processRetrievedData(data *weaveVMtypes.Wv
 		}
 	}
 
-	c.logger.Debug("Blob retrieved successfully from WeaveVM DA.", "wvm_tx_hash", daMetaData.WvmTxHash)
+	c.logger.Debug("Blob retrieved successfully from LoadNetwork DA.", "ln_tx_hash", daMetaData.LNTxHash)
 
 	parsedBatch := new(types.Batch)
 	err = parsedBatch.FromProto(&batch)
@@ -478,7 +478,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	data, errRpc := c.retrieveFromWeaveVM(ctx, daMetaData.WvmTxHash)
+	data, errRpc := c.retrieveFromLoadNetwork(ctx, daMetaData.LNTxHash)
 	if errRpc == nil {
 		return c.processAvailabilityData(data, daMetaData)
 	}
@@ -486,22 +486,22 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Errorf("failed to find transaction data in weavevm: %w", errRpc).Error(),
+				Message: fmt.Errorf("failed to find transaction data in loadnetwork: %w", errRpc).Error(),
 				Error:   da.ErrBlobNotFound,
 			},
 		}
 	}
 
-	c.logger.Error("Failed to retrieve blob from weavevm rpc, we will try to use weavevm gateway",
-		"wvm_tx_hash", daMetaData.WvmTxHash, "error", errRpc)
+	c.logger.Error("Failed to retrieve blob from loadnetwork rpc, we will try to use loadnetwork gateway",
+		"ln_tx_hash", daMetaData.LNTxHash, "error", errRpc)
 
-	data, errGateway := c.gateway.RetrieveFromGateway(ctx, daMetaData.WvmTxHash)
+	data, errGateway := c.gateway.RetrieveFromGateway(ctx, daMetaData.LNTxHash)
 	if errGateway == nil {
 		if isGatewayTransactionNotFoundErr(data) {
 			return da.ResultCheckBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusError,
-					Message: "failed to find transaction data in weavevm using gateway",
+					Message: "failed to find transaction data in loadnetwork using gateway",
 					Error:   da.ErrBlobNotFound,
 				},
 			}
@@ -512,13 +512,13 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusError,
-			Message: fmt.Errorf("failed to retrieve data from weave vm gateway: %w", errGateway).Error(),
+			Message: fmt.Errorf("failed to retrieve data from loadnetwork gateway: %w", errGateway).Error(),
 			Error:   da.ErrRetrieval,
 		},
 	}
 }
 
-func (c *DataAvailabilityLayerClient) processAvailabilityData(data *weaveVMtypes.WvmDymintBlob, daMetaData *SubmitMetaData) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) processAvailabilityData(data *loadnetworktypes.LNDymintBlob, daMetaData *SubmitMetaData) da.ResultCheckBatch {
 	if len(data.Blob) == 0 {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
@@ -547,35 +547,35 @@ func (c *DataAvailabilityLayerClient) processAvailabilityData(data *weaveVMtypes
 	}
 }
 
-type WvmSubmitBlobMeta struct {
-	WvmBlockNumber *big.Int
-	WvmBlockHash   string
-	WvmTxHash      string
+type LNSubmitBlobMeta struct {
+	LNBlockNumber *big.Int
+	LNBlockHash   string
+	LNTxHash      string
 }
 
 // Submit submits the Blobs to Data Availability layer.
-func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (*WvmSubmitBlobMeta, error) {
+func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (*LNSubmitBlobMeta, error) {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	txHash, err := c.client.SendTransaction(ctx, weaveVMtypes.ArchivePoolAddress, daBlob)
+	txHash, err := c.client.SendTransaction(ctx, loadnetworktypes.ArchivePoolAddress, daBlob)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send transaction: %w", err)
 	}
 
-	c.logger.Info("wvm tx hash", "hash", txHash)
+	c.logger.Info("loadnetwork tx hash", "hash", txHash)
 
 	receipt, err := c.waitForTxReceipt(ctx, txHash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tx receipt: %w", err)
 	}
 
-	c.logger.Info("data available in weavevm",
-		"wvm_tx", receipt.TxHash.Hex(),
-		"wvm_block", receipt.BlockHash.Hex(),
-		"wvm_block_number", receipt.BlockNumber)
+	c.logger.Info("data available in loadnetwork",
+		"ln_tx", receipt.TxHash.Hex(),
+		"ln_block", receipt.BlockHash.Hex(),
+		"ln_block_number", receipt.BlockNumber)
 
-	return &WvmSubmitBlobMeta{WvmBlockNumber: receipt.BlockNumber, WvmBlockHash: receipt.BlockHash.Hex(), WvmTxHash: receipt.TxHash.Hex()}, nil
+	return &LNSubmitBlobMeta{LNBlockNumber: receipt.BlockNumber, LNBlockHash: receipt.BlockHash.Hex(), LNTxHash: receipt.TxHash.Hex()}, nil
 }
 
 func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHash string) (*ethtypes.Receipt, error) {
@@ -619,7 +619,7 @@ func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHa
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
-	return weaveVMtypes.WeaveVMMaxTransactionSize
+	return loadnetworktypes.LoadNetworkMaxTransactionSize
 }
 
 // GetSignerBalance returns the balance for a specific address
@@ -648,10 +648,10 @@ func isRpcTransactionNotFoundErr(err error) bool {
 }
 
 // isGatewayTransactionNotFoundErr checks if the transaction is absent in the Gateway.
-// TODO: Gateway indicates a missing transaction by setting WvmBlockHash to "0x".
+// TODO: Gateway indicates a missing transaction by setting LNBlockHash to "0x".
 // it will be fixed in the future
-func isGatewayTransactionNotFoundErr(data *weaveVMtypes.WvmDymintBlob) bool {
-	return data.WvmBlockHash == "0x"
+func isGatewayTransactionNotFoundErr(data *loadnetworktypes.LNDymintBlob) bool {
+	return data.LNBlockHash == "0x"
 }
 
 func (c *DataAvailabilityLayerClient) RollappId() string {

@@ -1,4 +1,4 @@
-package weavevm
+package loadnetwork
 
 import (
 	"encoding/hex"
@@ -15,8 +15,8 @@ type SubmitMetaData struct {
 	Height uint64
 	// Share commitment, for each blob, used to obtain blobs and proofs
 	Commitment da.Commitment
-	// WeaveVM tx hash
-	WvmTxHash string
+	// LoadNetwork tx hash
+	LNTxHash string
 }
 
 // ToPath converts a SubmitMetaData to a path.
@@ -24,7 +24,7 @@ func (d *SubmitMetaData) ToPath() string {
 	path := []string{
 		strconv.FormatUint(d.Height, 10),
 		hex.EncodeToString(d.Commitment),
-		d.WvmTxHash,
+		d.LNTxHash,
 	}
 	return strings.Join(path, da.PathSeparator)
 }
@@ -49,7 +49,7 @@ func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	if err != nil {
 		return nil, err
 	}
-	submitData.WvmTxHash = pathParts[2]
+	submitData.LNTxHash = pathParts[2]
 
 	return submitData, nil
 }

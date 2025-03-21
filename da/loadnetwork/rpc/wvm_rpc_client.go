@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	weaveVMtypes "github.com/dymensionxyz/dymint/da/weavevm/types"
+	loadnetworktypes "github.com/dymensionxyz/dymint/da/loadnetwork/types"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -20,7 +20,7 @@ import (
 
 type Signer interface {
 	GetAccount(ctx context.Context) (common.Address, error)
-	SignTransaction(ctx context.Context, signData *weaveVMtypes.SignData) (string, error)
+	SignTransaction(ctx context.Context, signData *loadnetworktypes.SignData) (string, error)
 }
 
 type Logger interface {
@@ -29,7 +29,7 @@ type Logger interface {
 	Error(msg string, keyvals ...interface{})
 }
 
-// WeaveVM RPC client
+// LoadNetwork RPC client
 type RPCClient struct {
 	log     Logger
 	client  *ethclient.Client
@@ -37,10 +37,10 @@ type RPCClient struct {
 	signer  Signer
 }
 
-func NewWvmRPCClient(log Logger, cfg *weaveVMtypes.Config, signer Signer) (*RPCClient, error) {
+func NewLNRPCClient(log Logger, cfg *loadnetworktypes.Config, signer Signer) (*RPCClient, error) {
 	client, err := ethclient.Dial(cfg.Endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the WeaveVM client: %w", err)
+		return nil, fmt.Errorf("failed to connect to the LoadNetwork client: %w", err)
 	}
 
 	ethRPCClient := &RPCClient{
@@ -56,20 +56,20 @@ func NewWvmRPCClient(log Logger, cfg *weaveVMtypes.Config, signer Signer) (*RPCC
 func (rpc *RPCClient) SendTransaction(ctx context.Context, to string, data []byte) (string, error) {
 	gas, err := rpc.estimateGas(ctx, to, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to store data in weaveVM: failed estimate gas: %w", err)
+		return "", fmt.Errorf("failed to store data in LoadNetwork: failed estimate gas: %w", err)
 	}
 
-	weaveVMRawTx, err := rpc.createRawTransaction(ctx, to, string(data), gas)
+	loadNetworkRawTx, err := rpc.createRawTransaction(ctx, to, string(data), gas)
 	if err != nil {
-		return "", fmt.Errorf("failed to store data in weaveVM: failed create transaction: %w", err)
+		return "", fmt.Errorf("failed to store data in LoadNetwork: failed create transaction: %w", err)
 	}
 
-	weaveVMTxHash, err := rpc.sendRawTransaction(ctx, weaveVMRawTx)
+	loadNetworktxHash, err := rpc.sendRawTransaction(ctx, loadNetworkRawTx)
 	if err != nil {
-		return "", fmt.Errorf("failed to store data in weaveVM: failed to send transaction: %w", err)
+		return "", fmt.Errorf("failed to store data in LoadNetwork: failed to send transaction: %w", err)
 	}
 
-	return weaveVMTxHash, nil
+	return loadNetworktxHash, nil
 }
 
 // estimateGas tries estimates the suggested amount of gas that required to execute a given transaction.
@@ -109,7 +109,7 @@ func (rpc *RPCClient) estimateGas(ctx context.Context, to string, data []byte) (
 		return 0, err
 	}
 
-	rpc.log.Debug("weaveVM: estimated tx gas price", "price", gas)
+	rpc.log.Debug("LoadNetwork: estimated tx gas price", "price", gas)
 
 	return gas, nil
 }
@@ -130,7 +130,7 @@ func (rpc *RPCClient) createRawTransaction(ctx context.Context, to string, data 
 		return "", err
 	}
 
-	signData := weaveVMtypes.SignData{To: to, Data: data, GasLimit: gasLimit, GasFeeCap: baseFee, Nonce: nonce}
+	signData := loadnetworktypes.SignData{To: to, Data: data, GasLimit: gasLimit, GasFeeCap: baseFee, Nonce: nonce}
 	return rpc.signer.SignTransaction(ctx, &signData)
 }
 
@@ -164,7 +164,7 @@ func (rpc *RPCClient) sendRawTransaction(ctx context.Context, signedTxHex string
 		return "", err
 	}
 
-	rpc.log.Info("weaveVM: successfully sent transaction", "tx hash", tx.Hash().String())
+	rpc.log.Info("LoadNetwork: successfully sent transaction", "tx hash", tx.Hash().String())
 
 	err = rpc.logReceipt(tx)
 	if err != nil {
@@ -217,7 +217,7 @@ func (rpc *RPCClient) logReceipt(tx *ethtypes.Transaction) error {
 		return err
 	}
 
-	rpc.log.Debug("weaveVM: transaction receipt", "tx receipt", string(txJSON))
+	rpc.log.Debug("loadNetwork: transaction receipt", "tx receipt", string(txJSON))
 	return nil
 }
 
