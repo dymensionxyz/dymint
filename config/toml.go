@@ -84,9 +84,9 @@ batch_submit_bytes = {{ .BlockManagerConfig.BatchSubmitBytes }}
 
 ### da config ###
 # da clients
-da_layer = ['celestia','avail','weavevm']
+da_layer = ['celestia','avail','weavevm','aptos']
 # this should be json including config matching the da layer
-da_config = ['{"base_url":"http://127.0.0.1:26658","timeout":30000000000,"gas_prices":0.1,"auth_token":"TOKEN","backoff":{"initial_delay":6000000000,"max_delay":6000000000,"growth_factor":2},"retry_attempts":4,"retry_delay":3000000000}','{"seed": "MNEMONIC", "endpoint": "https://turing-rpc.avail.so/rpc", "app_id": 0}','{"endpoint":"https://testnet-rpc.wvm.dev","chain_id":9496,"private_key_hex":"PRIVATE_KEY_HEX"}']
+da_config = ['{"base_url":"http://127.0.0.1:26658","timeout":30000000000,"gas_prices":0.1,"auth_token":"TOKEN","backoff":{"initial_delay":6000000000,"max_delay":6000000000,"growth_factor":2},"retry_attempts":4,"retry_delay":3000000000}','{"seed": "MNEMONIC", "endpoint": "https://turing-rpc.avail.so/rpc", "app_id": 0}','{"endpoint":"https://testnet-rpc.wvm.dev","chain_id":9496,"private_key_hex":"PRIVATE_KEY_HEX"},'{"network":"testnet","pri_key_env":"APT_PRIVATE_KEY"}']
 
 
 ### p2p config ###

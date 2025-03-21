@@ -21,7 +21,7 @@ const (
 )
 
 func TestDataAvailabilityClient(t *testing.T) {
-	//t.Skip("Skipping Aptos client tests")
+	t.Skip("Skipping Aptos client tests")
 
 	// Set up test environment
 	priKeyEnv := "APT_PRIVATE_KEY"

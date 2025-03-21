@@ -24,18 +24,15 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 
 // Config stores Aptos DALC configuration parameters.
 type Config struct {
-	ChainID       int64                `json:"chain_id,omitempty"`
-	GasBudget     string               `json:"gas_budget,omitempty"`
-	Timeout       time.Duration        `json:"timeout,omitempty"`
-	PriKeyEnv     string               `json:"mnemonic_env,omitempty"`
+	Network       string               `json:"network,omitempty"`
+	PriKeyEnv     string               `json:"pri_key_env,omitempty"`
 	Backoff       uretry.BackoffConfig `json:"backoff,omitempty"`
 	RetryAttempts *int                 `json:"retry_attempts,omitempty"`
 	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`
 }
 
 var TestConfig = Config{
-	GasBudget: "10000000", // 0.01 APT
-	Timeout:   5 * time.Second,
+	Network:   "testnet",
 	PriKeyEnv: "APT_PRIVATE_KEY",
 }
 
@@ -48,8 +45,8 @@ func createConfig(bz []byte) (c Config, err error) {
 		return c, fmt.Errorf("json unmarshal: %w", err)
 	}
 
-	if c.GasBudget == "" {
-		c.GasBudget = defaultGasBudget
+	if c.Network == "" {
+		c.Network = "testnet"
 	}
 	if c.RetryDelay == 0 {
 		c.RetryDelay = defaultRpcRetryDelay

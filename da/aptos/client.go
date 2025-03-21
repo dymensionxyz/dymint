@@ -25,8 +25,7 @@ const (
 	// References:
 	//  https://arc.net/l/quote/kxtfqemu
 	//  https://github.com/aptos-labs/aptos-core/blob/main/aptos-move/aptos-gas-schedule/src/gas_schedule/transaction.rs#L71-L75
-	payloadSize = 64 * 1024
-	// TODO: find exact value. may be -10% of the max size
+	payloadSize      = 64 * 1024
 	maxBlobSizeBytes = payloadSize
 )
 
@@ -316,9 +315,9 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 // submit submits a blob to Aptos, including data bytes
 func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData, error) {
-	//if len(data) > maxBlobSizeBytes {
-	//	return nil, fmt.Errorf("batch do not fit into tx: %d bytes: limit: %d bytes", len(data), maxBlobSizeBytes)
-	//}
+	if len(data) > maxBlobSizeBytes {
+		return nil, fmt.Errorf("batch do not fit into tx: %d bytes: limit: %d bytes", len(data), maxBlobSizeBytes)
+	}
 
 	// Create transaction parameters for each chunk
 	rawData, err := bcs.SerializeBytes(data)
@@ -411,9 +410,17 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return fmt.Errorf("create aptos account: %w", err)
 	}
 
-	// TODO: move to config
-	cfg := aptos.TestnetConfig
+	var cfg aptos.NetworkConfig
+	switch c.config.Network {
+	case "devnet":
+		cfg = aptos.DevnetConfig
+	case "mainnet":
+		cfg = aptos.MainnetConfig
+	default:
+		cfg = aptos.TestnetConfig
+	}
 
+	// Default timeout is 60 seconds
 	cli, err := aptos.NewClient(cfg)
 	if err != nil {
 		return fmt.Errorf("create aptos client: %w", err)
@@ -442,7 +449,7 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 }
 
 func (c *DataAvailabilityLayerClient) RollappId() string {
-	return fmt.Sprintf("%d", c.config.ChainID)
+	return ""
 }
 
 // GetSignerBalance returns the balance for the Aptos account.
