@@ -110,13 +110,6 @@ func TestStorePruning(t *testing.T) {
 					savedCidHeights[block.Header.Height] = true
 				}
 
-				// generate and store drs version randomly for block heights
-				if randBool() {
-					_, err = bstore.SaveDRSVersion(block.Header.Height, 1, nil)
-					savedDRSHeights[block.Header.Height] = true
-					assert.NoError(err)
-				}
-
 			}
 
 			// Validate everything is saved
