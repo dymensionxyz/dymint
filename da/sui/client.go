@@ -37,8 +37,6 @@ const (
 )
 
 var _ da.DataAvailabilityLayerClient = new(DataAvailabilityLayerClient)
-var _ da.BatchSubmitter = new(DataAvailabilityLayerClient)
-var _ da.BatchRetriever = new(DataAvailabilityLayerClient)
 
 // DataAvailabilityLayerClient implements the Data Availability Layer Client interface for Sui
 type DataAvailabilityLayerClient struct {
@@ -276,8 +274,8 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("Transaction not found: %v", err),
-				Error:   err,
+				Message: fmt.Sprintf("Check batch availability: transaction not found: %v", err),
+				Error:   fmt.Errorf("check batch availability: transaction not found: %w", err),
 			},
 		}
 	}
@@ -287,8 +285,8 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("Transaction failed: %s", resp.Effects.Status.Error),
-				Error:   fmt.Errorf("transaction failed: %s", resp.Effects.Status.Error),
+				Message: fmt.Sprintf("Check batch availability: transaction failed: %s", resp.Effects.Status.Error),
+				Error:   fmt.Errorf("check batch availability: transaction failed: %s", resp.Effects.Status.Error),
 			},
 		}
 	}
@@ -354,7 +352,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 // submit submits a blob to Sui, including data bytes
 func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData, error) {
 	if len(data) > maxBlobSizeBytes {
-		return nil, fmt.Errorf("dbatch do not fit into tx: %d bytes: limit: %d bytes", len(data), maxBlobSizeBytes)
+		return nil, fmt.Errorf("batch do not fit into tx: %d bytes: limit: %d bytes", len(data), maxBlobSizeBytes)
 	}
 
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
