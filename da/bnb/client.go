@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	opsigner "github.com/ethereum-optimism/optimism/op-service/signer"
 	"github.com/ethereum/go-ethereum"
+	"github.com/holiman/uint256"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -473,4 +474,25 @@ func MakeSidecar(blobs []*eth.Blob) (*types.BlobTxSidecar, []common.Hash, error)
 		blobHashes = append(blobHashes, eth.KZGToVersionedHash(commitment))
 	}
 	return sidecar, blobHashes, nil
+}
+
+// finishBlobTx finishes creating a blob tx message by safely converting bigints to uint256
+func finishBlobTx(message *types.BlobTx, chainID, tip, fee, blobFee, value *big.Int) error {
+	var o bool
+	if message.ChainID, o = uint256.FromBig(chainID); o {
+		return fmt.Errorf("ChainID overflow")
+	}
+	if message.GasTipCap, o = uint256.FromBig(tip); o {
+		return fmt.Errorf("GasTipCap overflow")
+	}
+	if message.GasFeeCap, o = uint256.FromBig(fee); o {
+		return fmt.Errorf("GasFeeCap overflow")
+	}
+	if message.BlobFeeCap, o = uint256.FromBig(blobFee); o {
+		return fmt.Errorf("BlobFeeCap overflow")
+	}
+	if message.Value, o = uint256.FromBig(value); o {
+		return fmt.Errorf("Value overflow")
+	}
+	return nil
 }
