@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	dmtypes "github.com/dymensionxyz/dymint/types"
 	opcrypto "github.com/ethereum-optimism/optimism/op-service/crypto"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/retry"
 	opsigner "github.com/ethereum-optimism/optimism/op-service/signer"
 	"github.com/ethereum/go-ethereum"
 	"github.com/holiman/uint256"
@@ -136,12 +138,11 @@ func NewClient(ctx context.Context, config BNBConfig, logger dmtypes.Logger) (BN
 // SubmitData sends blob data to Avail DA
 func (c Client) SubmitBlob(blob []byte) ([]byte, error) {
 
-	data, err := tx.MarshalBinary()
+	tx, err := c.blobTxCandidate(blob)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = c.rpcClient.CallContext(c.ctx, nil, "eth_sendRawTransaction", hexutil.Encode(data))
-	return nil, err
+	return nil, c.send(c.ctx, *tx)
 }
 
 // GetBlock retrieves a block from Near chain by block hash
@@ -258,7 +259,7 @@ func (c *Client) craftTx(ctx context.Context, candidate TxCandidate) (*types.Tra
 			Gas:       gasLimit,
 		}
 	}
-	return m.signWithNextNonce(ctx, txMessage) // signer sets the nonce field of the tx
+	return c.signWithNextNonce(ctx, txMessage) // signer sets the nonce field of the tx
 }
 
 // calcGasFeeCap deterministically computes the recommended gas fee cap given
@@ -310,7 +311,7 @@ func (c *Client) suggestGasPriceCaps(ctx context.Context) (*big.Int, *big.Int, *
 
 	var blobFee *big.Int
 	if head.ExcessBlobGas != nil {
-		blobFee = eip4844.CalcBlobFee(params.TestChainConfig, head)
+		blobFee = eip4844.CalcBlobFee(*head.ExcessBlobGas)
 	}
 	return tip, baseFee, blobFee, nil
 }
@@ -495,4 +496,38 @@ func finishBlobTx(message *types.BlobTx, chainID, tip, fee, blobFee, value *big.
 		return fmt.Errorf("Value overflow")
 	}
 	return nil
+}
+
+func (c *Client) blobTxCandidate(data []byte) (*TxCandidate, error) {
+	var blobs []*eth.Blob
+
+	var b1 eth.Blob
+	_ = b1.FromData(eth.Data("this is a blob!"))
+
+	blobs = append(blobs, &b1)
+	return &TxCandidate{
+		To:    &c.cfg.From,
+		Blobs: blobs,
+	}, nil
+}
+
+// send performs the actual transaction creation and sending.
+func (c *Client) send(ctx context.Context, candidate TxCandidate) error {
+
+	tx, err := retry.Do(ctx, 30, retry.Fixed(2*time.Second), func() (*types.Transaction, error) {
+		tx, err := c.craftTx(ctx, candidate)
+		return tx, err
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create the tx: %w", err)
+	}
+	return c.sendTransaction(ctx, tx)
+}
+
+func (c *Client) sendTransaction(ctx context.Context, tx *types.Transaction) error {
+	data, err := tx.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	return c.rpcClient.CallContext(ctx, nil, "eth_sendRawTransaction", hexutil.Encode(data))
 }
