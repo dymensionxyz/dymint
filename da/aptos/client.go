@@ -2,10 +2,8 @@ package aptos
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"os"
-	"strings"
 
 	"cosmossdk.io/math"
 	"github.com/aptos-labs/aptos-go-sdk"
@@ -91,7 +89,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	}
 
 	success := resTx.Success()
-	if success == nil || *success == false {
+	if success == nil || !*success {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -133,8 +131,18 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		}
 	}
 
-	argumentHex := payload.Arguments[0].(string)
-	rawArgumentBcs, err := hex.DecodeString(strings.TrimPrefix(argumentHex, "0x"))
+	argumentHex, ok := payload.Arguments[0].(string)
+	if !ok {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Transaction response argument should be a string",
+				Error:   fmt.Errorf("transaction response argument should be a string"),
+			},
+		}
+	}
+
+	rawArgumentBcs, err := aptos.ParseHex(argumentHex)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -245,7 +253,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 	}
 
 	success := resTx.Success()
-	if success == nil || *success == false {
+	if success == nil || !*success {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
