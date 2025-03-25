@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	ArchivePoolAddress        = "0x0000000000000000000000000000000000000000" // the data settling address, a unified standard across WeaveVM archiving services
-	WeaveVMMaxTransactionSize = 8_388_608
+	ArchivePoolAddress            = "0x0000000000000000000000000000000000000000" // the data settling address, a unified standard across LoadNetwork archiving services
+	LoadNetworkMaxTransactionSize = 8_388_608
 )
 
-// Config...WeaveVM client configuration
+// Config...LoadNetwork client configuration
 type Config struct {
 	Timeout  time.Duration `json:"timeout,omitempty"`
 	ChainID  int64         `json:"chain_id,omitempty"`
@@ -34,13 +34,13 @@ type RetrieverResponse struct {
 	ArweaveBlockHash   string `json:"arweave_block_hash"`
 	Calldata           string `json:"calldata"`
 	WarDecodedCalldata string `json:"war_decoded_calldata"`
-	WvmBlockHash       string `json:"wvm_block_hash"`
+	LNBlockHash        string `json:"wvm_block_hash"`
 }
 
-type WvmDymintBlob struct {
+type LNDymintBlob struct {
 	ArweaveBlockHash string
-	WvmBlockHash     string
-	WvmTxHash        string
-	WvmBlockNumber   uint64
+	LNBlockHash      string
+	LNTxHash         string
+	LNBlockNumber    uint64
 	Blob             []byte
 }

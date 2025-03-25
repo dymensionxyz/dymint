@@ -1,4 +1,4 @@
-package weavevm_test
+package loadnetwork_test
 
 import (
 	"context"
@@ -20,24 +20,24 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/weavevm"
-	weaveVMtypes "github.com/dymensionxyz/dymint/da/weavevm/types"
+	"github.com/dymensionxyz/dymint/da/loadnetwork"
+	loadnetworktypes "github.com/dymensionxyz/dymint/da/loadnetwork/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 )
 
-type MockWeaveVM struct {
+type MockLoadNetwork struct {
 	mock.Mock
 }
 
-func (m *MockWeaveVM) SendTransaction(ctx context.Context, to string, data []byte) (string, error) {
+func (m *MockLoadNetwork) SendTransaction(ctx context.Context, to string, data []byte) (string, error) {
 	args := m.Called(ctx, to, data)
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockWeaveVM) GetTransactionReceipt(ctx context.Context, txHash string) (*ethtypes.Receipt, error) {
+func (m *MockLoadNetwork) GetTransactionReceipt(ctx context.Context, txHash string) (*ethtypes.Receipt, error) {
 	args := m.Called(ctx, txHash)
 	if receipt, ok := args.Get(0).(*ethtypes.Receipt); ok {
 		return receipt, args.Error(1)
@@ -45,7 +45,7 @@ func (m *MockWeaveVM) GetTransactionReceipt(ctx context.Context, txHash string) 
 	return nil, args.Error(1)
 }
 
-func (m *MockWeaveVM) GetTransactionByHash(ctx context.Context, txHash string) (*ethtypes.Transaction, bool, error) {
+func (m *MockLoadNetwork) GetTransactionByHash(ctx context.Context, txHash string) (*ethtypes.Transaction, bool, error) {
 	args := m.Called(ctx, txHash)
 	tx, _ := args.Get(0).(*ethtypes.Transaction)
 	return tx, args.Bool(1), args.Error(2)
@@ -55,9 +55,9 @@ type MockGateway struct {
 	mock.Mock
 }
 
-func (m *MockGateway) RetrieveFromGateway(ctx context.Context, txHash string) (*weaveVMtypes.WvmDymintBlob, error) {
+func (m *MockGateway) RetrieveFromGateway(ctx context.Context, txHash string) (*loadnetworktypes.LNDymintBlob, error) {
 	args := m.Called(ctx, txHash)
-	if res, ok := args.Get(0).(*weaveVMtypes.WvmDymintBlob); ok {
+	if res, ok := args.Get(0).(*loadnetworktypes.LNDymintBlob); ok {
 		return res, args.Error(1)
 	}
 	return nil, args.Error(1)
@@ -68,7 +68,7 @@ const (
 	testBlockHash = "0xblockhash"
 )
 
-func setupTestDALC(t *testing.T, mockWVM *MockWeaveVM, mockGateway *MockGateway) (*weavevm.DataAvailabilityLayerClient, *pubsub.Server) {
+func setupTestDALC(t *testing.T, mockLN *MockLoadNetwork, mockGateway *MockGateway) (*loadnetwork.DataAvailabilityLayerClient, *pubsub.Server) {
 	t.Helper()
 
 	cfg := getTestConfig()
@@ -79,9 +79,9 @@ func setupTestDALC(t *testing.T, mockWVM *MockWeaveVM, mockGateway *MockGateway)
 	err = pubsubServer.Start()
 	require.NoError(t, err)
 
-	dalc := &weavevm.DataAvailabilityLayerClient{}
+	dalc := &loadnetwork.DataAvailabilityLayerClient{}
 	err = dalc.Init(configBytes, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger(),
-		weavevm.WithRPCClient(mockWVM), weavevm.WithGatewayClient(mockGateway))
+		loadnetwork.WithRPCClient(mockLN), loadnetwork.WithGatewayClient(mockGateway))
 	require.NoError(t, err)
 
 	err = dalc.Start()
@@ -89,7 +89,7 @@ func setupTestDALC(t *testing.T, mockWVM *MockWeaveVM, mockGateway *MockGateway)
 
 	t.Cleanup(func() {
 		require.NoError(t, pubsubServer.Stop())
-		mockWVM.AssertExpectations(t)
+		mockLN.AssertExpectations(t)
 	})
 
 	return dalc, pubsubServer
@@ -115,7 +115,7 @@ func compareBlocks(t *testing.T, expected, actual *types.Block) {
 // TestInit checks different config initialization scenarios with sub-tests.
 func TestInit(t *testing.T) {
 	t.Run("ValidConfigWithPrivateKey", func(t *testing.T) {
-		config := weaveVMtypes.Config{
+		config := loadnetworktypes.Config{
 			ChainID:       1,
 			PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 			Endpoint:      "http://localhost:8545",
@@ -123,13 +123,13 @@ func TestInit(t *testing.T) {
 		configBytes, err := json.Marshal(config)
 		require.NoError(t, err)
 
-		dalc := &weavevm.DataAvailabilityLayerClient{}
+		dalc := &loadnetwork.DataAvailabilityLayerClient{}
 		err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 		require.NoError(t, err)
 	})
 
 	t.Run("ValidConfigWithWeb3Signer", func(t *testing.T) {
-		config := weaveVMtypes.Config{
+		config := loadnetworktypes.Config{
 			ChainID:            1,
 			Web3SignerEndpoint: "http://localhost:8545",
 			Endpoint:           "http://localhost:8545",
@@ -137,41 +137,41 @@ func TestInit(t *testing.T) {
 		configBytes, err := json.Marshal(config)
 		require.NoError(t, err)
 
-		dalc := &weavevm.DataAvailabilityLayerClient{}
+		dalc := &loadnetwork.DataAvailabilityLayerClient{}
 		err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 		require.NoError(t, err)
 	})
 
 	t.Run("InvalidConfigNoAuth", func(t *testing.T) {
-		config := weaveVMtypes.Config{
+		config := loadnetworktypes.Config{
 			ChainID:  1,
 			Endpoint: "http://localhost:8545",
 		}
 		configBytes, err := json.Marshal(config)
 		require.NoError(t, err)
 
-		dalc := &weavevm.DataAvailabilityLayerClient{}
+		dalc := &loadnetwork.DataAvailabilityLayerClient{}
 		err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 		require.Error(t, err)
 	})
 
 	t.Run("InvalidConfigNoChainID", func(t *testing.T) {
-		config := weaveVMtypes.Config{
+		config := loadnetworktypes.Config{
 			PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 			Endpoint:      "http://localhost:8545",
 		}
 		configBytes, err := json.Marshal(config)
 		require.NoError(t, err)
 
-		dalc := &weavevm.DataAvailabilityLayerClient{}
+		dalc := &loadnetwork.DataAvailabilityLayerClient{}
 		err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 		require.Error(t, err)
 	})
 }
 
-func getTestConfig() weaveVMtypes.Config {
+func getTestConfig() loadnetworktypes.Config {
 	attempts := 1 // Single attempt for tests to simplify validation
-	return weaveVMtypes.Config{
+	return loadnetworktypes.Config{
 		ChainID:       1,
 		PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 		Endpoint:      "http://localhost:8545",
@@ -188,10 +188,10 @@ func getTestConfig() weaveVMtypes.Config {
 }
 
 func TestSubmitBatch(t *testing.T) {
-	mockWVM := new(MockWeaveVM)
+	mockLN := new(MockLoadNetwork)
 	mockGateway := new(MockGateway)
 
-	dalc, _ := setupTestDALC(t, mockWVM, mockGateway)
+	dalc, _ := setupTestDALC(t, mockLN, mockGateway)
 
 	testCases := []struct {
 		name        string
@@ -204,11 +204,11 @@ func TestSubmitBatch(t *testing.T) {
 			name: "Submit Batch",
 			setupMocks: func() {
 				// Setup successful submission
-				mockWVM.On("SendTransaction", mock.Anything, weaveVMtypes.ArchivePoolAddress, mock.Anything).
+				mockLN.On("SendTransaction", mock.Anything, loadnetworktypes.ArchivePoolAddress, mock.Anything).
 					Return(testTxHash, nil).Once()
 
 				// Setup successful receipt
-				mockWVM.On("GetTransactionReceipt", mock.Anything, testTxHash).
+				mockLN.On("GetTransactionReceipt", mock.Anything, testTxHash).
 					Return(&ethtypes.Receipt{
 						Status:      1,
 						BlockHash:   common.HexToHash(testBlockHash),
@@ -227,8 +227,8 @@ func TestSubmitBatch(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Reset mock expectations
-			mockWVM.ExpectedCalls = nil
-			mockWVM.Calls = nil
+			mockLN.ExpectedCalls = nil
+			mockLN.Calls = nil
 
 			// Setup test case mocks
 			tc.setupMocks()
@@ -244,25 +244,25 @@ func TestSubmitBatch(t *testing.T) {
 			} else {
 				submitMD := res.SubmitMetaData
 				assert.NotNil(t, submitMD)
-				assert.Equal(t, da.WeaveVM, submitMD.Client)
+				assert.Equal(t, da.LoadNetwork, submitMD.Client)
 
-				metadata := &weavevm.SubmitMetaData{}
-				wvMetaData, err := metadata.FromPath(submitMD.DAPath)
+				metadata := &loadnetwork.SubmitMetaData{}
+				lnMetaData, err := metadata.FromPath(submitMD.DAPath)
 				require.NoError(t, err)
-				assert.Equal(t, uint64(123), wvMetaData.Height)
+				assert.Equal(t, uint64(123), lnMetaData.Height)
 			}
 
 			// Verify all expected mock calls were made
-			mockWVM.AssertExpectations(t)
+			mockLN.AssertExpectations(t)
 		})
 	}
 }
 
 func TestRetrieveBatches(t *testing.T) {
-	mockWVM := new(MockWeaveVM)
+	mockLN := new(MockLoadNetwork)
 	mockGateway := new(MockGateway)
 
-	dalc, _ := setupTestDALC(t, mockWVM, mockGateway)
+	dalc, _ := setupTestDALC(t, mockLN, mockGateway)
 
 	batch := &types.Batch{
 		Blocks: []*types.Block{getRandomBlock(1, 10)},
@@ -272,7 +272,7 @@ func TestRetrieveBatches(t *testing.T) {
 	testCases := []struct {
 		name            string
 		setupMocks      func()
-		submitMeta      *weavevm.SubmitMetaData
+		submitMeta      *loadnetwork.SubmitMetaData
 		expectCode      da.StatusCode
 		expectError     string
 		validateBatches func(t *testing.T, batches []*types.Batch)
@@ -282,12 +282,12 @@ func TestRetrieveBatches(t *testing.T) {
 			setupMocks: func() {
 				// Mock GetTransactionByHash to return valid data
 				tx := ethtypes.NewTx(&ethtypes.LegacyTx{Data: batchData})
-				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+				mockLN.On("GetTransactionByHash", mock.Anything, testTxHash).
 					Return(tx, false, nil).Once()
 			},
-			submitMeta: &weavevm.SubmitMetaData{
+			submitMeta: &loadnetwork.SubmitMetaData{
 				Height:     123,
-				WvmTxHash:  testTxHash,
+				LNTxHash:   testTxHash,
 				Commitment: crypto.Keccak256(batchData),
 			},
 
@@ -302,15 +302,15 @@ func TestRetrieveBatches(t *testing.T) {
 			name: "Non-Existent Transaction",
 			setupMocks: func() {
 				// Mock GetTransactionByHash to return an error
-				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+				mockLN.On("GetTransactionByHash", mock.Anything, testTxHash).
 					Return(nil, false, da.ErrRetrieval).Once()
 
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(nil, da.ErrRetrieval).Once()
 			},
-			submitMeta: &weavevm.SubmitMetaData{
+			submitMeta: &loadnetwork.SubmitMetaData{
 				Height:     123,
-				WvmTxHash:  testTxHash,
+				LNTxHash:   testTxHash,
 				Commitment: crypto.Keccak256(batchData),
 			},
 			expectCode:  da.StatusError,
@@ -321,12 +321,12 @@ func TestRetrieveBatches(t *testing.T) {
 			setupMocks: func() {
 				// Mock GetTransactionByHash to return corrupted data
 				tx := ethtypes.NewTx(&ethtypes.LegacyTx{Data: []byte("corrupted data")})
-				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+				mockLN.On("GetTransactionByHash", mock.Anything, testTxHash).
 					Return(tx, false, nil).Once()
 			},
-			submitMeta: &weavevm.SubmitMetaData{
+			submitMeta: &loadnetwork.SubmitMetaData{
 				Height:     123,
-				WvmTxHash:  testTxHash,
+				LNTxHash:   testTxHash,
 				Commitment: crypto.Keccak256(batchData),
 			},
 			expectCode:  da.StatusError,
@@ -336,8 +336,8 @@ func TestRetrieveBatches(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockWVM.ExpectedCalls = nil
-			mockWVM.Calls = nil
+			mockLN.ExpectedCalls = nil
+			mockLN.Calls = nil
 
 			tc.setupMocks()
 
@@ -350,16 +350,16 @@ func TestRetrieveBatches(t *testing.T) {
 				tc.validateBatches(t, res.Batches)
 			}
 
-			mockWVM.AssertExpectations(t)
+			mockLN.AssertExpectations(t)
 		})
 	}
 }
 
 func TestCheckBatchAvailability(t *testing.T) {
-	mockWVM := new(MockWeaveVM)
+	mockLN := new(MockLoadNetwork)
 	mockGateway := new(MockGateway)
 
-	dalc, _ := setupTestDALC(t, mockWVM, mockGateway)
+	dalc, _ := setupTestDALC(t, mockLN, mockGateway)
 
 	batch := &types.Batch{
 		Blocks: []*types.Block{getRandomBlock(1, 10)},
@@ -370,27 +370,27 @@ func TestCheckBatchAvailability(t *testing.T) {
 	testCases := []struct {
 		name        string
 		setupMocks  func()
-		submitMeta  *weavevm.SubmitMetaData
+		submitMeta  *loadnetwork.SubmitMetaData
 		expectCode  da.StatusCode
 		expectError string
 	}{
 		{
 			name: "Successful Availability Check",
 			setupMocks: func() {
-				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+				mockLN.On("GetTransactionByHash", mock.Anything, testTxHash).
 					Return(nil, false, da.ErrRetrieval).Once()
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
-					Return(&weaveVMtypes.WvmDymintBlob{
+					Return(&loadnetworktypes.LNDymintBlob{
 						Blob:             batchData,
-						WvmTxHash:        testTxHash,
-						WvmBlockHash:     testBlockHash,
+						LNTxHash:         testTxHash,
+						LNBlockHash:      testBlockHash,
 						ArweaveBlockHash: "testArweaveHash",
-						WvmBlockNumber:   123,
+						LNBlockNumber:    123,
 					}, nil).Once()
 			},
-			submitMeta: &weavevm.SubmitMetaData{
+			submitMeta: &loadnetwork.SubmitMetaData{
 				Height:     123,
-				WvmTxHash:  testTxHash,
+				LNTxHash:   testTxHash,
 				Commitment: batchHash,
 			},
 			expectCode: da.StatusSuccess,
@@ -398,14 +398,14 @@ func TestCheckBatchAvailability(t *testing.T) {
 		{
 			name: "Blob Not Found",
 			setupMocks: func() {
-				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+				mockLN.On("GetTransactionByHash", mock.Anything, testTxHash).
 					Return(nil, false, da.ErrRetrieval).Once()
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(nil, da.ErrRetrieval).Once()
 			},
-			submitMeta: &weavevm.SubmitMetaData{
+			submitMeta: &loadnetwork.SubmitMetaData{
 				Height:     123,
-				WvmTxHash:  testTxHash,
+				LNTxHash:   testTxHash,
 				Commitment: batchHash,
 			},
 			expectCode:  da.StatusError,
@@ -414,20 +414,20 @@ func TestCheckBatchAvailability(t *testing.T) {
 		{
 			name: "Verification Failure",
 			setupMocks: func() {
-				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+				mockLN.On("GetTransactionByHash", mock.Anything, testTxHash).
 					Return(nil, false, da.ErrRetrieval).Once()
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
-					Return(&weaveVMtypes.WvmDymintBlob{
+					Return(&loadnetworktypes.LNDymintBlob{
 						Blob:             []byte("corrupted data"),
-						WvmBlockHash:     testBlockHash,
-						WvmTxHash:        testTxHash,
+						LNBlockHash:      testBlockHash,
+						LNTxHash:         testTxHash,
 						ArweaveBlockHash: "testArweaveHash",
-						WvmBlockNumber:   123,
+						LNBlockNumber:    123,
 					}, nil).Once()
 			},
-			submitMeta: &weavevm.SubmitMetaData{
+			submitMeta: &loadnetwork.SubmitMetaData{
 				Height:     123,
-				WvmTxHash:  testTxHash,
+				LNTxHash:   testTxHash,
 				Commitment: batchHash,
 			},
 			expectCode:  da.StatusError,
@@ -436,14 +436,14 @@ func TestCheckBatchAvailability(t *testing.T) {
 		{
 			name: "Context Timeout",
 			setupMocks: func() {
-				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+				mockLN.On("GetTransactionByHash", mock.Anything, testTxHash).
 					Return(nil, false, da.ErrRetrieval).Once()
 				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
 					Return(nil, context.DeadlineExceeded).Once()
 			},
-			submitMeta: &weavevm.SubmitMetaData{
+			submitMeta: &loadnetwork.SubmitMetaData{
 				Height:     123,
-				WvmTxHash:  testTxHash,
+				LNTxHash:   testTxHash,
 				Commitment: batchHash,
 			},
 			expectCode:  da.StatusError,
@@ -453,8 +453,8 @@ func TestCheckBatchAvailability(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockWVM.ExpectedCalls = nil
-			mockWVM.Calls = nil
+			mockLN.ExpectedCalls = nil
+			mockLN.Calls = nil
 
 			tc.setupMocks()
 
@@ -465,7 +465,7 @@ func TestCheckBatchAvailability(t *testing.T) {
 				assert.Contains(t, res.Error.Error(), tc.expectError)
 			}
 
-			mockWVM.AssertExpectations(t)
+			mockLN.AssertExpectations(t)
 		})
 	}
 }
@@ -477,20 +477,20 @@ func ToBatch(b *types.Block) *types.Batch {
 
 // TestRetryBehavior verifies we retry if SendTransaction fails the first time.
 func TestRetryBehavior(t *testing.T) {
-	mockWVM := new(MockWeaveVM)
+	mockLN := new(MockLoadNetwork)
 	mockGateway := new(MockGateway)
 
-	dalc, _ := setupTestDALC(t, mockWVM, mockGateway)
+	dalc, _ := setupTestDALC(t, mockLN, mockGateway)
 
 	batch := testutil.MustGenerateBatchAndKey(0, 1)
 
-	mockWVM.On("SendTransaction", mock.Anything, weaveVMtypes.ArchivePoolAddress, mock.Anything).
+	mockLN.On("SendTransaction", mock.Anything, loadnetworktypes.ArchivePoolAddress, mock.Anything).
 		Return("", errors.New("temporary error")).Once()
 
-	mockWVM.On("SendTransaction", mock.Anything, weaveVMtypes.ArchivePoolAddress, mock.Anything).
+	mockLN.On("SendTransaction", mock.Anything, loadnetworktypes.ArchivePoolAddress, mock.Anything).
 		Return(testTxHash, nil).Once()
 
-	mockWVM.On("GetTransactionReceipt", mock.Anything, testTxHash).
+	mockLN.On("GetTransactionReceipt", mock.Anything, testTxHash).
 		Return(&ethtypes.Receipt{
 			BlockHash:   common.HexToHash(testBlockHash),
 			BlockNumber: big.NewInt(123),
