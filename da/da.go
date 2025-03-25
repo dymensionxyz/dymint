@@ -42,6 +42,7 @@ const (
 	Grpc        Client = "grpc"
 	LoadNetwork Client = "loadnetwork"
 	Sui         Client = "sui"
+	Aptos       Client = "aptos"
 )
 
 // Option is a function that sets a parameter on the da layer.

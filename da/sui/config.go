@@ -24,7 +24,6 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 
 // Config stores Sui DALC configuration parameters.
 type Config struct {
-	ChainID             int64                `json:"chain_id,omitempty"`
 	RPCURL              string               `json:"rpc_url,omitempty"`
 	NoopContractAddress string               `json:"noop_contract_address,omitempty"`
 	GasBudget           string               `json:"gas_budget,omitempty"`
