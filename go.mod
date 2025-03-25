@@ -11,6 +11,7 @@ require (
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/cosmos/ibc-go/v6 v6.2.1
+	github.com/crate-crypto/go-kzg-4844 v0.7.0
 	github.com/dgraph-io/badger/v4 v4.3.0
 	github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20241121093220-e0d7ad456fbd
 	github.com/dymensionxyz/dymension-rdk v1.8.1-rc02
@@ -53,9 +54,12 @@ require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
+	github.com/bits-and-blooms/bitset v1.7.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1 // indirect
 	github.com/coinbase/rosetta-sdk-go v0.7.9 // indirect
+	github.com/consensys/bavard v0.1.13 // indirect
+	github.com/consensys/gnark-crypto v0.12.1 // indirect
 	github.com/cosmos/cosmos-db v1.0.0 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
@@ -74,6 +78,7 @@ require (
 	github.com/itering/scale.go v1.9.14 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
+	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opencontainers/runc v1.1.5 // indirect
 	github.com/prometheus/tsdb v0.10.0 // indirect
@@ -87,6 +92,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
+	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
 require (
@@ -266,7 +272,7 @@ require (
 	go.etcd.io/bbolt v1.3.8 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.31.0
 	golang.org/x/mod v0.21.0 // indirect
 	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.28.0 // indirect
@@ -295,7 +301,7 @@ require (
 	github.com/evmos/evmos/v12 v12.1.6
 	github.com/getsentry/sentry-go v0.23.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
-	github.com/holiman/uint256 v1.2.2 // indirect
+	github.com/holiman/uint256 v1.2.2
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ipfs-delay v0.0.1 // indirect

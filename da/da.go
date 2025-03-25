@@ -41,6 +41,7 @@ const (
 	Avail    Client = "avail"
 	Grpc     Client = "grpc"
 	WeaveVM  Client = "weavevm"
+	BNB      Client = "bnb"
 )
 
 // Option is a function that sets a parameter on the da layer.

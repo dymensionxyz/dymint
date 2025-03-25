@@ -15,7 +15,6 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/metrics"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -24,22 +23,13 @@ const (
 	defaultTxInclusionTimeout = 100 * time.Second
 	defaultBatchRetryDelay    = 10 * time.Second
 	defaultBatchRetryAttempts = 10
+	ArchivePoolAddress        = "0xfF00000000000000000000000000000000005611"
 )
 
 type BNBConfig struct {
-	Account               string         `json:"account"`
-	Network               string         `json:"network"`
-	Endpoint              string         `json:"endpoint"`
-	Contract              string         `json:"contract"`
-	PrivateKey            string         `json:"key"`
-	FeeLimitMultiplier    uint64         `json:"fee_limit_multiplier"`
-	FeeLimitThresholdGwei float64        `json:"fee_limit_threshold_gwei"`
-	BlobGasPriceLimitGwei float64        `json:"blob_gas_price_limit_gwei"`
-	MinBaseFeeGwei        float64        `json:"min_base_fee_gwei"`
-	MinTipCapGwei         float64        `json:"min_tip_cap_gwei"`
-	From                  common.Address `json:"from_address"`
-	To                    common.Address `json:"to_address"`
-	ChainId               uint64         `json:"chain_id"`
+	Endpoint   string `json:"endpoint"`
+	PrivateKey string `json:"key"`
+	ChainId    uint64 `json:"chain_id"`
 }
 
 // ToPath converts a SubmitMetaData to a path.
@@ -150,11 +140,12 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
-	c.logger.Info("Starting Avail Data Availability Layer Client.")
+	c.logger.Info("Starting BNB Data Availability Layer Client.")
 
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// other client has already been set
 	if c.client != nil {
-		c.logger.Info("Avail client already set.")
+		c.logger.Info("BNB client already set.")
 		return nil
 	}
 
@@ -175,7 +166,7 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 
 // GetClientType returns client type.
 func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
-	return da.Avail
+	return da.BNB
 }
 
 // SubmitBatch submits batch to DataAvailabilityLayerClient instance.
