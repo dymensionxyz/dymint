@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	maxBlobSizeBytes = 1 * 1024 * 1024 // 1MB
+	maxBlobSizeBytes = 10 * 1024 * 1024 // 1MB
 )
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}

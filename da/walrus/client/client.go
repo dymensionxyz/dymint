@@ -9,18 +9,6 @@ import (
 	"net/http"
 )
 
-// SubmitBlobResponse represents the response from the Walrus publisher when submitting a blob
-type SubmitBlobResponse struct {
-	NewlyCreated struct {
-		BlobObject struct {
-			BlobID string `json:"blobId"`
-		} `json:"blob_object"`
-	} `json:"newlyCreated"`
-	AlreadyCertified struct {
-		BlobID string `json:"blob_id"`
-	} `json:"alreadyCertified"`
-}
-
 // Client handles HTTP interactions with the Walrus API
 type Client struct {
 	publisherURL  string
@@ -35,6 +23,18 @@ func NewClient(publisherUrl, aggregatorUrl string) *Client {
 		aggregatorURL: aggregatorUrl,
 		httpClient:    &http.Client{},
 	}
+}
+
+// SubmitBlobResponse represents the response from the Walrus publisher when submitting a blob
+type SubmitBlobResponse struct {
+	NewlyCreated struct {
+		BlobObject struct {
+			BlobID string `json:"blobId"`
+		} `json:"blobObject"`
+	} `json:"newlyCreated"`
+	AlreadyCertified struct {
+		BlobID string `json:"blobId"`
+	} `json:"alreadyCertified"`
 }
 
 // SubmitBlob submits a blob to the Walrus publisher

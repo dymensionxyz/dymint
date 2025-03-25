@@ -15,8 +15,8 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	t.Skip("Skipping Walrus client tests")
-	
+	//t.Skip("Skipping Walrus client tests")
+
 	// Create test config
 	config := walrus.TestConfig
 	configBytes, err := json.Marshal(config)
@@ -51,6 +51,10 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 		{
 			name:  "big batch: 88KB",
 			batch: testutil.GenerateBatchWithBlocks(150, proposerKey),
+		},
+		{
+			name:  "extremely big batch: 8.64MB",
+			batch: testutil.GenerateBatchWithBlocks(15000, proposerKey),
 		},
 	}
 
