@@ -9,7 +9,7 @@ import (
 	"math/big"
 	"strings"
 
-	weaveVMtypes "github.com/dymensionxyz/dymint/da/weavevm/types"
+	loadnetworktypes "github.com/dymensionxyz/dymint/da/loadnetwork/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -33,7 +33,7 @@ func NewPrivateKeySigner(privateKey string, log Logger, chainID int64) *PrivateK
 	return &PrivateKeySigner{privateKey: privateKey, log: log, chainID: chainID}
 }
 
-func (pks *PrivateKeySigner) SignTransaction(_ context.Context, signData *weaveVMtypes.SignData) (string, error) {
+func (pks *PrivateKeySigner) SignTransaction(_ context.Context, signData *loadnetworktypes.SignData) (string, error) {
 	return pks.signTxWithPrivateKey(signData.To, signData.Data, signData.GasFeeCap, signData.GasLimit, signData.Nonce)
 }
 
