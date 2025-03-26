@@ -171,7 +171,7 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 
 // GetClientType returns client type.
 func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
-	return da.Avail
+	return da.BNB
 }
 
 // SubmitBatch submits batch to DataAvailabilityLayerClient instance.
