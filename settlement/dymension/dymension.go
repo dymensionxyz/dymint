@@ -236,7 +236,6 @@ func (c *Client) getStateInfo(index, height *uint64, tryRetry bool) (res *rollap
 			return errors.Join(gerrc.ErrNotFound, err)
 		}
 		return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
-
 	})
 	if err != nil {
 		return nil, fmt.Errorf("query state info: %w", err)
