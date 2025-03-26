@@ -1515,66 +1515,6 @@ func (_c *MockStore_SaveBlockSyncBaseHeight_Call) RunAndReturn(run func(uint64) 
 	return _c
 }
 
-// SaveDRSVersion provides a mock function with given fields: height, version, batch
-func (_m *MockStore) SaveDRSVersion(height uint64, version uint32, batch store.KVBatch) (store.KVBatch, error) {
-	ret := _m.Called(height, version, batch)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SaveDRSVersion")
-	}
-
-	var r0 store.KVBatch
-	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64, uint32, store.KVBatch) (store.KVBatch, error)); ok {
-		return rf(height, version, batch)
-	}
-	if rf, ok := ret.Get(0).(func(uint64, uint32, store.KVBatch) store.KVBatch); ok {
-		r0 = rf(height, version, batch)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(store.KVBatch)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(uint64, uint32, store.KVBatch) error); ok {
-		r1 = rf(height, version, batch)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockStore_SaveDRSVersion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveDRSVersion'
-type MockStore_SaveDRSVersion_Call struct {
-	*mock.Call
-}
-
-// SaveDRSVersion is a helper method to define mock.On call
-//   - height uint64
-//   - version uint32
-//   - batch store.KVBatch
-func (_e *MockStore_Expecter) SaveDRSVersion(height interface{}, version interface{}, batch interface{}) *MockStore_SaveDRSVersion_Call {
-	return &MockStore_SaveDRSVersion_Call{Call: _e.mock.On("SaveDRSVersion", height, version, batch)}
-}
-
-func (_c *MockStore_SaveDRSVersion_Call) Run(run func(height uint64, version uint32, batch store.KVBatch)) *MockStore_SaveDRSVersion_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64), args[1].(uint32), args[2].(store.KVBatch))
-	})
-	return _c
-}
-
-func (_c *MockStore_SaveDRSVersion_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveDRSVersion_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockStore_SaveDRSVersion_Call) RunAndReturn(run func(uint64, uint32, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveDRSVersion_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // SaveIndexerBaseHeight provides a mock function with given fields: height
 func (_m *MockStore) SaveIndexerBaseHeight(height uint64) error {
 	ret := _m.Called(height)
