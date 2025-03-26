@@ -147,7 +147,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
 	c.logger.Info("Starting Avail Data Availability Layer Client.")
-
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// other client has already been set
 	if c.client != nil {
 		c.logger.Info("Avail client already set.")
