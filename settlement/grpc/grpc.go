@@ -229,11 +229,7 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 	return batchResult, nil
 }
 
-func (c *Client) GetBatchAtHeightNoRetry(height uint64) (*settlement.ResultRetrieveBatch, error) {
-	return c.GetBatchAtHeight(height)
-}
-
-func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, error) {
+func (c *Client) GetBatchAtHeight(h uint64, _ bool) (*settlement.ResultRetrieveBatch, error) {
 	// Binary search implementation
 	left, right := uint64(1), c.slStateIndex
 

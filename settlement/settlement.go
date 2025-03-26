@@ -80,9 +80,7 @@ type ClientI interface {
 	// GetSequencerByAddress returns all sequencer information by its address.
 	GetSequencerByAddress(address string) (types.Sequencer, error)
 	// GetBatchAtHeight returns the batch at the given height.
-	GetBatchAtHeight(index uint64) (*ResultRetrieveBatch, error)
-	// GetBatchAtHeightNoRetry returns the batch at the given height, without retrying when state not found.
-	GetBatchAtHeightNoRetry(index uint64) (*ResultRetrieveBatch, error)
+	GetBatchAtHeight(index uint64, retry bool) (*ResultRetrieveBatch, error)
 	// GetLatestHeight returns the latest state update height from the settlement layer.
 	GetLatestHeight() (uint64, error)
 	// GetLatestFinalizedHeight returns the latest finalized height from the settlement layer.

@@ -30,7 +30,7 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 
 			for currH := m.SettlementValidator.NextValidationHeight(); currH <= targetValidationHeight; currH = m.SettlementValidator.NextValidationHeight() {
 				// get next batch that needs to be validated from SL
-				batch, err := m.SLClient.GetBatchAtHeight(currH)
+				batch, err := m.SLClient.GetBatchAtHeight(currH, true)
 				if err != nil {
 					// TODO: should be recoverable. set to unhealthy and continue
 					return err
