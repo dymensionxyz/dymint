@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 
+	"github.com/datahop/go-ethereum"
 	"github.com/datahop/go-ethereum/core/types"
 	"github.com/datahop/go-ethereum/crypto"
 
@@ -82,40 +83,25 @@ func (c Client) SubmitBlob(blob []byte) ([]byte, error) {
 }
 
 // GetBlock retrieves a block from Near chain by block hash
-func (c Client) GetBlob(frameRef []byte) ([]byte, error) {
-	/*var txSidecars []*BSCBlobTxSidecar
-	number := rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(blockID))
-	err := c.rpcClient.CallContext(ctx, &txSidecars, "eth_getBlobSidecars", number.String())
+func (c Client) GetBlob(txhash []byte) ([]byte, error) {
+	var txSidecars []*types.BlobTxSidecar
+
+	hash := common.BytesToHash(txhash)
+	txSidecars, err := c.ethclient.BlobSidecarByTxHash(c.ctx, hash)
 	if err != nil {
 		return nil, err
 	}
+
 	if txSidecars == nil {
 		return nil, ethereum.NotFound
 	}
-	idx := 0
-	for _, txSidecar := range txSidecars {
-		txIndex, err := util.HexToUint64(txSidecar.TxIndex)
-		if err != nil {
-			return nil, err
-		}
-		for j := range txSidecar.BlobSidecar.Blobs {
-			sidecars = append(sidecars,
-				&types2.GeneralSideCar{
-					Sidecar: structs.Sidecar{
-						Index:         strconv.Itoa(idx),
-						Blob:          txSidecar.BlobSidecar.Blobs[j],
-						KzgCommitment: txSidecar.BlobSidecar.Commitments[j],
-						KzgProof:      txSidecar.BlobSidecar.Proofs[j],
-					},
-					TxIndex: int64(txIndex),
-					TxHash:  txSidecar.TxHash,
-				},
-			)
-			idx++
-		}
+
+	var data []byte
+	for _, blob := range txSidecars.Blobs {
+		data = blob
+		continue
 	}
-	return sidecars, err*/
-	return nil, nil
+	return data, err
 }
 
 // GetAccountAddress returns configured account address
