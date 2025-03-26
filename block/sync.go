@@ -72,7 +72,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 					m.logger.Error("Apply local block", "err", err)
 				}
 
-				settlementBatch, err := m.SLClient.GetBatchAtHeight(m.State.NextHeight(), true)
+				settlementBatch, err := m.SLClient.GetBatchAtHeight(m.State.NextHeight())
 				if err != nil {
 					// TODO: should be recoverable. set to unhealthy and continue
 					return fmt.Errorf("retrieve SL batch err: %w", err)

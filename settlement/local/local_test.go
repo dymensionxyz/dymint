@@ -76,7 +76,7 @@ func TestSubmitBatch(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 
-	queriedBatchAtState, err := sllayer.GetBatchAtHeight(1, false)
+	queriedBatchAtState, err := sllayer.GetBatchAtHeight(1)
 	require.NoError(err)
 	assert.Equal(queriedBatch.StateIndex, queriedBatchAtState.StateIndex)
 
@@ -94,7 +94,7 @@ func TestSubmitBatch(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(batch2.EndHeight(), queriedBatch.Batch.EndHeight)
 
-	queriedBatchAtState, err = sllayer.GetBatchAtHeight(2, false)
+	queriedBatchAtState, err = sllayer.GetBatchAtHeight(2)
 	require.NoError(err)
 	assert.Equal(queriedBatch.StateIndex, queriedBatchAtState.StateIndex)
 

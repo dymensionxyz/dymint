@@ -86,8 +86,15 @@ func (_c *MockClientI_GetAllSequencers_Call) RunAndReturn(run func() ([]types.Se
 }
 
 // GetBatchAtHeight provides a mock function with given fields: index, retry
-func (_m *MockClientI) GetBatchAtHeight(index uint64, retry bool) (*settlement.ResultRetrieveBatch, error) {
-	ret := _m.Called(index, retry)
+func (_m *MockClientI) GetBatchAtHeight(index uint64, retry ...bool) (*settlement.ResultRetrieveBatch, error) {
+	_va := make([]interface{}, len(retry))
+	for _i := range retry {
+		_va[_i] = retry[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, index)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetBatchAtHeight")
@@ -95,19 +102,19 @@ func (_m *MockClientI) GetBatchAtHeight(index uint64, retry bool) (*settlement.R
 
 	var r0 *settlement.ResultRetrieveBatch
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64, bool) (*settlement.ResultRetrieveBatch, error)); ok {
-		return rf(index, retry)
+	if rf, ok := ret.Get(0).(func(uint64, ...bool) (*settlement.ResultRetrieveBatch, error)); ok {
+		return rf(index, retry...)
 	}
-	if rf, ok := ret.Get(0).(func(uint64, bool) *settlement.ResultRetrieveBatch); ok {
-		r0 = rf(index, retry)
+	if rf, ok := ret.Get(0).(func(uint64, ...bool) *settlement.ResultRetrieveBatch); ok {
+		r0 = rf(index, retry...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*settlement.ResultRetrieveBatch)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(uint64, bool) error); ok {
-		r1 = rf(index, retry)
+	if rf, ok := ret.Get(1).(func(uint64, ...bool) error); ok {
+		r1 = rf(index, retry...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -122,14 +129,21 @@ type MockClientI_GetBatchAtHeight_Call struct {
 
 // GetBatchAtHeight is a helper method to define mock.On call
 //   - index uint64
-//   - retry bool
-func (_e *MockClientI_Expecter) GetBatchAtHeight(index interface{}, retry interface{}) *MockClientI_GetBatchAtHeight_Call {
-	return &MockClientI_GetBatchAtHeight_Call{Call: _e.mock.On("GetBatchAtHeight", index, retry)}
+//   - retry ...bool
+func (_e *MockClientI_Expecter) GetBatchAtHeight(index interface{}, retry ...interface{}) *MockClientI_GetBatchAtHeight_Call {
+	return &MockClientI_GetBatchAtHeight_Call{Call: _e.mock.On("GetBatchAtHeight",
+		append([]interface{}{index}, retry...)...)}
 }
 
-func (_c *MockClientI_GetBatchAtHeight_Call) Run(run func(index uint64, retry bool)) *MockClientI_GetBatchAtHeight_Call {
+func (_c *MockClientI_GetBatchAtHeight_Call) Run(run func(index uint64, retry ...bool)) *MockClientI_GetBatchAtHeight_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64), args[1].(bool))
+		variadicArgs := make([]bool, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(bool)
+			}
+		}
+		run(args[0].(uint64), variadicArgs...)
 	})
 	return _c
 }
@@ -139,7 +153,7 @@ func (_c *MockClientI_GetBatchAtHeight_Call) Return(_a0 *settlement.ResultRetrie
 	return _c
 }
 
-func (_c *MockClientI_GetBatchAtHeight_Call) RunAndReturn(run func(uint64, bool) (*settlement.ResultRetrieveBatch, error)) *MockClientI_GetBatchAtHeight_Call {
+func (_c *MockClientI_GetBatchAtHeight_Call) RunAndReturn(run func(uint64, ...bool) (*settlement.ResultRetrieveBatch, error)) *MockClientI_GetBatchAtHeight_Call {
 	_c.Call.Return(run)
 	return _c
 }

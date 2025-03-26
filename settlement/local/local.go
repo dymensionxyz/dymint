@@ -193,7 +193,7 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 	return batchResult, nil
 }
 
-func (c *Client) GetBatchAtHeight(h uint64, _ bool) (*settlement.ResultRetrieveBatch, error) {
+func (c *Client) GetBatchAtHeight(h uint64, _ ...bool) (*settlement.ResultRetrieveBatch, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	// TODO: optimize (binary search, or just make another index)

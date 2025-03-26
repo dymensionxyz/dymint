@@ -287,8 +287,12 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 }
 
 // GetBatchAtHeight returns the batch at the given height from the Dymension Hub.
-func (c *Client) GetBatchAtHeight(height uint64, retry bool) (*settlement.ResultRetrieveBatch, error) {
-	res, err := c.getStateInfo(nil, &height, retry)
+func (c *Client) GetBatchAtHeight(height uint64, retry ...bool) (*settlement.ResultRetrieveBatch, error) {
+	tryRetry := true
+	if len(retry) > 0 {
+		tryRetry = retry[0]
+	}
+	res, err := c.getStateInfo(nil, &height, tryRetry)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
 	}
