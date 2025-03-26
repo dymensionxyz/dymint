@@ -217,7 +217,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, _ da.Client, daResult *da.Resul
 	}
 }
 
-func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
+func (c *Client) getStateInfo(index, height *uint64, tryRetry bool) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
 	req := &rollapptypes.QueryGetStateInfoRequest{
 		RollappId: c.rollappId,
 	}
@@ -229,7 +229,14 @@ func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGet
 	}
 	err = c.RunWithRetry(func() error {
 		res, err = c.rollappQueryClient.StateInfo(c.ctx, req)
-		return err
+		if status.Code(err) != codes.NotFound {
+			return err
+		}
+		if tryRetry {
+			return errors.Join(gerrc.ErrNotFound, err)
+		}
+		return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
+
 	})
 	if err != nil {
 		return nil, fmt.Errorf("query state info: %w", err)
@@ -264,7 +271,7 @@ func (c *Client) getLatestHeight(finalized bool) (res *rollapptypes.QueryGetLate
 
 // GetLatestBatch returns the latest batch from the Dymension Hub.
 func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
-	res, err := c.getStateInfo(nil, nil)
+	res, err := c.getStateInfo(nil, nil, false)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
 	}
@@ -273,7 +280,7 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 
 // GetBatchAtIndex returns the batch at the given index from the Dymension Hub.
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
-	res, err := c.getStateInfo(&index, nil)
+	res, err := c.getStateInfo(&index, nil, true)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
 	}
@@ -282,7 +289,16 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 
 // GetBatchAtHeight returns the batch at the given height from the Dymension Hub.
 func (c *Client) GetBatchAtHeight(height uint64) (*settlement.ResultRetrieveBatch, error) {
-	res, err := c.getStateInfo(nil, &height)
+	res, err := c.getStateInfo(nil, &height, true)
+	if err != nil {
+		return nil, fmt.Errorf("get state info: %w", err)
+	}
+	return convertStateInfoToResultRetrieveBatch(&res.StateInfo)
+}
+
+// GetBatchAtHeightNoRetry returns the batch at the given height from the Dymension Hub, returning error if state not found for specific height without retrying.
+func (c *Client) GetBatchAtHeightNoRetry(height uint64) (*settlement.ResultRetrieveBatch, error) {
+	res, err := c.getStateInfo(nil, &height, false)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
 	}
@@ -325,7 +341,7 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 		}
 	} else {
 		// Get the state info for the relevant height and get address from there
-		res, err := c.GetBatchAtHeight(uint64(height))
+		res, err := c.GetBatchAtHeightNoRetry(uint64(height))
 		// if case of height not found, it may be because it didn't arrive to the hub yet.
 		// In that case we want to return the current proposer.
 		if err != nil {

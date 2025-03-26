@@ -143,6 +143,64 @@ func (_c *MockClientI_GetBatchAtHeight_Call) RunAndReturn(run func(uint64) (*set
 	return _c
 }
 
+// GetBatchAtHeightNoRetry provides a mock function with given fields: index
+func (_m *MockClientI) GetBatchAtHeightNoRetry(index uint64) (*settlement.ResultRetrieveBatch, error) {
+	ret := _m.Called(index)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBatchAtHeightNoRetry")
+	}
+
+	var r0 *settlement.ResultRetrieveBatch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64) (*settlement.ResultRetrieveBatch, error)); ok {
+		return rf(index)
+	}
+	if rf, ok := ret.Get(0).(func(uint64) *settlement.ResultRetrieveBatch); ok {
+		r0 = rf(index)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*settlement.ResultRetrieveBatch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64) error); ok {
+		r1 = rf(index)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClientI_GetBatchAtHeightNoRetry_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBatchAtHeightNoRetry'
+type MockClientI_GetBatchAtHeightNoRetry_Call struct {
+	*mock.Call
+}
+
+// GetBatchAtHeightNoRetry is a helper method to define mock.On call
+//   - index uint64
+func (_e *MockClientI_Expecter) GetBatchAtHeightNoRetry(index interface{}) *MockClientI_GetBatchAtHeightNoRetry_Call {
+	return &MockClientI_GetBatchAtHeightNoRetry_Call{Call: _e.mock.On("GetBatchAtHeightNoRetry", index)}
+}
+
+func (_c *MockClientI_GetBatchAtHeightNoRetry_Call) Run(run func(index uint64)) *MockClientI_GetBatchAtHeightNoRetry_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64))
+	})
+	return _c
+}
+
+func (_c *MockClientI_GetBatchAtHeightNoRetry_Call) Return(_a0 *settlement.ResultRetrieveBatch, _a1 error) *MockClientI_GetBatchAtHeightNoRetry_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClientI_GetBatchAtHeightNoRetry_Call) RunAndReturn(run func(uint64) (*settlement.ResultRetrieveBatch, error)) *MockClientI_GetBatchAtHeightNoRetry_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetBatchAtIndex provides a mock function with given fields: index
 func (_m *MockClientI) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	ret := _m.Called(index)

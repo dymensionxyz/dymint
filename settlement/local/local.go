@@ -211,6 +211,10 @@ func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, er
 	return nil, gerrc.ErrNotFound // TODO: need to return a cosmos specific error?
 }
 
+func (c *Client) GetBatchAtHeightNoRetry(height uint64) (*settlement.ResultRetrieveBatch, error) {
+	return c.GetBatchAtHeight(height)
+}
+
 // GetProposerAtHeight implements settlement.ClientI.
 func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
