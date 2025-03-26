@@ -11,6 +11,8 @@ import (
 
 const (
 	defaultRetryDelay = 3 * time.Second
+
+	maxTestnetEpochs = 180
 )
 
 var (
@@ -37,7 +39,7 @@ var TestConfig = Config{
 	PublisherUrl:        "https://publisher.walrus-testnet.walrus.space",
 	AggregatorUrl:       "https://aggregator.walrus-testnet.walrus.space",
 	BlobOwnerAddr:       "0xcc7f20e6ca6d5b9076068bf9b40421218fdf2cfa6316f48c428c8b6716db9c05",
-	StoreDurationEpochs: 180,
+	StoreDurationEpochs: maxTestnetEpochs,
 	RetryDelay:          defaultRetryDelay,
 	RetryAttempts:       &defaultRetryAttempts,
 	Backoff:             defaultSubmitBackoff,

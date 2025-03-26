@@ -206,7 +206,7 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					Message: "Batch submitted successfully to Walrus",
 				},
 				SubmitMetaData: &da.DASubmitMetaData{
-					Client: "walrus",
+					Client: da.Walrus,
 					DAPath: daMetaData.DAPath,
 				},
 			}
@@ -233,7 +233,7 @@ func (d *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 	}
 
 	return &da.DASubmitMetaData{
-		Client: "walrus",
+		Client: da.Walrus,
 		DAPath: blobID,
 	}, nil
 }
@@ -277,7 +277,7 @@ func (d *DataAvailabilityLayerClient) Stop() error {
 }
 
 func (d *DataAvailabilityLayerClient) GetClientType() da.Client {
-	return "walrus"
+	return da.Walrus
 }
 
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
@@ -292,12 +292,4 @@ func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 
 func (d *DataAvailabilityLayerClient) RollappId() string {
 	return d.config.BlobOwnerAddr
-}
-
-func NewDataAvailabilityLayerClient(config Config) (*DataAvailabilityLayerClient, error) {
-	client := &DataAvailabilityLayerClient{
-		config: config,
-		client: client.NewClient(config.PublisherUrl, config.AggregatorUrl),
-	}
-	return client, nil
 }

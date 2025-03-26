@@ -43,6 +43,7 @@ const (
 	LoadNetwork Client = "loadnetwork"
 	Sui         Client = "sui"
 	Aptos       Client = "aptos"
+	Walrus      Client = "walrus"
 )
 
 // Option is a function that sets a parameter on the da layer.
