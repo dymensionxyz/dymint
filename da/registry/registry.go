@@ -9,6 +9,7 @@ import (
 	"github.com/dymensionxyz/dymint/da/loadnetwork"
 	"github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/da/sui"
+	"github.com/dymensionxyz/dymint/da/walrus"
 )
 
 // this is a central registry for all Data Availability Layer Clients
@@ -20,6 +21,7 @@ var clients = map[string]func() da.DataAvailabilityLayerClient{
 	"loadnetwork": func() da.DataAvailabilityLayerClient { return &loadnetwork.DataAvailabilityLayerClient{} },
 	"sui":         func() da.DataAvailabilityLayerClient { return &sui.DataAvailabilityLayerClient{} },
 	"aptos":       func() da.DataAvailabilityLayerClient { return &aptos.DataAvailabilityLayerClient{} },
+	"walrus":      func() da.DataAvailabilityLayerClient { return &walrus.DataAvailabilityLayerClient{} },
 }
 
 // GetClient returns client identified by name.
