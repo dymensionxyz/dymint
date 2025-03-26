@@ -10,12 +10,12 @@ import (
 
 	"cosmossdk.io/math"
 	"github.com/avast/retry-go/v4"
+	"github.com/datahop/go-ethereum/common"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/stub"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/metrics"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -27,17 +27,13 @@ const (
 )
 
 type BNBConfig struct {
-	Account               string         `json:"account"`
-	Network               string         `json:"network"`
 	Endpoint              string         `json:"endpoint"`
-	Contract              string         `json:"contract"`
 	PrivateKey            string         `json:"key"`
 	FeeLimitMultiplier    uint64         `json:"fee_limit_multiplier"`
 	FeeLimitThresholdGwei float64        `json:"fee_limit_threshold_gwei"`
 	BlobGasPriceLimitGwei float64        `json:"blob_gas_price_limit_gwei"`
 	MinBaseFeeGwei        float64        `json:"min_base_fee_gwei"`
 	MinTipCapGwei         float64        `json:"min_tip_cap_gwei"`
-	From                  common.Address `json:"from_address"`
 	To                    common.Address `json:"to_address"`
 	ChainId               uint64         `json:"chain_id"`
 }
@@ -158,7 +154,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	client, err := NewClient(c.ctx, c.config)
+	client, err := NewClient(c.ctx, &c.config)
 	if err != nil {
 		return fmt.Errorf("error while establishing connection to DA layer: %w", err)
 	}
