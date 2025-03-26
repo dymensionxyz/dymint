@@ -146,7 +146,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
-	c.logger.Info("Starting Avail Data Availability Layer Client.")
+	c.logger.Info("Starting BNB Smart Chain Data Availability Layer Client.")
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// other client has already been set
 	if c.client != nil {
@@ -164,7 +164,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
-	c.logger.Info("Stopping Avail Data Availability Layer Client.")
+	c.logger.Info("Stopping BNB Smart Chain Data Availability Layer Client.")
 	c.cancel()
 	return nil
 }
@@ -246,7 +246,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				},
 				SubmitMetaData: &da.DASubmitMetaData{
 					DAPath: submitMetadata.ToPath(),
-					Client: da.Avail,
+					Client: da.BNB,
 				},
 			}
 		}
@@ -335,7 +335,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	return da.Balance{
 		Amount: math.ZeroInt(),
-		Denom:  "avail",
+		Denom:  "BNB",
 	}, nil
 }
 
