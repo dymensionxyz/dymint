@@ -2,22 +2,16 @@ package bnb
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/dymensionxyz/go-ethereum"
 
-	"github.com/dymensionxyz/go-ethereum/core/types"
-	"github.com/dymensionxyz/go-ethereum/crypto"
+	"github.com/dymensionxyz/go-ethereum/consensus/misc/eip4844"
 
-	"github.com/dymensionxyz/go-ethereum/crypto/kzg4844"
 	"github.com/dymensionxyz/go-ethereum/ethclient"
-	"github.com/dymensionxyz/go-ethereum/params"
-	"github.com/holiman/uint256"
 
 	"github.com/dymensionxyz/go-ethereum/common"
 	"github.com/dymensionxyz/go-ethereum/rpc"
@@ -35,57 +29,6 @@ type Client struct {
 	ctx       context.Context
 	cfg       *BNBConfig
 	account   *Account
-}
-
-type Account struct {
-	Key  *ecdsa.PrivateKey
-	addr common.Address
-}
-
-type BigInt struct {
-	*big.Int
-}
-
-func (i *BigInt) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-
-	// Remove quotes and "0x" prefix if present
-	s = strings.Trim(s, "\"")
-	s = strings.TrimPrefix(s, "0x")
-
-	// Parse the hexadecimal string
-	n, ok := new(big.Int).SetString(s, 16)
-	if !ok {
-		return fmt.Errorf("invalid hex number: %s", s)
-	}
-
-	i.Int = n
-	return nil
-}
-
-type BlobSidecar struct {
-	Blobs       []*kzg4844.Blob       `json:"blobs,omitempty"`
-	Commitments []*kzg4844.Commitment `json:"commitments,omitempty"`
-	Proofs      []*kzg4844.Proof      `json:"proofs,omitempty"`
-}
-
-type BlobSidecarTx struct {
-	Sidecar     *BlobSidecar `json:"blobSidecar,omitempty"`
-	BlockNumber *BigInt      `json:"blockNumber,omitempty"`
-	BlockHash   *string      `json:"blockHash,omitempty"`
-	TxIndex     string       `json:"txIndex,omitempty"`
-	TxHash      *common.Hash `json:"txHash"`
-}
-
-// IndexedBlobHash represents a blob hash that commits to a single blob confirmed in a block.  The
-// index helps us avoid unnecessary blob to blob hash conversions to find the right content in a
-// sidecar.
-type IndexedBlobHash struct {
-	Index uint64      // absolute index in the block, a.k.a. position in sidecar blobs array
-	Hash  common.Hash // hash of the blob, used for consistency checks
 }
 
 var _ BNBClient = &Client{}
@@ -121,7 +64,21 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, error) {
 		return common.Hash{}, err
 	}
 
-	blobTx, err := createBlobTx(c.account.Key, blob, common.HexToAddress(ArchivePoolAddress), nonce)
+	gasTipCap, baseFee, blobBaseFee, err := c.suggestGasPriceCaps(c.ctx)
+
+	gasFeeCap := calcGasFeeCap(baseFee, gasTipCap)
+
+	to := common.HexToAddress(ArchivePoolAddress)
+	gas, err := c.ethclient.EstimateGas(c.ctx, ethereum.CallMsg{
+		From:      c.account.addr,
+		To:        &to,
+		GasTipCap: gasTipCap,
+		GasFeeCap: gasFeeCap,
+		Data:      nil,
+		Value:     nil,
+	})
+
+	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 
 	if err != nil {
 		return common.Hash{}, err
@@ -163,7 +120,7 @@ func (c Client) GetBlob(txhash string) ([]byte, error) {
 
 // GetAccountAddress returns configured account address
 func (c Client) GetAccountAddress() string {
-	return ""
+	return c.account.addr.String()
 }
 
 // BlobSidecarByTxHash return a sidecar of a given blob transaction
@@ -181,55 +138,30 @@ func (c Client) BlobSidecarByTxHash(ctx context.Context, hash string) (*BlobSide
 
 }
 
-func createBlobTx(key *ecdsa.PrivateKey, blobData []byte, toAddr common.Address, nonce uint64) (*types.Transaction, error) {
-
-	var b Blob
-	b.FromData(blobData)
-	rawBlob := b.KZGBlob()
-	commitment, err := kzg4844.BlobToCommitment(*rawBlob)
+// suggestGasPriceCaps suggests what the new tip, base fee, and blob base fee should be based on
+// the current L1 conditions. blobfee will be nil if 4844 is not yet active.
+func (c Client) suggestGasPriceCaps(ctx context.Context) (*big.Int, *big.Int, *big.Int, error) {
+	cCtx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
+	defer cancel()
+	tip, err := c.ethclient.SuggestGasTipCap(cCtx)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, fmt.Errorf("failed to fetch the suggested gas tip cap: %w", err)
+	} else if tip == nil {
+		return nil, nil, nil, errors.New("the suggested tip was nil")
 	}
-	proof, err := kzg4844.ComputeBlobProof(*rawBlob, commitment)
+	cCtx, cancel = context.WithTimeout(ctx, c.cfg.Timeout)
+	defer cancel()
+	head, err := c.ethclient.HeaderByNumber(cCtx, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, fmt.Errorf("failed to fetch the suggested base fee: %w", err)
 	}
 
-	sidecar := &types.BlobTxSidecar{
-		Blobs:       []kzg4844.Blob{*rawBlob},
-		Commitments: []kzg4844.Commitment{commitment},
-		Proofs:      []kzg4844.Proof{proof},
-	}
+	// basefee of BSC block is 0
+	baseFee := big.NewInt(0)
 
-	blobtx := &types.BlobTx{
-		ChainID:    uint256.NewInt(97),
-		Nonce:      nonce,
-		GasTipCap:  uint256.NewInt(10 * params.GWei),
-		GasFeeCap:  uint256.NewInt(10 * params.GWei),
-		Gas:        25000,
-		To:         toAddr,
-		Value:      nil,
-		Data:       nil,
-		Sidecar:    sidecar,
-		BlobFeeCap: uint256.NewInt(3 * params.GWei),
-		BlobHashes: sidecar.BlobHashes(),
+	var blobFee *big.Int
+	if head.ExcessBlobGas != nil {
+		blobFee = eip4844.CalcBlobFee(*head.ExcessBlobGas)
 	}
-
-	signer := types.NewCancunSigner(blobtx.ChainID.ToBig())
-	return types.MustSignNewTx(key, signer, blobtx), nil
-}
-
-func fromHexKey(hexkey string) (*Account, error) {
-	key, err := crypto.HexToECDSA(hexkey)
-	if err != nil {
-		return &Account{}, err
-	}
-	pubKey := key.Public()
-	pubKeyECDSA, ok := pubKey.(*ecdsa.PublicKey)
-	if !ok {
-		err = errors.New("publicKey is not of type *ecdsa.PublicKey")
-		return &Account{}, err
-	}
-	addr := crypto.PubkeyToAddress(*pubKeyECDSA)
-	return &Account{key, addr}, nil
+	return tip, baseFee, blobFee, nil
 }
