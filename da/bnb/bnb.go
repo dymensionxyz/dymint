@@ -345,7 +345,6 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 
 // GetSignerBalance returns the balance for a specific address
 func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
-
 	balance, err := d.client.GetSignerBalance()
 	if err != nil {
 		return da.Balance{}, err

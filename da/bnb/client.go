@@ -84,10 +84,9 @@ func NewClient(ctx context.Context, config *BNBConfig) (BNBClient, error) {
 
 // SubmitData sends blob data to Avail DA
 func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, error) {
-
 	cCtx, cancel := context.WithTimeout(c.ctx, c.cfg.Timeout)
 	defer cancel()
-	nonce, err := c.ethclient.PendingNonceAt(context.Background(), c.account.addr)
+	nonce, err := c.ethclient.PendingNonceAt(cCtx, c.account.addr)
 	if err != nil {
 		return common.Hash{}, nil, err
 	}
@@ -112,7 +111,7 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, error) {
 
 	cCtx, cancel = context.WithTimeout(c.ctx, c.cfg.Timeout)
 	defer cancel()
-	gas, err := c.ethclient.EstimateGas(c.ctx, msg)
+	gas, err := c.ethclient.EstimateGas(cCtx, msg)
 	if err != nil {
 		return common.Hash{}, nil, err
 	}
