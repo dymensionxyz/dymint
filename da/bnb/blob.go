@@ -149,7 +149,7 @@ func (b *Blob) FromData(data Data) error {
 			buf31[0] = EncodingVersion
 			// Encode the length as big-endian uint24.
 			// The length check at the start above ensures we can always fit the length value into only 3 bytes.
-			ilen := uint32(len(data))
+			ilen := uint32(len(data)) //nolint:gosec
 			buf31[1] = byte(ilen >> 16)
 			buf31[2] = byte(ilen >> 8)
 			buf31[3] = byte(ilen)

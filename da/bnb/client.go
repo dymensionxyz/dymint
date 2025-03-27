@@ -34,7 +34,6 @@ type Client struct {
 var _ BNBClient = &Client{}
 
 func NewClient(ctx context.Context, config *BNBConfig) (BNBClient, error) {
-
 	rpcClient, err := rpc.DialContext(ctx, config.Endpoint)
 	if err != nil {
 		return nil, err
@@ -58,13 +57,15 @@ func NewClient(ctx context.Context, config *BNBConfig) (BNBClient, error) {
 
 // SubmitData sends blob data to Avail DA
 func (c Client) SubmitBlob(blob []byte) (common.Hash, error) {
-
 	nonce, err := c.ethclient.PendingNonceAt(context.Background(), c.account.addr)
 	if err != nil {
 		return common.Hash{}, err
 	}
 
 	gasTipCap, baseFee, blobBaseFee, err := c.suggestGasPriceCaps(c.ctx)
+	if err != nil {
+		return common.Hash{}, err
+	}
 
 	gasFeeCap := calcGasFeeCap(baseFee, gasTipCap)
 
@@ -80,9 +81,11 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, error) {
 	}
 
 	gas, err := c.ethclient.EstimateGas(c.ctx, msg)
+	if err != nil {
+		return common.Hash{}, err
+	}
 
 	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
-
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -97,7 +100,6 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, error) {
 
 // GetBlock retrieves a block from Near chain by block hash
 func (c Client) GetBlob(txhash string) ([]byte, error) {
-
 	blobSidecar, err := c.BlobSidecarByTxHash(c.ctx, txhash)
 	if err != nil {
 		return nil, err
@@ -138,7 +140,6 @@ func (c Client) BlobSidecarByTxHash(ctx context.Context, hash string) (*BlobSide
 	}
 
 	return sidecar, nil
-
 }
 
 // suggestGasPriceCaps suggests what the new tip, base fee, and blob base fee should be based on
