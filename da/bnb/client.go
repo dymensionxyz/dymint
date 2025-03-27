@@ -1,11 +1,13 @@
 package bnb
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"math/big"
 
+	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/dymensionxyz/go-ethereum"
 
@@ -18,9 +20,11 @@ import (
 )
 
 type BNBClient interface {
-	SubmitBlob(blob []byte) (common.Hash, error)
+	SubmitBlob(blob []byte) (common.Hash, []byte, error)
 	GetBlob(txHash string) ([]byte, error)
 	GetAccountAddress() string
+	GetSignerBalance() (*big.Int, error)
+	ValidateInclusion(txHash string, commitment []byte) error
 }
 
 type Client struct {
@@ -29,6 +33,29 @@ type Client struct {
 	ctx       context.Context
 	cfg       *BNBConfig
 	account   *Account
+}
+
+// ValidateInclusion implements BNBClient.
+func (c Client) ValidateInclusion(txHash string, commitment []byte) error {
+	blobSidecar, err := c.blobSidecarByTxHash(c.ctx, txHash)
+	if err != nil {
+		return err
+	}
+	if blobSidecar == nil {
+		return da.ErrBlobNotFound
+	}
+
+	for _, sidecarCommitment := range blobSidecar.Sidecar.Commitments {
+		comm, err := sidecarCommitment.MarshalText()
+		if err != nil {
+			continue
+		}
+		if bytes.Equal(comm, commitment) {
+			return nil
+		}
+	}
+
+	return da.ErrBlobNotFound
 }
 
 var _ BNBClient = &Client{}
@@ -56,15 +83,18 @@ func NewClient(ctx context.Context, config *BNBConfig) (BNBClient, error) {
 }
 
 // SubmitData sends blob data to Avail DA
-func (c Client) SubmitBlob(blob []byte) (common.Hash, error) {
+func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, error) {
+
+	cCtx, cancel := context.WithTimeout(c.ctx, c.cfg.Timeout)
+	defer cancel()
 	nonce, err := c.ethclient.PendingNonceAt(context.Background(), c.account.addr)
 	if err != nil {
-		return common.Hash{}, err
+		return common.Hash{}, nil, err
 	}
 
 	gasTipCap, baseFee, blobBaseFee, err := c.suggestGasPriceCaps(c.ctx)
 	if err != nil {
-		return common.Hash{}, err
+		return common.Hash{}, nil, err
 	}
 
 	gasFeeCap := calcGasFeeCap(baseFee, gasTipCap)
@@ -80,27 +110,37 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, error) {
 		Value:     nil,
 	}
 
+	cCtx, cancel = context.WithTimeout(c.ctx, c.cfg.Timeout)
+	defer cancel()
 	gas, err := c.ethclient.EstimateGas(c.ctx, msg)
 	if err != nil {
-		return common.Hash{}, err
+		return common.Hash{}, nil, err
 	}
 
 	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	if err != nil {
-		return common.Hash{}, err
+		return common.Hash{}, nil, err
 	}
 
-	err = c.ethclient.SendTransaction(context.Background(), blobTx)
+	cCtx, cancel = context.WithTimeout(c.ctx, c.cfg.Timeout)
+	defer cancel()
+	err = c.ethclient.SendTransaction(cCtx, blobTx)
 	if err != nil {
-		return common.Hash{}, err
+		return common.Hash{}, nil, err
 	}
 	txhash := blobTx.Hash()
-	return txhash, nil
+
+	var commitment []byte
+	err = blobTx.BlobTxSidecar().Commitments[0].UnmarshalJSON(commitment)
+	if err != nil {
+		return common.Hash{}, nil, err
+	}
+	return txhash, commitment, nil
 }
 
 // GetBlock retrieves a block from Near chain by block hash
 func (c Client) GetBlob(txhash string) ([]byte, error) {
-	blobSidecar, err := c.BlobSidecarByTxHash(c.ctx, txhash)
+	blobSidecar, err := c.blobSidecarByTxHash(c.ctx, txhash)
 	if err != nil {
 		return nil, err
 	}
@@ -128,10 +168,12 @@ func (c Client) GetAccountAddress() string {
 	return c.account.addr.String()
 }
 
-// BlobSidecarByTxHash return a sidecar of a given blob transaction
-func (c Client) BlobSidecarByTxHash(ctx context.Context, hash string) (*BlobSidecarTx, error) {
+// blobSidecarByTxHash return a sidecar of a given blob transaction
+func (c Client) blobSidecarByTxHash(ctx context.Context, hash string) (*BlobSidecarTx, error) {
 	var sidecar *BlobSidecarTx
-	err := c.rpcClient.CallContext(ctx, &sidecar, "eth_getBlobSidecarByTxHash", hash)
+	cCtx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
+	defer cancel()
+	err := c.rpcClient.CallContext(cCtx, &sidecar, "eth_getBlobSidecarByTxHash", hash)
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +182,13 @@ func (c Client) BlobSidecarByTxHash(ctx context.Context, hash string) (*BlobSide
 	}
 
 	return sidecar, nil
+}
+
+// GetSignerBalance returns account balance
+func (c Client) GetSignerBalance() (*big.Int, error) {
+	cCtx, cancel := context.WithTimeout(c.ctx, c.cfg.Timeout)
+	defer cancel()
+	return c.ethclient.PendingBalanceAt(cCtx, c.account.addr)
 }
 
 // suggestGasPriceCaps suggests what the new tip, base fee, and blob base fee should be based on

@@ -206,7 +206,7 @@ func (c *DataAvailabilityLayerClient) parseBatch(batchData []byte) (*types.Batch
 	return parsedBatch, nil
 }
 
-// CheckBatchAvailability checks if a batch is available on Aptos by verifying the transaction exists
+// CheckBatchAvailability checks if a batch is available on BNB by verifying the transaction and commitment exists onchain
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
 	// Parse the DA path to get the transaction hash
 	submitMetaData := &da.DASubmitMetaData{}

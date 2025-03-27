@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	maxBlobSize               = 100000
 	defaultTxInclusionTimeout = 100 * time.Second
 	defaultBatchRetryDelay    = 10 * time.Second
 	defaultBatchRetryAttempts = 10
@@ -81,7 +80,8 @@ type DataAvailabilityLayerClient struct {
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
 type SubmitMetaData struct {
 	// Height is the height of the block in the da layer
-	txHash string
+	txHash     string
+	commitment []byte
 }
 
 // WithRPCClient sets rpc client.
@@ -196,10 +196,11 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			return da.ResultSubmitBatch{}
 		default:
 			var txHash common.Hash
+			var commitment []byte
 			err := retry.Do(
 				func() error {
 					var err error
-					txHash, err = c.client.SubmitBlob(dataBlob)
+					txHash, commitment, err = c.client.SubmitBlob(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
@@ -231,7 +232,8 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			}
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 			submitMetadata := &SubmitMetaData{
-				txHash: txHash.String(),
+				txHash:     txHash.String(),
+				commitment: commitment,
 			}
 
 			c.logger.Debug("Successfully submitted batch.")
@@ -316,26 +318,66 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 	}
 }
 
-// CheckBatchAvailability checks batch availability in DataAvailabilityLayerClient instance.
+// CheckBatchAvailability checks if a batch is available on BNB by verifying the transaction and commitment exists onchain
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
+	// Parse the DA path to get the transaction hash
 	daMetaData := &SubmitMetaData{}
 	daMetaData, err := daMetaData.FromPath(daPath)
 	if err != nil {
 		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
 	}
-	return da.ResultCheckBatch{}
+
+	var result da.ResultCheckBatch
+	err = retry.Do(
+		func() error {
+			result = c.checkBatchAvailability(daMetaData)
+			return result.Error
+		},
+		retry.Attempts(c.batchRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
+		retry.DelayType(retry.FixedDelay),
+		retry.Delay(c.batchRetryDelay),
+	)
+	if err != nil {
+		c.logger.Error("CheckBatchAvailability", "hash", daMetaData.txHash, "error", err)
+	}
+	return result
 }
 
 // GetSignerBalance returns the balance for a specific address
-// TODO implement get balance for avail client
 func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+
+	balance, err := d.client.GetSignerBalance()
+	if err != nil {
+		return da.Balance{}, err
+	}
 	return da.Balance{
-		Amount: math.ZeroInt(),
+		Amount: math.NewIntFromBigInt(balance),
 		Denom:  "BNB",
 	}, nil
 }
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
-	return maxBlobSize
+	return MaxBlobDataSize
+}
+
+func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
+	// Check if the transaction exists by trying to fetch it
+	err := c.client.ValidateInclusion(daMetaData.txHash, daMetaData.commitment)
+	if err != nil {
+		return da.ResultCheckBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: fmt.Sprintf("Blob not found: %v", err),
+				Error:   err,
+			},
+		}
+	}
+
+	return da.ResultCheckBatch{
+		BaseResult: da.BaseResult{
+			Code:    da.StatusSuccess,
+			Message: "Batch is available",
+		},
+	}
 }
