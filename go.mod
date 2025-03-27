@@ -46,6 +46,8 @@ require (
 	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.67.1
 	google.golang.org/protobuf v1.34.2
+	github.com/crate-crypto/go-ipa v0.0.0-20240724233137-53bbb0ceb27a
+
 )
 
 require (
@@ -64,10 +66,9 @@ require (
 	github.com/coder/websocket v1.8.12 // indirect
 	github.com/coinbase/rosetta-sdk-go v0.7.9 // indirect
 	github.com/consensys/bavard v0.1.22 // indirect
-	github.com/consensys/gnark-crypto v0.14.0 // indirect
+	github.com/consensys/gnark-crypto v0.12.1 // indirect
 	github.com/cosmos/cosmos-db v1.0.0 // indirect
-	github.com/crate-crypto/go-ipa v0.0.0-20240724233137-53bbb0ceb27a // indirect
-	github.com/crate-crypto/go-kzg-4844 v1.1.0 // indirect
+	github.com/crate-crypto/go-kzg-4844 v0.7.0 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
