@@ -220,7 +220,7 @@ func (m *Manager) createForkBlocks(instruction types.Instruction, consensusMsgs 
 //  1. Checks for an existing batch at the specified height via SLClient
 //  2. If no batch exists, creates and submits a new one
 func (m *Manager) submitForkBatch(height uint64) error {
-	resp, err := m.SLClient.GetBatchAtHeight(height, true)
+	resp, err := m.SLClient.GetBatchAtHeight(height)
 	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
 		return fmt.Errorf("getting batch at height: %v", err)
 	}
