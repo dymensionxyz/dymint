@@ -44,6 +44,7 @@ const (
 	Sui         Client = "sui"
 	Aptos       Client = "aptos"
 	BNB         Client = "bnb"
+	Walrus      Client = "walrus"
 )
 
 // Option is a function that sets a parameter on the da layer.
