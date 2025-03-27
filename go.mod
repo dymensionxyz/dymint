@@ -13,11 +13,12 @@ require (
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/cosmos/ibc-go/v6 v6.2.1
-	github.com/datahop/go-ethereum v1.13.10
 	github.com/dgraph-io/badger/v4 v4.3.0
 	github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20241121093220-e0d7ad456fbd
 	github.com/dymensionxyz/dymension-rdk v1.8.1-rc02
 	github.com/dymensionxyz/gerr-cosmos v1.0.0
+	github.com/dymensionxyz/go-ethereum v0.0.0-20250326232313-18b28aa27ff2
+	github.com/ethereum/go-ethereum v1.12.0
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.1+incompatible
 	github.com/gogo/protobuf v1.3.3
@@ -73,7 +74,6 @@ require (
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.3 // indirect
 	github.com/ethereum/c-kzg-4844 v1.0.0 // indirect
-	github.com/ethereum/go-verkle v0.2.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
@@ -132,7 +132,6 @@ require (
 	github.com/decred/base58 v1.0.4 // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
-	github.com/ethereum/go-ethereum v1.12.0
 	github.com/filecoin-project/go-jsonrpc v0.6.0
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
@@ -348,7 +347,6 @@ replace (
 // Dymension Forks
 replace (
 	github.com/cosmos/cosmos-sdk => github.com/dymensionxyz/cosmos-sdk v0.46.17-0.20241128210616-e9dfe47b8c73
-	github.com/datahop/go-ethereum => ../go-ethereum
 	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/datahop/go-ethereum/common"
-	"github.com/datahop/go-ethereum/common/hexutil"
-	"github.com/datahop/go-ethereum/crypto/kzg4844"
+	"github.com/dymensionxyz/go-ethereum/common"
+	"github.com/dymensionxyz/go-ethereum/common/hexutil"
+	"github.com/dymensionxyz/go-ethereum/crypto/kzg4844"
 )
 
 type Data = hexutil.Bytes
@@ -59,7 +59,7 @@ func (b *Blob) TerminalString() string {
 }
 
 func (b *Blob) ComputeKZGCommitment() (kzg4844.Commitment, error) {
-	return kzg4844.BlobToCommitment(b.KZGBlob())
+	return kzg4844.BlobToCommitment(*b.KZGBlob())
 }
 
 // KZGToVersionedHash computes the "blob hash" (a.k.a. versioned-hash) of a blob-commitment, as used in a blob-tx.
@@ -72,7 +72,7 @@ func KZGToVersionedHash(commitment kzg4844.Commitment) (out common.Hash) {
 // VerifyBlobProof verifies that the given blob and proof corresponds to the given commitment,
 // returning error if the verification fails.
 func VerifyBlobProof(blob *Blob, commitment kzg4844.Commitment, proof kzg4844.Proof) error {
-	return kzg4844.VerifyBlobProof(blob.KZGBlob(), commitment, proof)
+	return kzg4844.VerifyBlobProof(*blob.KZGBlob(), commitment, proof)
 }
 
 // FromData encodes the given input data into this blob. The encoding scheme is as follows:

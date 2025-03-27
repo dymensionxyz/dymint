@@ -4,18 +4,22 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"fmt"
+	"math/big"
 
-	"github.com/datahop/go-ethereum"
-	"github.com/datahop/go-ethereum/core/types"
-	"github.com/datahop/go-ethereum/crypto"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
-	"github.com/datahop/go-ethereum/crypto/kzg4844"
-	"github.com/datahop/go-ethereum/ethclient"
-	"github.com/datahop/go-ethereum/params"
+	"github.com/dymensionxyz/go-ethereum"
+	"github.com/dymensionxyz/go-ethereum/core/types"
+	"github.com/dymensionxyz/go-ethereum/crypto"
+
+	"github.com/dymensionxyz/go-ethereum/crypto/kzg4844"
+	"github.com/dymensionxyz/go-ethereum/ethclient"
+	"github.com/dymensionxyz/go-ethereum/params"
 	"github.com/holiman/uint256"
 
-	"github.com/datahop/go-ethereum/common"
-	"github.com/datahop/go-ethereum/rpc"
+	"github.com/dymensionxyz/go-ethereum/common"
+	"github.com/dymensionxyz/go-ethereum/rpc"
 )
 
 type BNBClient interface {
@@ -26,6 +30,7 @@ type BNBClient interface {
 
 type Client struct {
 	ethclient *ethclient.Client
+	rpcClient *rpc.Client
 	ctx       context.Context
 	cfg       *BNBConfig
 	account   *Account
@@ -34,6 +39,22 @@ type Client struct {
 type Account struct {
 	Key  *ecdsa.PrivateKey
 	addr common.Address
+}
+
+type BlobSidecar struct {
+	types.BlobTxSidecar
+	BlockNumber *big.Int    `json:"blockNumber"`
+	BlockHash   common.Hash `json:"blockHash"`
+	TxIndex     uint64      `json:"transactionIndex"`
+	TxHash      common.Hash `json:"transactionHash"`
+}
+
+// IndexedBlobHash represents a blob hash that commits to a single blob confirmed in a block.  The
+// index helps us avoid unnecessary blob to blob hash conversions to find the right content in a
+// sidecar.
+type IndexedBlobHash struct {
+	Index uint64      // absolute index in the block, a.k.a. position in sidecar blobs array
+	Hash  common.Hash // hash of the blob, used for consistency checks
 }
 
 var _ BNBClient = &Client{}
@@ -52,6 +73,7 @@ func NewClient(ctx context.Context, config *BNBConfig) (BNBClient, error) {
 
 	client := Client{
 		ethclient: ethclient.NewClient(rpcClient),
+		rpcClient: rpcClient,
 		ctx:       ctx,
 		cfg:       config,
 		account:   account,
@@ -84,22 +106,27 @@ func (c Client) SubmitBlob(blob []byte) ([]byte, error) {
 
 // GetBlock retrieves a block from Near chain by block hash
 func (c Client) GetBlob(txhash []byte) ([]byte, error) {
-	var txSidecars []*types.BlobTxSidecar
 
 	hash := common.BytesToHash(txhash)
-	txSidecars, err := c.ethclient.BlobSidecarByTxHash(c.ctx, hash)
+	blobSidecar, err := c.BlobSidecarByTxHash(c.ctx, hash)
 	if err != nil {
 		return nil, err
 	}
 
-	if txSidecars == nil {
-		return nil, ethereum.NotFound
+	if blobSidecar == nil {
+		return nil, gerrc.ErrNotFound
 	}
 
 	var data []byte
-	for _, blob := range txSidecars.Blobs {
-		data = blob
-		continue
+	for _, blob := range blobSidecar.Blobs {
+		b := (Blob)(blob)
+		data, err = b.ToData()
+		if err == nil {
+			break
+		}
+	}
+	if data == nil {
+		return nil, fmt.Errorf("Error recovering data from blob")
 	}
 	return data, err
 }
@@ -109,16 +136,26 @@ func (c Client) GetAccountAddress() string {
 	return ""
 }
 
-func createBlobTx(key *ecdsa.PrivateKey, blob []byte, toAddr common.Address, nonce uint64) (*types.Transaction, error) {
+// BlobSidecarByTxHash return a sidecar of a given blob transaction
+func (c Client) BlobSidecarByTxHash(ctx context.Context, hash common.Hash) (*BlobSidecar, error) {
+	var r *BlobSidecar
+	err := c.rpcClient.CallContext(ctx, &r, "eth_getBlobSidecarByTxHash", hash)
+	if err == nil && r == nil {
+		return nil, ethereum.NotFound
+	}
+	return r, err
+}
+
+func createBlobTx(key *ecdsa.PrivateKey, blobData []byte, toAddr common.Address, nonce uint64) (*types.Transaction, error) {
 
 	var b Blob
-	b.FromData(blob)
+	b.FromData(blobData)
 	rawBlob := b.KZGBlob()
-	commitment, err := kzg4844.BlobToCommitment(rawBlob)
+	commitment, err := kzg4844.BlobToCommitment(*rawBlob)
 	if err != nil {
 		return nil, err
 	}
-	proof, err := kzg4844.ComputeBlobProof(rawBlob, commitment)
+	proof, err := kzg4844.ComputeBlobProof(*rawBlob, commitment)
 	if err != nil {
 		return nil, err
 	}

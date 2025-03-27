@@ -10,12 +10,12 @@ import (
 
 	"cosmossdk.io/math"
 	"github.com/avast/retry-go/v4"
-	"github.com/datahop/go-ethereum/common"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/stub"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/metrics"
+	"github.com/dymensionxyz/go-ethereum/common"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
