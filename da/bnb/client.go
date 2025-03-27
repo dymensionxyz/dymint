@@ -5,11 +5,9 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
-	"github.com/dymensionxyz/go-ethereum"
 	"github.com/dymensionxyz/go-ethereum/core/types"
 	"github.com/dymensionxyz/go-ethereum/crypto"
 
@@ -23,8 +21,8 @@ import (
 )
 
 type BNBClient interface {
-	SubmitBlob(blob []byte) ([]byte, error)
-	GetBlob(frameRef []byte) ([]byte, error)
+	SubmitBlob(blob []byte) (common.Hash, error)
+	GetBlob(txHash string) ([]byte, error)
 	GetAccountAddress() string
 }
 
@@ -43,10 +41,6 @@ type Account struct {
 
 type BlobSidecar struct {
 	types.BlobTxSidecar
-	BlockNumber *big.Int    `json:"blockNumber"`
-	BlockHash   common.Hash `json:"blockHash"`
-	TxIndex     uint64      `json:"transactionIndex"`
-	TxHash      common.Hash `json:"transactionHash"`
 }
 
 // IndexedBlobHash represents a blob hash that commits to a single blob confirmed in a block.  The
@@ -83,31 +77,31 @@ func NewClient(ctx context.Context, config *BNBConfig) (BNBClient, error) {
 }
 
 // SubmitData sends blob data to Avail DA
-func (c Client) SubmitBlob(blob []byte) ([]byte, error) {
+func (c Client) SubmitBlob(blob []byte) (common.Hash, error) {
 
 	nonce, err := c.ethclient.PendingNonceAt(context.Background(), c.account.addr)
 	if err != nil {
-		return nil, err
+		return common.Hash{}, err
 	}
 
-	blobTx, err := createBlobTx(c.account.Key, blob, c.cfg.To, nonce)
+	blobTx, err := createBlobTx(c.account.Key, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 
 	if err != nil {
-		return nil, err
+		return common.Hash{}, err
 	}
 
 	err = c.ethclient.SendTransaction(context.Background(), blobTx)
 	if err != nil {
-		return nil, err
+		return common.Hash{}, err
 	}
 	txhash := blobTx.Hash()
-	return txhash.Bytes(), nil
+	return txhash, nil
 }
 
 // GetBlock retrieves a block from Near chain by block hash
-func (c Client) GetBlob(txhash []byte) ([]byte, error) {
+func (c Client) GetBlob(txhash string) ([]byte, error) {
 
-	hash := common.BytesToHash(txhash)
+	hash := common.HexToHash(txhash)
 	blobSidecar, err := c.BlobSidecarByTxHash(c.ctx, hash)
 	if err != nil {
 		return nil, err
@@ -141,7 +135,7 @@ func (c Client) BlobSidecarByTxHash(ctx context.Context, hash common.Hash) (*Blo
 	var r *BlobSidecar
 	err := c.rpcClient.CallContext(ctx, &r, "eth_getBlobSidecarByTxHash", hash)
 	if err == nil && r == nil {
-		return nil, ethereum.NotFound
+		return nil, gerrc.ErrNotFound
 	}
 	return r, err
 }

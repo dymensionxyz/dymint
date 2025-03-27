@@ -2,7 +2,6 @@ package bnb
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -24,24 +23,25 @@ const (
 	defaultTxInclusionTimeout = 100 * time.Second
 	defaultBatchRetryDelay    = 10 * time.Second
 	defaultBatchRetryAttempts = 10
+	ArchivePoolAddress        = "0x0000000000000000000000000000000000000000" // the data settling address
 )
 
 type BNBConfig struct {
-	Endpoint              string         `json:"endpoint"`
-	PrivateKey            string         `json:"key"`
-	FeeLimitMultiplier    uint64         `json:"fee_limit_multiplier"`
-	FeeLimitThresholdGwei float64        `json:"fee_limit_threshold_gwei"`
-	BlobGasPriceLimitGwei float64        `json:"blob_gas_price_limit_gwei"`
-	MinBaseFeeGwei        float64        `json:"min_base_fee_gwei"`
-	MinTipCapGwei         float64        `json:"min_tip_cap_gwei"`
-	To                    common.Address `json:"to_address"`
-	ChainId               uint64         `json:"chain_id"`
+	Timeout               time.Duration `json:"timeout,omitempty"`
+	Endpoint              string        `json:"endpoint"`
+	PrivateKey            string        `json:"private_key_hex"`
+	FeeLimitMultiplier    uint64        `json:"fee_limit_multiplier"`
+	FeeLimitThresholdGwei float64       `json:"fee_limit_threshold_gwei"`
+	BlobGasPriceLimitGwei float64       `json:"blob_gas_price_limit_gwei"`
+	MinBaseFeeGwei        float64       `json:"min_base_fee_gwei"`
+	MinTipCapGwei         float64       `json:"min_tip_cap_gwei"`
+	ChainId               uint64        `json:"chain_id"`
 }
 
 // ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
 	path := []string{
-		hex.EncodeToString(d.FrameRef),
+		d.txHash,
 	}
 	for i, part := range path {
 		path[i] = strings.Trim(part, da.PathSeparator)
@@ -56,11 +56,7 @@ func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 		return nil, fmt.Errorf("invalid DA path")
 	}
 
-	ref, err := hex.DecodeString(pathParts[0])
-	if err != nil {
-		return nil, err
-	}
-	submitData := &SubmitMetaData{FrameRef: ref}
+	submitData := &SubmitMetaData{txHash: pathParts[0]}
 	return submitData, nil
 }
 
@@ -85,7 +81,7 @@ type DataAvailabilityLayerClient struct {
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
 type SubmitMetaData struct {
 	// Height is the height of the block in the da layer
-	FrameRef []byte
+	txHash string
 }
 
 // WithRPCClient sets rpc client.
@@ -199,11 +195,11 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 		case <-c.ctx.Done():
 			return da.ResultSubmitBatch{}
 		default:
-			var frameBytes []byte
+			var txHash common.Hash
 			err := retry.Do(
 				func() error {
 					var err error
-					frameBytes, err = c.client.SubmitBlob(dataBlob)
+					txHash, err = c.client.SubmitBlob(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
@@ -235,7 +231,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			}
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 			submitMetadata := &SubmitMetaData{
-				FrameRef: frameBytes,
+				txHash: txHash.String(),
 			}
 
 			c.logger.Debug("Successfully submitted batch.")
@@ -261,7 +257,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
 	}
 
-	blob, err := c.client.GetBlob(daMetaData.FrameRef)
+	blob, err := c.client.GetBlob(daMetaData.txHash)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
