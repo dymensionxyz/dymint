@@ -42,7 +42,7 @@ require (
 	github.com/tendermint/tendermint v0.34.29
 	github.com/vedhavyas/go-subkey/v2 v2.0.0
 	go.uber.org/multierr v1.11.0
-	golang.org/x/net v0.33.0
+	golang.org/x/net v0.34.0
 	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.67.1
 	google.golang.org/protobuf v1.34.2
