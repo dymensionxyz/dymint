@@ -3,8 +3,11 @@ package bnb
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"strings"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
@@ -39,8 +42,42 @@ type Account struct {
 	addr common.Address
 }
 
+type BigInt struct {
+	*big.Int
+}
+
+func (i *BigInt) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	// Remove quotes and "0x" prefix if present
+	s = strings.Trim(s, "\"")
+	s = strings.TrimPrefix(s, "0x")
+
+	// Parse the hexadecimal string
+	n, ok := new(big.Int).SetString(s, 16)
+	if !ok {
+		return fmt.Errorf("invalid hex number: %s", s)
+	}
+
+	i.Int = n
+	return nil
+}
+
 type BlobSidecar struct {
-	types.BlobTxSidecar
+	Blobs       []*kzg4844.Blob       `json:"blobs,omitempty"`
+	Commitments []*kzg4844.Commitment `json:"commitments,omitempty"`
+	Proofs      []*kzg4844.Proof      `json:"proofs,omitempty"`
+}
+
+type BlobSidecarTx struct {
+	Sidecar     *BlobSidecar `json:"blobSidecar,omitempty"`
+	BlockNumber *BigInt      `json:"blockNumber,omitempty"`
+	BlockHash   *string      `json:"blockHash,omitempty"`
+	TxIndex     string       `json:"txIndex,omitempty"`
+	TxHash      *common.Hash `json:"txHash"`
 }
 
 // IndexedBlobHash represents a blob hash that commits to a single blob confirmed in a block.  The
@@ -101,8 +138,7 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, error) {
 // GetBlock retrieves a block from Near chain by block hash
 func (c Client) GetBlob(txhash string) ([]byte, error) {
 
-	hash := common.HexToHash(txhash)
-	blobSidecar, err := c.BlobSidecarByTxHash(c.ctx, hash)
+	blobSidecar, err := c.BlobSidecarByTxHash(c.ctx, txhash)
 	if err != nil {
 		return nil, err
 	}
@@ -112,8 +148,8 @@ func (c Client) GetBlob(txhash string) ([]byte, error) {
 	}
 
 	var data []byte
-	for _, blob := range blobSidecar.Blobs {
-		b := (Blob)(blob)
+	for _, blob := range blobSidecar.Sidecar.Blobs {
+		b := (Blob)(*blob)
 		data, err = b.ToData()
 		if err == nil {
 			break
@@ -131,13 +167,18 @@ func (c Client) GetAccountAddress() string {
 }
 
 // BlobSidecarByTxHash return a sidecar of a given blob transaction
-func (c Client) BlobSidecarByTxHash(ctx context.Context, hash common.Hash) (*BlobSidecar, error) {
-	var r *BlobSidecar
-	err := c.rpcClient.CallContext(ctx, &r, "eth_getBlobSidecarByTxHash", hash)
-	if err == nil && r == nil {
+func (c Client) BlobSidecarByTxHash(ctx context.Context, hash string) (*BlobSidecarTx, error) {
+	var sidecar *BlobSidecarTx
+	err := c.rpcClient.CallContext(ctx, &sidecar, "eth_getBlobSidecarByTxHash", hash)
+	if err != nil {
+		return nil, err
+	}
+	if sidecar == nil {
 		return nil, gerrc.ErrNotFound
 	}
-	return r, err
+
+	return sidecar, nil
+
 }
 
 func createBlobTx(key *ecdsa.PrivateKey, blobData []byte, toAddr common.Address, nonce uint64) (*types.Transaction, error) {
