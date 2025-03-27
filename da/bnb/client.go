@@ -69,14 +69,17 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, error) {
 	gasFeeCap := calcGasFeeCap(baseFee, gasTipCap)
 
 	to := common.HexToAddress(ArchivePoolAddress)
-	gas, err := c.ethclient.EstimateGas(c.ctx, ethereum.CallMsg{
+
+	msg := ethereum.CallMsg{
 		From:      c.account.addr,
 		To:        &to,
 		GasTipCap: gasTipCap,
 		GasFeeCap: gasFeeCap,
 		Data:      nil,
 		Value:     nil,
-	})
+	}
+
+	gas, err := c.ethclient.EstimateGas(c.ctx, msg)
 
 	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 
