@@ -38,7 +38,6 @@ type Client struct {
 
 // ValidateInclusion validates that there is a blob included in the tx and corresponds to the commitment and proof included in da path.
 func (c Client) ValidateInclusion(txHash string, txCommitment []byte, txProof []byte) error {
-
 	// if blobsidecar not retrieved it may mean rpc error, therefore not considered da.ErrBlobNotFound
 	blobSidecar, err := c.blobSidecarByTxHash(c.ctx, txHash)
 	if err != nil {
@@ -113,7 +112,6 @@ func NewClient(ctx context.Context, config *BNBConfig) (BNBClient, error) {
 
 // SubmitBlob sends blob data to BNB chain
 func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
-
 	// get nonce for the submitter account
 	cCtx, cancel := context.WithTimeout(c.ctx, c.cfg.Timeout)
 	defer cancel()
