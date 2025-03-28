@@ -26,15 +26,10 @@ const (
 )
 
 type BNBConfig struct {
-	Timeout               time.Duration `json:"timeout,omitempty"`
-	Endpoint              string        `json:"endpoint"`
-	PrivateKey            string        `json:"private_key_hex"`
-	FeeLimitMultiplier    uint64        `json:"fee_limit_multiplier"`
-	FeeLimitThresholdGwei float64       `json:"fee_limit_threshold_gwei"`
-	BlobGasPriceLimitGwei float64       `json:"blob_gas_price_limit_gwei"`
-	MinBaseFeeGwei        float64       `json:"min_base_fee_gwei"`
-	MinTipCapGwei         float64       `json:"min_tip_cap_gwei"`
-	ChainId               uint64        `json:"chain_id"`
+	Timeout    time.Duration `json:"timeout,omitempty"`
+	Endpoint   string        `json:"endpoint"`
+	PrivateKey string        `json:"private_key_hex"`
+	ChainId    uint64        `json:"chain_id"`
 }
 
 // ToPath converts a SubmitMetaData to a path.
