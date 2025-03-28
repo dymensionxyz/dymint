@@ -43,6 +43,7 @@ const (
 	LoadNetwork Client = "loadnetwork"
 	Sui         Client = "sui"
 	Aptos       Client = "aptos"
+	BNB         Client = "bnb"
 	Walrus      Client = "walrus"
 )
 

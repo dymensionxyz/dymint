@@ -50,7 +50,7 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 			resultRetrieveBatch = d.retrieveBatches(daMetaData)
 			return resultRetrieveBatch.Error
 		},
-		retry.Attempts(uint(*d.config.RetryAttempts)),
+		retry.Attempts(uint(*d.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 		retry.DelayType(retry.FixedDelay),
 		retry.Delay(d.config.RetryDelay),
 	)
@@ -130,7 +130,7 @@ func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 			result = d.checkBatchAvailability(daMetaData)
 			return result.Error
 		},
-		retry.Attempts(uint(*d.config.RetryAttempts)),
+		retry.Attempts(uint(*d.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 		retry.DelayType(retry.FixedDelay),
 		retry.Delay(d.config.RetryDelay),
 	)
