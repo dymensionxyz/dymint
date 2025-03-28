@@ -25,34 +25,86 @@ import (
 
 // TestBNB validates the SubmitBatch and RetrieveBatches method
 func TestBNBSubmitRetrieve(t *testing.T) {
+
+	// init mock
 	mockClient, client := setDAandMock(t)
 
-	block1 := testutil.GetRandomBlock(1, 1)
-	batch1 := &types.Batch{
-		Blocks: []*types.Block{block1},
+	// generate batch
+	block := testutil.GetRandomBlock(1, 1)
+	batch := &types.Batch{
+		Blocks: []*types.Block{block},
 	}
 
+	// mock txhash, commitment and proof
 	txHash := common.BytesToHash([]byte("txhash"))
 	commitment := []byte("commitment")
 	proof := []byte("proof")
 
 	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, commitment, proof, nil)
 
-	data1, err := batch1.MarshalBinary()
+	// generate blob data from batch
+	blobData, err := batch.MarshalBinary()
 	require.NoError(t, err)
 
-	mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(data1, nil)
+	mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(blobData, nil)
 
-	rsubmit := client.SubmitBatch(batch1)
+	// submit blob
+	rsubmit := client.SubmitBatch(batch)
 
 	retriever := client.(da.BatchRetriever)
 
+	// validate retrieval
 	rretrieve := retriever.RetrieveBatches(rsubmit.SubmitMetaData.DAPath)
 	assert.Equal(t, da.StatusSuccess, rretrieve.Code)
 	require.True(t, len(rretrieve.Batches) == 1)
-	assert.Equal(t, batch1.Blocks[0], rretrieve.Batches[0].Blocks[0])
+	assert.Equal(t, batch.Blocks[0], rretrieve.Batches[0].Blocks[0])
+
 }
 
+func TestAvailCheck(t *testing.T) {
+
+	testCases := []struct {
+		name   string
+		err    error
+		status da.StatusCode
+	}{
+		{
+			name:   "available",
+			err:    nil,
+			status: da.StatusSuccess,
+		},
+		{
+
+			name:   "not available",
+			err:    da.ErrBlobNotFound,
+			status: da.StatusError,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			
+			// init mock
+			mockClient, client := setDAandMock(t)
+			retriever := client.(da.BatchRetriever)
+
+			metadata := bnb.SubmitMetaData{
+				TxHash:     "txhash",
+				Proof:      []byte("proof"),
+				Commitment: []byte("commitment"),
+			}
+
+			mockClient.On("ValidateInclusion", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.err)
+
+			// validate avail check
+			rValidAvail := retriever.CheckBatchAvailability(metadata.ToPath())
+			assert.Equal(t, tc.status, rValidAvail.Code)
+			require.ErrorIs(t, rValidAvail.Error, tc.err)
+
+		})
+	}
+
+}
 func setDAandMock(t *testing.T) (*mocks.MockBNBClient, da.DataAvailabilityLayerClient) {
 	var err error
 	pubsubServer := pubsub.NewServer()

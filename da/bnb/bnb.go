@@ -35,9 +35,9 @@ type BNBConfig struct {
 // ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
 	path := []string{
-		d.txHash,
-		string(d.commitment),
-		string(d.proof),
+		d.TxHash,
+		string(d.Commitment),
+		string(d.Proof),
 	}
 	for i, part := range path {
 		path[i] = strings.Trim(part, da.PathSeparator)
@@ -52,7 +52,7 @@ func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 		return nil, fmt.Errorf("invalid DA path")
 	}
 
-	submitData := &SubmitMetaData{txHash: pathParts[0], commitment: []byte(pathParts[1]), proof: []byte(pathParts[2])}
+	submitData := &SubmitMetaData{TxHash: pathParts[0], Commitment: []byte(pathParts[1]), Proof: []byte(pathParts[2])}
 	return submitData, nil
 }
 
@@ -77,9 +77,9 @@ type DataAvailabilityLayerClient struct {
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
 type SubmitMetaData struct {
 	// Height is the height of the block in the da layer
-	txHash     string
-	commitment []byte
-	proof      []byte
+	TxHash     string
+	Commitment []byte
+	Proof      []byte
 }
 
 // WithRPCClient sets rpc client.
@@ -231,9 +231,9 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			}
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 			submitMetadata := &SubmitMetaData{
-				txHash:     txHash.String(),
-				commitment: commitment,
-				proof:      proof,
+				TxHash:     txHash.String(),
+				Commitment: commitment,
+				Proof:      proof,
 			}
 
 			c.logger.Debug("Successfully submitted batch.")
@@ -259,7 +259,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
 	}
 
-	blob, err := c.client.GetBlob(daMetaData.txHash)
+	blob, err := c.client.GetBlob(daMetaData.TxHash)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -331,6 +331,9 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 	err = retry.Do(
 		func() error {
 			result = c.checkBatchAvailability(daMetaData)
+			if result.Error == da.ErrBlobNotFound {
+				return retry.Unrecoverable(result.Error)
+			}
 			return result.Error
 		},
 		retry.Attempts(c.batchRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
@@ -338,7 +341,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 		retry.Delay(c.batchRetryDelay),
 	)
 	if err != nil {
-		c.logger.Error("CheckBatchAvailability", "hash", daMetaData.txHash, "error", err)
+		c.logger.Error("CheckBatchAvailability", "hash", daMetaData.TxHash, "error", err)
 	}
 	return result
 }
@@ -362,7 +365,7 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
 	// Check if the transaction exists by trying to fetch it
-	err := c.client.ValidateInclusion(daMetaData.txHash, daMetaData.commitment, daMetaData.proof)
+	err := c.client.ValidateInclusion(daMetaData.TxHash, daMetaData.Commitment, daMetaData.Proof)
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
