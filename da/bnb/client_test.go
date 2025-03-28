@@ -3,7 +3,6 @@ package bnb_test
 import (
 	"encoding/json"
 	"testing"
-	"time"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/bnb"
@@ -11,6 +10,7 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/go-ethereum/common"
 
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -24,7 +24,7 @@ import (
 )
 
 // TestBNB validates the SubmitBatch and RetrieveBatches method
-func TestBNB(t *testing.T) {
+func TestBNBSubmitRetrieve(t *testing.T) {
 	mockClient, client := setDAandMock(t)
 
 	block1 := testutil.GetRandomBlock(1, 1)
@@ -32,22 +32,18 @@ func TestBNB(t *testing.T) {
 		Blocks: []*types.Block{block1},
 	}
 
-	mockClient.On("SubmitData", mock.Anything, mock.Anything).Return("blockhash", nil)
-	mockClient.On("GetAccountAddress", mock.Anything).Return("address")
+	txHash := common.BytesToHash([]byte("txhash"))
+	commitment := []byte("commitment")
+	proof := []byte("proof")
+
+	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, commitment, proof, nil)
+
+	data1, err := batch1.MarshalBinary()
+	require.NoError(t, err)
+
+	mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(data1, nil)
 
 	rsubmit := client.SubmitBatch(batch1)
-
-	assert.Equal(t, da.StatusSuccess, rsubmit.Code)
-	assert.NotNil(t, rsubmit.SubmitMetaData)
-
-	/*data1, err := batch1.MarshalBinary()
-	require.NoError(t, err)
-	getResult := []availgo.DataSubmission{
-		{
-			Data: data1,
-		},
-	}*/
-	mockClient.On("GetBlobsBySigner", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) { time.Sleep(5 * time.Millisecond) })
 
 	retriever := client.(da.BatchRetriever)
 
@@ -74,7 +70,7 @@ func setDAandMock(t *testing.T) (*mocks.MockBNBClient, da.DataAvailabilityLayerC
 
 	config := bnb.BNBConfig{
 		Timeout:    5000000000,
-		Endpoint:   "http://localhost:26658/rpc",
+		Endpoint:   "http://localhost:8545/rpc",
 		ChainId:    1,
 		PrivateKey: "459c954ea1366473e0edfa4cf55b8028fa6405e44959cfcaa1771890dc527275",
 	}
