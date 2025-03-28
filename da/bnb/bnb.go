@@ -41,6 +41,8 @@ type BNBConfig struct {
 func (d *SubmitMetaData) ToPath() string {
 	path := []string{
 		d.txHash,
+		string(d.commitment),
+		string(d.proof),
 	}
 	for i, part := range path {
 		path[i] = strings.Trim(part, da.PathSeparator)
@@ -51,11 +53,11 @@ func (d *SubmitMetaData) ToPath() string {
 // FromPath parses a path to a SubmitMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(da.PathSeparator[0]) })
-	if len(pathParts) != 1 {
+	if len(pathParts) != 3 {
 		return nil, fmt.Errorf("invalid DA path")
 	}
 
-	submitData := &SubmitMetaData{txHash: pathParts[0]}
+	submitData := &SubmitMetaData{txHash: pathParts[0], commitment: []byte(pathParts[1]), proof: []byte(pathParts[2])}
 	return submitData, nil
 }
 
@@ -82,6 +84,7 @@ type SubmitMetaData struct {
 	// Height is the height of the block in the da layer
 	txHash     string
 	commitment []byte
+	proof      []byte
 }
 
 // WithRPCClient sets rpc client.
@@ -197,10 +200,11 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 		default:
 			var txHash common.Hash
 			var commitment []byte
+			var proof []byte
 			err := retry.Do(
 				func() error {
 					var err error
-					txHash, commitment, err = c.client.SubmitBlob(dataBlob)
+					txHash, commitment, proof, err = c.client.SubmitBlob(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
@@ -234,6 +238,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			submitMetadata := &SubmitMetaData{
 				txHash:     txHash.String(),
 				commitment: commitment,
+				proof:      proof,
 			}
 
 			c.logger.Debug("Successfully submitted batch.")
@@ -362,7 +367,7 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
 	// Check if the transaction exists by trying to fetch it
-	err := c.client.ValidateInclusion(daMetaData.txHash, daMetaData.commitment)
+	err := c.client.ValidateInclusion(daMetaData.txHash, daMetaData.commitment, daMetaData.proof)
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
