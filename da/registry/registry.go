@@ -4,6 +4,7 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/aptos"
 	"github.com/dymensionxyz/dymint/da/avail"
+	"github.com/dymensionxyz/dymint/da/bnb"
 	"github.com/dymensionxyz/dymint/da/celestia"
 	"github.com/dymensionxyz/dymint/da/grpc"
 	"github.com/dymensionxyz/dymint/da/loadnetwork"
@@ -21,6 +22,7 @@ var clients = map[string]func() da.DataAvailabilityLayerClient{
 	"loadnetwork": func() da.DataAvailabilityLayerClient { return &loadnetwork.DataAvailabilityLayerClient{} },
 	"sui":         func() da.DataAvailabilityLayerClient { return &sui.DataAvailabilityLayerClient{} },
 	"aptos":       func() da.DataAvailabilityLayerClient { return &aptos.DataAvailabilityLayerClient{} },
+	"bnb":         func() da.DataAvailabilityLayerClient { return &bnb.DataAvailabilityLayerClient{} },
 	"walrus":      func() da.DataAvailabilityLayerClient { return &walrus.DataAvailabilityLayerClient{} },
 }
 
