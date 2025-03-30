@@ -29,6 +29,9 @@ packages:
   github.com/dymensionxyz/dymint/da/avail:
     interfaces:
      AvailClient:
+  github.com/dymensionxyz/dymint/da/bnb:
+    interfaces:
+     BNBClient:
   github.com/dymensionxyz/dymint/da:
     interfaces:
      DataAvailabilityLayerClient:
