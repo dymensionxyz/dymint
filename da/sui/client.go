@@ -51,26 +51,12 @@ type DataAvailabilityLayerClient struct {
 
 // RetrieveBatches retrieves batch data from Sui using the transaction digest
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
-	// Parse the DA path to get the transaction digest
-	submitMetaData := &da.DASubmitMetaData{}
-	daMetaData, err := submitMetaData.FromPath(daPath)
-	if err != nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Unable to parse DA path",
-				Error:   err,
-			},
-		}
-	}
-	digest := daMetaData.DAPath
-
-	c.logger.Debug("Getting blob from Sui DA.", "digest", digest)
+	c.logger.Debug("Getting blob from Sui DA.", "digest", daPath)
 
 	var resultRetrieveBatch da.ResultRetrieveBatch
-	err = retry.Do(
+	err := retry.Do(
 		func() error {
-			resultRetrieveBatch = c.retrieveBatches(daMetaData)
+			resultRetrieveBatch = c.retrieveBatches(daPath)
 			return resultRetrieveBatch.Error
 		},
 		retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
@@ -78,19 +64,19 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		retry.Delay(c.config.RetryDelay),
 	)
 	if err != nil {
-		c.logger.Error("Retrieve batch", "digest", digest, "error", err)
+		c.logger.Error("Retrieve batch", "digest", daPath, "error", err)
 	}
 	return resultRetrieveBatch
 }
 
 // retrieveBatches downloads a batch from Sui and returns the batch included
-func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) retrieveBatches(digest string) da.ResultRetrieveBatch {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
 	// Get the transaction using the digest
 	resp, err := c.cli.SuiGetTransactionBlock(ctx, models.SuiGetTransactionBlockRequest{
-		Digest: daMetaData.DAPath,
+		Digest: digest,
 		Options: models.SuiTransactionBlockOptions{
 			ShowEffects: true, // fetch effects to verify the transaction status
 			ShowInput:   true, // retrieve the input to get the data chunks
@@ -161,7 +147,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		}
 	}
 
-	c.logger.Debug("Blob retrieved successfully from Sui DA.", "digest", daMetaData.DAPath)
+	c.logger.Debug("Blob retrieved successfully from Sui DA.", "digest", digest)
 
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
@@ -228,24 +214,10 @@ func (c *DataAvailabilityLayerClient) parseBatch(batchData []byte) (*types.Batch
 
 // CheckBatchAvailability checks if a batch is available on Sui by verifying the transaction exists
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
-	// Parse the DA path to get the transaction digest
-	submitMetaData := &da.DASubmitMetaData{}
-	daMetaData, err := submitMetaData.FromPath(daPath)
-	if err != nil {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Unable to parse DA path",
-				Error:   err,
-			},
-		}
-	}
-	digest := daMetaData.DAPath
-
 	var result da.ResultCheckBatch
-	err = retry.Do(
+	err := retry.Do(
 		func() error {
-			result = c.checkBatchAvailability(daMetaData)
+			result = c.checkBatchAvailability(daPath)
 			return result.Error
 		},
 		retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
@@ -253,19 +225,19 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 		retry.Delay(c.config.RetryDelay),
 	)
 	if err != nil {
-		c.logger.Error("CheckBatchAvailability", "digest", digest, "error", err)
+		c.logger.Error("CheckBatchAvailability", "digest", daPath, "error", err)
 	}
 	return result
 }
 
 // checkBatchAvailability checks if a batch is available on Sui by verifying the transaction exists
-func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) checkBatchAvailability(digest string) da.ResultCheckBatch {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
 	// Check if the transaction exists by trying to fetch it
 	resp, err := c.cli.SuiGetTransactionBlock(ctx, models.SuiGetTransactionBlockRequest{
-		Digest: daMetaData.DAPath,
+		Digest: digest,
 		Options: models.SuiTransactionBlockOptions{
 			ShowEffects: true, // fetch effects to verify the transaction status
 		},
@@ -326,7 +298,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				continue
 			}
 
-			result := c.checkBatchAvailability(daMetaData)
+			result := c.checkBatchAvailability(daMetaData.DAPath)
 			if result.Error != nil {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", result.Error)
 				backoff.Sleep()
