@@ -289,15 +289,18 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 			err := retry.Do(
 				func() error {
 					resultRetrieveBatch = c.retrieveBatches(daMetaData)
-					switch resultRetrieveBatch.Error {
-					case da.ErrRetrieval:
-						c.logger.Error("Retrieve batch failed with retrieval error. Retrying retrieve attempt.", "error", resultRetrieveBatch.Error)
-						return resultRetrieveBatch.Error // Trigger retry
-					case da.ErrBlobNotFound, da.ErrBlobNotIncluded, da.ErrProofNotMatching:
-						return retry.Unrecoverable(resultRetrieveBatch.Error)
-					default:
-						return retry.Unrecoverable(resultRetrieveBatch.Error)
+					if resultRetrieveBatch.Error != nil {
+						switch resultRetrieveBatch.Error {
+						case da.ErrRetrieval:
+							c.logger.Error("Retrieve batch failed with retrieval error. Retrying retrieve attempt.", "error", resultRetrieveBatch.Error)
+							return resultRetrieveBatch.Error // Trigger retry
+						case da.ErrBlobNotFound, da.ErrBlobNotIncluded, da.ErrProofNotMatching:
+							return retry.Unrecoverable(resultRetrieveBatch.Error)
+						default:
+							return retry.Unrecoverable(resultRetrieveBatch.Error)
+						}
 					}
+					return nil
 				},
 				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 				retry.DelayType(retry.FixedDelay),
