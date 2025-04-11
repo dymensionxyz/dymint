@@ -195,7 +195,6 @@ func (rpc *RPCClient) GetTransactionReceipt(ctx context.Context, txHash string) 
 }
 
 func (rpc *RPCClient) GetSignerBalance(ctx context.Context) (*big.Int, error) {
-
 	account, err := rpc.signer.GetAccount(ctx)
 	if err != nil {
 		return nil, err
