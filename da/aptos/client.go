@@ -42,42 +42,27 @@ type DataAvailabilityLayerClient struct {
 
 // RetrieveBatches retrieves batch data from Aptos using the transaction hash
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
-	// Parse the DA path to get the transaction hash
-	submitMetaData := &da.DASubmitMetaData{}
-	daMetaData, err := submitMetaData.FromPath(daPath)
-	if err != nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Unable to parse DA path",
-				Error:   err,
-			},
-		}
-	}
-	hash := daMetaData.DAPath
-
-	c.logger.Debug("Getting blob from Aptos DA.", "hash", hash)
+	c.logger.Debug("Getting blob from Aptos DA.", "hash", daPath)
 
 	var resultRetrieveBatch da.ResultRetrieveBatch
-	err = retry.Do(
+	err := retry.Do(
 		func() error {
-			resultRetrieveBatch = c.retrieveBatches(daMetaData)
+			resultRetrieveBatch = c.retrieveBatches(daPath)
 			return resultRetrieveBatch.Error
 		},
-
 		retry.DelayType(retry.FixedDelay),
 		retry.Delay(c.config.RetryDelay),
 	)
 	if err != nil {
-		c.logger.Error("Retrieve batch", "hash", hash, "error", err)
+		c.logger.Error("Retrieve batch", "hash", daPath, "error", err)
 	}
 	return resultRetrieveBatch
 }
 
 // retrieveBatches downloads a batch from Aptos and returns the batch included
-func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) retrieveBatches(txHash string) da.ResultRetrieveBatch {
 	// Get the transaction using the hash
-	resTx, err := c.cli.TransactionByHash(daMetaData.DAPath)
+	resTx, err := c.cli.TransactionByHash(txHash)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -177,7 +162,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		}
 	}
 
-	c.logger.Debug("Blob retrieved successfully from Aptos DA.", "hash", daMetaData.DAPath)
+	c.logger.Debug("Blob retrieved successfully from Aptos DA.", "hash", txHash)
 
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
@@ -208,24 +193,10 @@ func (c *DataAvailabilityLayerClient) parseBatch(batchData []byte) (*types.Batch
 
 // CheckBatchAvailability checks if a batch is available on Aptos by verifying the transaction exists
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
-	// Parse the DA path to get the transaction hash
-	submitMetaData := &da.DASubmitMetaData{}
-	daMetaData, err := submitMetaData.FromPath(daPath)
-	if err != nil {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Unable to parse DA path",
-				Error:   err,
-			},
-		}
-	}
-	hash := daMetaData.DAPath
-
 	var result da.ResultCheckBatch
-	err = retry.Do(
+	err := retry.Do(
 		func() error {
-			result = c.checkBatchAvailability(daMetaData)
+			result = c.checkBatchAvailability(daPath)
 			return result.Error
 		},
 		retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
@@ -233,15 +204,15 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 		retry.Delay(c.config.RetryDelay),
 	)
 	if err != nil {
-		c.logger.Error("CheckBatchAvailability", "hash", hash, "error", err)
+		c.logger.Error("CheckBatchAvailability", "hash", daPath, "error", err)
 	}
 	return result
 }
 
 // checkBatchAvailability checks if a batch is available on Aptos by verifying the transaction exists
-func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) checkBatchAvailability(txHash string) da.ResultCheckBatch {
 	// Check if the transaction exists by trying to fetch it
-	resTx, err := c.cli.TransactionByHash(daMetaData.DAPath)
+	resTx, err := c.cli.TransactionByHash(txHash)
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
@@ -298,7 +269,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				continue
 			}
 
-			result := c.checkBatchAvailability(daMetaData)
+			result := c.checkBatchAvailability(daMetaData.DAPath)
 			if result.Error != nil {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", result.Error)
 				backoff.Sleep()

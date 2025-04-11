@@ -69,12 +69,12 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 			require.Equal(t, da.StatusSuccess, result.Code)
 
 			// Check batch availability
-			checkResult := client.CheckBatchAvailability(result.SubmitMetaData.ToPath())
+			checkResult := client.CheckBatchAvailability(result.SubmitMetaData.DAPath)
 			require.NoError(t, checkResult.Error)
 			require.Equal(t, da.StatusSuccess, checkResult.Code)
 
 			// Retrieve batch
-			retrieveResult := client.RetrieveBatches(result.SubmitMetaData.ToPath())
+			retrieveResult := client.RetrieveBatches(result.SubmitMetaData.DAPath)
 			require.NoError(t, retrieveResult.Error)
 			require.Equal(t, da.StatusSuccess, retrieveResult.Code)
 			require.Len(t, retrieveResult.Batches, 1)
