@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"reflect"
 	"strconv"
 	"strings"
@@ -191,6 +192,14 @@ func (rpc *RPCClient) GetTransactionReceipt(ctx context.Context, txHash string) 
 		return nil, fmt.Errorf("failed to get transaction receipt: %w", err)
 	}
 	return receipt, nil
+}
+
+func (rpc *RPCClient) GetSignerBalance(ctx context.Context) (*big.Int, error) {
+	account, err := rpc.signer.GetAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return rpc.client.PendingBalanceAt(ctx, account)
 }
 
 func (rpc *RPCClient) logReceipt(tx *ethtypes.Transaction) error {
