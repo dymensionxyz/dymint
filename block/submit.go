@@ -324,7 +324,7 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 	}
 }
 
-// GetLastBlockTime returns the time of the last produced block
+// GetLastProducedBlockTime returns the time of the last produced block
 func (m *Manager) GetLastProducedBlockTime() time.Time {
 	lastProducedBlock, err := m.Store.LoadBlock(m.State.Height())
 	if err != nil {

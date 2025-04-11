@@ -115,14 +115,14 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 	}
 }
 
-// waitForSyncing waits for synced nudge (in case it needs to because it was syncing)
+// waitForSettlementSyncing waits for synced nudge (in case it needs to because it was syncing)
 func (m *Manager) waitForSettlementSyncing() {
 	if m.State.Height() < m.LastSettlementHeight.Load() {
 		<-m.syncedFromSettlement.C
 	}
 }
 
-// triggerStateUpdateSyncing sends signal to channel used by syncing loop
+// triggerSettlementSyncing sends signal to channel used by syncing loop
 func (m *Manager) triggerSettlementSyncing() {
 	select {
 	case m.settlementSyncingC <- struct{}{}:

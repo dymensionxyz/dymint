@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// onReceivedBlock receives a block received event from P2P, saves the block to a cache and tries to apply the blocks from the cache.
+// OnReceivedBlock receives a block received event from P2P, saves the block to a cache and tries to apply the blocks from the cache.
 func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	eventData, ok := event.Data().(p2p.BlockData)
 	if !ok {
