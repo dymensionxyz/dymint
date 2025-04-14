@@ -28,26 +28,12 @@ type DataAvailabilityLayerClient struct {
 }
 
 func (d *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRetrieveBatch {
-	// Parse the DA path to get the blob ID
-	submitMetaData := &da.DASubmitMetaData{}
-	daMetaData, err := submitMetaData.FromPath(daPath)
-	if err != nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Unable to parse DA path",
-				Error:   err,
-			},
-		}
-	}
-	blobID := daMetaData.DAPath
-
-	d.logger.Debug("Getting blob from Walrus DA.", "blob_id", blobID)
+	d.logger.Debug("Getting blob from Walrus DA.", "blob_id", daPath)
 
 	var resultRetrieveBatch da.ResultRetrieveBatch
-	err = retry.Do(
+	err := retry.Do(
 		func() error {
-			resultRetrieveBatch = d.retrieveBatches(daMetaData)
+			resultRetrieveBatch = d.retrieveBatches(daPath)
 			return resultRetrieveBatch.Error
 		},
 		retry.Attempts(uint(*d.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
@@ -55,17 +41,17 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		retry.Delay(d.config.RetryDelay),
 	)
 	if err != nil {
-		d.logger.Error("Retrieve batch", "blob_id", blobID, "error", err)
+		d.logger.Error("Retrieve batch", "blob_id", daPath, "error", err)
 	}
 	return resultRetrieveBatch
 }
 
 // retrieveBatches downloads a batch from Walrus and returns the batch included
-func (d *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (d *DataAvailabilityLayerClient) retrieveBatches(blobID string) da.ResultRetrieveBatch {
 	ctx, cancel := context.WithTimeout(d.ctx, d.config.Timeout)
 	defer cancel()
 
-	data, err := d.client.GetBlob(ctx, daMetaData.DAPath)
+	data, err := d.client.GetBlob(ctx, blobID)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -98,7 +84,7 @@ func (d *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		}
 	}
 
-	d.logger.Debug("Blob retrieved successfully from Walrus DA.", "blob_id", daMetaData.DAPath)
+	d.logger.Debug("Blob retrieved successfully from Walrus DA.", "blob_id", blobID)
 
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
@@ -110,24 +96,10 @@ func (d *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 }
 
 func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
-	// Parse the DA path to get the blob ID
-	submitMetaData := &da.DASubmitMetaData{}
-	daMetaData, err := submitMetaData.FromPath(daPath)
-	if err != nil {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Unable to parse DA path",
-				Error:   err,
-			},
-		}
-	}
-	blobID := daMetaData.DAPath
-
 	var result da.ResultCheckBatch
-	err = retry.Do(
+	err := retry.Do(
 		func() error {
-			result = d.checkBatchAvailability(daMetaData)
+			result = d.checkBatchAvailability(daPath)
 			return result.Error
 		},
 		retry.Attempts(uint(*d.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
@@ -135,17 +107,17 @@ func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 		retry.Delay(d.config.RetryDelay),
 	)
 	if err != nil {
-		d.logger.Error("CheckBatchAvailability", "blob_id", blobID, "error", err)
+		d.logger.Error("CheckBatchAvailability", "blob_id", daPath, "error", err)
 	}
 	return result
 }
 
 // checkBatchAvailability checks if a batch is available on Walrus
-func (d *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+func (d *DataAvailabilityLayerClient) checkBatchAvailability(blobID string) da.ResultCheckBatch {
 	ctx, cancel := context.WithTimeout(d.ctx, d.config.Timeout)
 	defer cancel()
 
-	err := d.client.CheckBlobAvailability(ctx, daMetaData.DAPath)
+	err := d.client.CheckBlobAvailability(ctx, blobID)
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
@@ -191,7 +163,7 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				continue
 			}
 
-			result := d.checkBatchAvailability(daMetaData)
+			result := d.checkBatchAvailability(daMetaData.DAPath)
 			if result.Error != nil {
 				d.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", result.Error)
 				backoff.Sleep()

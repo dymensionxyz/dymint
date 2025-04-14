@@ -12,7 +12,7 @@ import (
 const (
 	defaultRetryDelay = 3 * time.Second
 
-	maxTestnetEpochs = 180
+	maxTestnetEpochs = 53
 )
 
 var (
