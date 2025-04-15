@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"time"
 
+	"cosmossdk.io/math"
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/loadnetwork/gateway"
@@ -33,6 +34,7 @@ type LoadNetwork interface {
 	SendTransaction(ctx context.Context, to string, data []byte) (string, error)
 	GetTransactionReceipt(ctx context.Context, txHash string) (*ethtypes.Receipt, error)
 	GetTransactionByHash(ctx context.Context, txHash string) (*ethtypes.Transaction, bool, error)
+	GetSignerBalance(ctx context.Context) (*big.Int, error)
 }
 
 type Gateway interface {
@@ -289,15 +291,18 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 			err := retry.Do(
 				func() error {
 					resultRetrieveBatch = c.retrieveBatches(daMetaData)
-					switch resultRetrieveBatch.Error {
-					case da.ErrRetrieval:
-						c.logger.Error("Retrieve batch failed with retrieval error. Retrying retrieve attempt.", "error", resultRetrieveBatch.Error)
-						return resultRetrieveBatch.Error // Trigger retry
-					case da.ErrBlobNotFound, da.ErrBlobNotIncluded, da.ErrProofNotMatching:
-						return retry.Unrecoverable(resultRetrieveBatch.Error)
-					default:
-						return retry.Unrecoverable(resultRetrieveBatch.Error)
+					if resultRetrieveBatch.Error != nil {
+						switch resultRetrieveBatch.Error {
+						case da.ErrRetrieval:
+							c.logger.Error("Retrieve batch failed with retrieval error. Retrying retrieve attempt.", "error", resultRetrieveBatch.Error)
+							return resultRetrieveBatch.Error // Trigger retry
+						case da.ErrBlobNotFound, da.ErrBlobNotIncluded, da.ErrProofNotMatching:
+							return retry.Unrecoverable(resultRetrieveBatch.Error)
+						default:
+							return retry.Unrecoverable(resultRetrieveBatch.Error)
+						}
 					}
+					return nil
 				},
 				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 				retry.DelayType(retry.FixedDelay),
@@ -624,7 +629,14 @@ func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 
 // GetSignerBalance returns the balance for a specific address
 func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
-	return da.Balance{}, nil
+	balance, err := c.client.GetSignerBalance(c.ctx)
+	if err != nil {
+		return da.Balance{}, err
+	}
+	return da.Balance{
+		Amount: math.NewIntFromBigInt(balance),
+		Denom:  "LOAD",
+	}, nil
 }
 
 func generateCommitment(data []byte) []byte {

@@ -51,6 +51,14 @@ func (m *MockLoadNetwork) GetTransactionByHash(ctx context.Context, txHash strin
 	return tx, args.Bool(1), args.Error(2)
 }
 
+func (m *MockLoadNetwork) GetSignerBalance(ctx context.Context) (*big.Int, error) {
+	args := m.Called(ctx)
+	if balance, ok := args.Get(0).(*big.Int); ok {
+		return balance, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 type MockGateway struct {
 	mock.Mock
 }
