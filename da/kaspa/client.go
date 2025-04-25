@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -30,6 +29,7 @@ const (
 type KaspaClient interface {
 	SubmitBlob(blob []byte) (string, error)
 	GetBlob(txHash string) ([]byte, error)
+	Disconnect()
 }
 
 type walletUTXO struct {
@@ -84,12 +84,10 @@ func NewClient(ctx context.Context, config *Config) (KaspaClient, error) {
 	if config.Timeout != 0 {
 		rpcClient.SetTimeout(time.Duration(config.Timeout) * time.Second)
 	}
-	//defer rpcClient.Disconnect()
 
 	keysFile, err := keys.ReadKeysFile(&dagconfig.Params{}, keysPath)
 	if err != nil {
-
-		log.Fatal("Error reading keys file %s", keysPath)
+		return nil, err
 	}
 
 	httpClient := &http.Client{
@@ -109,6 +107,10 @@ func NewClient(ctx context.Context, config *Config) (KaspaClient, error) {
 	}
 	return kaspaClient, nil
 
+}
+
+func (c *Client) Disconnect() {
+	c.rpcClient.Disconnect()
 }
 
 func (c *Client) SubmitBlob(blob []byte) (string, error) {

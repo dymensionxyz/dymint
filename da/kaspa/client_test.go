@@ -16,7 +16,7 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	t.Skip("Skipping Kaspa client tests")
+	//t.Skip("Skipping Kaspa client tests")
 
 	// Set up test environment
 	mnemonicEnv := "KASPA_MNEMONIC"

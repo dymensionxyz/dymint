@@ -140,7 +140,8 @@ func (c *DataAvailabilityLayerClient) Start() error {
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.logger.Info("Stopping BNB Smart Chain Data Availability Layer Client.")
-	c.cancel()
+	c.client.Disconnect()
+
 	return nil
 }
 
