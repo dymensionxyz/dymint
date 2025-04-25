@@ -29,7 +29,6 @@ require (
 	github.com/ignite/cli v0.26.1
 	github.com/informalsystems/tm-load-test v1.3.0
 	github.com/ipfs/boxo v0.18.0
-	github.com/kaspanet/go-secp256k1 v0.0.7
 	github.com/kaspanet/kaspad v0.12.20
 	github.com/libp2p/go-libp2p v0.33.1
 	github.com/libp2p/go-libp2p-kad-dht v0.25.2
@@ -95,6 +94,7 @@ require (
 	github.com/itering/scale.go v1.9.14 // indirect
 	github.com/jrick/logrotate v1.0.0 // indirect
 	github.com/kaspanet/go-muhash v0.0.4 // indirect
+	github.com/kaspanet/go-secp256k1 v0.0.7 // indirect
 	github.com/leodido/go-urn v1.2.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect

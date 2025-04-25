@@ -3,7 +3,6 @@ package kaspa
 import (
 	"math"
 
-	"github.com/kaspanet/go-secp256k1"
 	"github.com/pkg/errors"
 
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/daemon/pb"
@@ -282,12 +281,7 @@ func (s *Client) estimateComputeMassAfterSignatures(transaction *serialization.P
 
 func createTransactionWithJunkFieldsForMassCalculation(transaction *serialization.PartiallySignedTransaction, ecdsa bool, minimumSignatures uint32, txMassCalculator *txmass.Calculator) (*externalapi.DomainTransaction, error) {
 	transaction = transaction.Clone()
-	var signatureSize uint64
-	if ecdsa {
-		signatureSize = secp256k1.SerializedECDSASignatureSize
-	} else {
-		signatureSize = secp256k1.SerializedSchnorrSignatureSize
-	}
+	signatureSize := uint64(64)
 
 	for i, input := range transaction.PartiallySignedInputs {
 		for j, pubKeyPair := range input.PubKeySignaturePairs {
