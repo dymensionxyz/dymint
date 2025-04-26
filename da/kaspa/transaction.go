@@ -7,10 +7,14 @@ import (
 	"time"
 
 	"github.com/kaspanet/kaspad/app/appmessage"
-	"github.com/kaspanet/kaspad/cmd/kaspawallet/daemon/pb"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
+	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet/bip32"
+	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet/serialization"
+	"github.com/kaspanet/kaspad/cmd/kaspawallet/utils"
 	"github.com/kaspanet/kaspad/domain/consensus/model/externalapi"
+	"github.com/kaspanet/kaspad/domain/consensus/utils//txscript"
 	"github.com/kaspanet/kaspad/domain/consensus/utils/constants"
+	"github.com/kaspanet/kaspad/domain/consensus/utils/subnetworks"
 	"github.com/kaspanet/kaspad/util"
 	"github.com/pkg/errors"
 )
@@ -111,12 +115,15 @@ func (s *Client) usedOutpointHasExpired(outpointBroadcastTime time.Time) bool {
 	return s.startTimeOfLastCompletedRefresh.After(outpointBroadcastTime.Add(time.Minute))
 }
 
-func (s *Client) createUnsignedTransactions(address string, amount uint64, isSendAll bool, fromAddressesString []string, useExistingChangeAddress bool, requestFeePolicy *pb.FeePolicy) ([][]byte, error) {
+func (s *Client) createUnsignedTransactions(address string, blob []byte) ([][]byte, error) {
 	/*if !s.isSynced() {
 		return nil, errors.Errorf("wallet daemon is not synced yet, %s", s.formatSyncStateReport())
 	}*/
-
-	feeRate, maxFee, err := s.calculateFeeLimits(requestFeePolicy)
+	amount, err := utils.KasToSompi("1")
+	if err != nil {
+		return nil, err
+	}
+	feeRate, maxFee, err := s.calculateFeeLimits(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -129,20 +136,13 @@ func (s *Client) createUnsignedTransactions(address string, amount uint64, isSen
 	}
 
 	var fromAddresses []*walletAddress
-	for _, from := range fromAddressesString {
-		fromAddress, exists := s.addressSet[from]
-		if !exists {
-			return nil, fmt.Errorf("specified from address %s does not exists", from)
-		}
-		fromAddresses = append(fromAddresses, fromAddress)
-	}
 
-	changeAddress, changeWalletAddress, err := s.changeAddress(useExistingChangeAddress, fromAddresses)
+	changeAddress, changeWalletAddress, err := s.changeAddress(true, fromAddresses)
 	if err != nil {
 		return nil, err
 	}
 
-	selectedUTXOs, spendValue, changeSompi, err := s.selectUTXOs(amount, isSendAll, feeRate, maxFee, fromAddresses)
+	selectedUTXOs, spendValue, changeSompi, err := s.selectUTXOs(amount, feeRate, maxFee, fromAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -161,9 +161,9 @@ func (s *Client) createUnsignedTransactions(address string, amount uint64, isSen
 			Amount:  changeSompi,
 		})
 	}
-	unsignedTransaction, err := libkaspawallet.CreateUnsignedTransaction(s.keysFile.ExtendedPublicKeys,
+	unsignedTransaction, err := createUnsignedTransaction(s.keysFile.ExtendedPublicKeys,
 		s.keysFile.MinimumSignatures,
-		payments, selectedUTXOs)
+		payments, selectedUTXOs, blob)
 	if err != nil {
 		return nil, err
 	}
@@ -178,12 +178,12 @@ func (s *Client) createUnsignedTransactions(address string, amount uint64, isSen
 	return unsignedTransactions, nil
 }
 
-func (s *Client) selectUTXOs(spendAmount uint64, isSendAll bool, feeRate float64, maxFee uint64, fromAddresses []*walletAddress) (
+func (s *Client) selectUTXOs(spendAmount uint64, feeRate float64, maxFee uint64, fromAddresses []*walletAddress) (
 	selectedUTXOs []*libkaspawallet.UTXO, totalReceived uint64, changeSompi uint64, err error) {
-	return s.selectUTXOsWithPreselected(nil, map[externalapi.DomainOutpoint]struct{}{}, spendAmount, isSendAll, feeRate, maxFee, fromAddresses)
+	return s.selectUTXOsWithPreselected(nil, map[externalapi.DomainOutpoint]struct{}{}, spendAmount, feeRate, maxFee, fromAddresses)
 }
 
-func (s *Client) selectUTXOsWithPreselected(preSelectedUTXOs []*walletUTXO, allowUsed map[externalapi.DomainOutpoint]struct{}, spendAmount uint64, isSendAll bool, feeRate float64, maxFee uint64, fromAddresses []*walletAddress) (
+func (s *Client) selectUTXOsWithPreselected(preSelectedUTXOs []*walletUTXO, allowUsed map[externalapi.DomainOutpoint]struct{}, spendAmount uint64, feeRate float64, maxFee uint64, fromAddresses []*walletAddress) (
 	selectedUTXOs []*libkaspawallet.UTXO, totalReceived uint64, changeSompi uint64, err error) {
 
 	preSelectedSet := make(map[externalapi.DomainOutpoint]struct{})
@@ -228,9 +228,6 @@ func (s *Client) selectUTXOsWithPreselected(preSelectedUTXOs []*walletUTXO, allo
 
 		totalValue += utxo.UTXOEntry.Amount()
 		estimatedRecipientValue := spendAmount
-		if isSendAll {
-			estimatedRecipientValue = totalValue
-		}
 
 		fee, err = s.estimateFee(selectedUTXOs, feeRate, maxFee, estimatedRecipientValue)
 		if err != nil {
@@ -243,7 +240,7 @@ func (s *Client) selectUTXOsWithPreselected(preSelectedUTXOs []*walletUTXO, allo
 		// 		2. totalValue > totalSpend, so there will be change and 2 outputs, therefor in order to not struggle with --
 		//		   2.1 go-nodes dust patch we try and find at least 2 inputs (even though the next one is not necessary in terms of spend value)
 		// 		   2.2 KIP9 we try and make sure that the change amount is not too small
-		if !isSendAll && (totalValue == totalSpend || (totalValue >= totalSpend+minChangeTarget && len(selectedUTXOs) > 1)) {
+		if totalValue == totalSpend || (totalValue >= totalSpend+minChangeTarget && len(selectedUTXOs) > 1) {
 			return false, nil
 		}
 
@@ -276,17 +273,81 @@ func (s *Client) selectUTXOsWithPreselected(preSelectedUTXOs []*walletUTXO, allo
 	}
 
 	var totalSpend uint64
-	if isSendAll {
-		totalSpend = totalValue
-		totalReceived = totalValue - fee
-	} else {
-		totalSpend = spendAmount + fee
-		totalReceived = spendAmount
-	}
+	totalSpend = spendAmount + fee
+	totalReceived = spendAmount
 	if totalValue < totalSpend {
 		return nil, 0, 0, errors.Errorf("Insufficient funds for send: %f required, while only %f available",
 			float64(totalSpend)/constants.SompiPerKaspa, float64(totalValue)/constants.SompiPerKaspa)
 	}
 
 	return selectedUTXOs, totalReceived, totalValue - totalSpend, nil
+}
+
+func createUnsignedTransaction(
+	extendedPublicKeys []string,
+	minimumSignatures uint32,
+	payments []*libkaspawallet.Payment,
+	selectedUTXOs []*libkaspawallet.UTXO,
+	blob []byte) (*serialization.PartiallySignedTransaction, error) {
+
+	inputs := make([]*externalapi.DomainTransactionInput, len(selectedUTXOs))
+	partiallySignedInputs := make([]*serialization.PartiallySignedInput, len(selectedUTXOs))
+	for i, utxo := range selectedUTXOs {
+		emptyPubKeySignaturePairs := make([]*serialization.PubKeySignaturePair, len(extendedPublicKeys))
+		for i, extendedPublicKey := range extendedPublicKeys {
+			extendedKey, err := bip32.DeserializeExtendedKey(extendedPublicKey)
+			if err != nil {
+				return nil, err
+			}
+
+			derivedKey, err := extendedKey.DeriveFromPath(utxo.DerivationPath)
+			if err != nil {
+				return nil, err
+			}
+
+			emptyPubKeySignaturePairs[i] = &serialization.PubKeySignaturePair{
+				ExtendedPublicKey: derivedKey.String(),
+			}
+		}
+
+		inputs[i] = &externalapi.DomainTransactionInput{PreviousOutpoint: *utxo.Outpoint}
+		partiallySignedInputs[i] = &serialization.PartiallySignedInput{
+			PrevOutput: &externalapi.DomainTransactionOutput{
+				Value:           utxo.UTXOEntry.Amount(),
+				ScriptPublicKey: utxo.UTXOEntry.ScriptPublicKey(),
+			},
+			MinimumSignatures:    minimumSignatures,
+			PubKeySignaturePairs: emptyPubKeySignaturePairs,
+			DerivationPath:       utxo.DerivationPath,
+		}
+	}
+
+	outputs := make([]*externalapi.DomainTransactionOutput, len(payments))
+	for i, payment := range payments {
+		scriptPublicKey, err := txscript.PayToAddrScript(payment.Address)
+		if err != nil {
+			return nil, err
+		}
+
+		outputs[i] = &externalapi.DomainTransactionOutput{
+			Value:           payment.Amount,
+			ScriptPublicKey: scriptPublicKey,
+		}
+	}
+
+	domainTransaction := &externalapi.DomainTransaction{
+		Version:      constants.MaxTransactionVersion,
+		Inputs:       inputs,
+		Outputs:      outputs,
+		LockTime:     0,
+		SubnetworkID: subnetworks.SubnetworkIDNative,
+		Gas:          0,
+		Payload:      blob,
+	}
+
+	return &serialization.PartiallySignedTransaction{
+		Tx:                    domainTransaction,
+		PartiallySignedInputs: partiallySignedInputs,
+	}, nil
+
 }

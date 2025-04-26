@@ -9,7 +9,6 @@ import (
 
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/keys"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
-	"github.com/kaspanet/kaspad/cmd/kaspawallet/utils"
 	"github.com/kaspanet/kaspad/domain/consensus/model/externalapi"
 	"github.com/kaspanet/kaspad/domain/consensus/utils/constants"
 	"github.com/kaspanet/kaspad/domain/dagconfig"
@@ -114,20 +113,14 @@ func (c *Client) Disconnect() {
 
 func (c *Client) SubmitBlob(blob []byte) (string, error) {
 
-	sendAmountSompi, err := utils.KasToSompi("0")
-	if err != nil {
-		return "", err
-	}
-
-	err = c.collectFarAddresses()
+	err := c.collectFarAddresses()
 	if err != nil {
 		return "", err
 	}
 
 	c.refreshUTXOs()
 
-	unsignedTransactions, err := c.createUnsignedTransactions(address, sendAmountSompi, false,
-		[]string{}, false, nil)
+	unsignedTransactions, err := c.createUnsignedTransactions(address, blob)
 	if err != nil {
 		return "", err
 	}
