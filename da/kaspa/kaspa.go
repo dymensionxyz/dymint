@@ -107,8 +107,8 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 	// TODO: Make configurable
 	//c.txInclusionTimeout = defaultTxInclusionTimeout
-	//c.batchRetryDelay = defaultBatchRetryDelay
-	//c.batchRetryAttempts = defaultBatchRetryAttempts
+	c.batchRetryDelay = defaultBatchRetryDelay
+	c.batchRetryAttempts = defaultBatchRetryAttempts
 
 	// Apply options
 	for _, apply := range options {

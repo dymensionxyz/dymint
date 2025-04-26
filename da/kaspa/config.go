@@ -10,9 +10,11 @@ import (
 )
 
 const (
-	defaultRpcRetryDelay    = 3 * time.Second
-	defaultRpcRetryAttempts = 5
-	maxBlobSizeBytes        = 100000
+	defaultRpcRetryDelay      = 3 * time.Second
+	defaultRpcRetryAttempts   = 5
+	maxBlobSizeBytes          = 100000
+	defaultBatchRetryDelay    = 10 * time.Second
+	defaultBatchRetryAttempts = 10
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
