@@ -31,7 +31,7 @@ type Config struct {
 	Backoff       uretry.BackoffConfig `json:"backoff,omitempty"`
 	RetryAttempts *int                 `json:"retry_attempts,omitempty"`
 	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`
-	KeysPath      time.Duration        `json:"keys_path,omitempty"`
+	KeysPath      string               `json:"keys_path,omitempty"`
 }
 
 var TestConfig = Config{

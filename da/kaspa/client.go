@@ -18,7 +18,6 @@ import (
 )
 
 const (
-	keysPath                            = "/Users/sergi/Library/Application Support/Kaspawallet/kaspa-testnet-10/keys.json"
 	minChangeTarget                     = constants.SompiPerKaspa * 10
 	minFeeRate                          = 1.0
 	address                             = "kaspatest:qp96y8xa6gqlh3a5c6wu9x73a5egvsw2vk7w7nzm8x98wvkavjlg29zvta4m6"
@@ -85,7 +84,7 @@ func NewClient(ctx context.Context, config *Config) (KaspaClient, error) {
 		rpcClient.SetTimeout(time.Duration(config.Timeout) * time.Second)
 	}
 
-	keysFile, err := keys.ReadKeysFile(&dagconfig.Params{}, keysPath)
+	keysFile, err := keys.ReadKeysFile(&dagconfig.Params{}, config.KeysPath)
 	if err != nil {
 		return nil, err
 	}
