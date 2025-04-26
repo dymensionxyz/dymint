@@ -398,7 +398,7 @@ func (s *Client) calculateFeeLimits(requestFeePolicy *pb.FeePolicy) (feeRate flo
 		}
 		feeRate = estimate.Estimate.NormalBuckets[0].Feerate
 		// Default to a bound of max 1 KAS as fee
-		maxFee = constants.SompiPerKaspa
+		maxFee = constants.MaxSompi
 	}
 
 	return feeRate, maxFee, nil
