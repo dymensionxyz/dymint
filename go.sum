@@ -925,8 +925,8 @@ github.com/kaspanet/go-muhash v0.0.4 h1:CQrm1RTJpQy+h4ZFjj9qq42K5fmA5QTGifzb47p4
 github.com/kaspanet/go-muhash v0.0.4/go.mod h1:10bPW5mO1vNHPSejaAh9ZTtLZE16jzEvgaP7f3Q5s/8=
 github.com/kaspanet/go-secp256k1 v0.0.7 h1:WHnrwopKB6ZeHSbdAwwxNhTqflm56XT1mM6LF4/OvOs=
 github.com/kaspanet/go-secp256k1 v0.0.7/go.mod h1:cFbxhxKkxqHX5eIwUGKARkph19PehipDPJejWB+H0jM=
-github.com/kaspanet/kaspad v0.12.20 h1:DOAB9iXTH66uZJ8710WdnbmUYGaeSvLztmmiylgPk3Y=
-github.com/kaspanet/kaspad v0.12.20/go.mod h1:yu3Bciz4cRVItIcBcDKMuLHg5/FOMzd7EaXxNHMXgSY=
+github.com/kaspanet/kaspad v1.9.12-temp-stability-tests.0.20250423142435-c93100ccd083 h1:HNVudRwxx3/8ABk72Ys6eB9UtIkaEWwVWFTLVa6Q/TU=
+github.com/kaspanet/kaspad v1.9.12-temp-stability-tests.0.20250423142435-c93100ccd083/go.mod h1:yu3Bciz4cRVItIcBcDKMuLHg5/FOMzd7EaXxNHMXgSY=
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/kkdai/bstream v0.0.0-20161212061736-f391b8402d23/go.mod h1:J+Gs4SYgM6CZQHDETBtE9HaSEkGmuNXF86RwHhHUvq4=

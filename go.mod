@@ -10,7 +10,6 @@ require (
 	github.com/availproject/avail-go-sdk v0.2.0-rc7
 	github.com/avast/retry-go/v4 v4.5.0
 	github.com/block-vision/sui-go-sdk v1.0.7-0.20250131122505-89eddd839b21
-	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/cosmos/ibc-go/v6 v6.2.1
@@ -30,8 +29,7 @@ require (
 	github.com/ignite/cli v0.26.1
 	github.com/informalsystems/tm-load-test v1.3.0
 	github.com/ipfs/boxo v0.18.0
-	github.com/kaspanet/go-secp256k1 v0.0.7
-	github.com/kaspanet/kaspad v0.12.20
+	github.com/kaspanet/kaspad v1.9.12-temp-stability-tests.0.20250423142435-c93100ccd083
 	github.com/libp2p/go-libp2p v0.33.1
 	github.com/libp2p/go-libp2p-kad-dht v0.25.2
 	github.com/libp2p/go-libp2p-pubsub v0.10.1
@@ -61,6 +59,7 @@ require (
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
 	github.com/bits-and-blooms/bitset v1.17.0 // indirect
+	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1 // indirect
 	github.com/cockroachdb/fifo v0.0.0-20240606204812-0bbfbd93a7ce // indirect
@@ -95,6 +94,7 @@ require (
 	github.com/itering/scale.go v1.9.14 // indirect
 	github.com/jrick/logrotate v1.0.0 // indirect
 	github.com/kaspanet/go-muhash v0.0.4 // indirect
+	github.com/kaspanet/go-secp256k1 v0.0.7 // indirect
 	github.com/leodido/go-urn v1.2.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
@@ -162,7 +162,7 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
-	github.com/tyler-smith/go-bip39 v1.1.0
+	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/zondax/ledger-go v0.14.3 // indirect
 	go.opentelemetry.io/otel v1.31.0 // indirect
 	go.opentelemetry.io/otel/metric v1.31.0 // indirect
@@ -292,7 +292,7 @@ require (
 	go.etcd.io/bbolt v1.3.8 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.35.0
+	golang.org/x/crypto v0.35.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/sync v0.11.0
 	golang.org/x/sys v0.30.0 // indirect
