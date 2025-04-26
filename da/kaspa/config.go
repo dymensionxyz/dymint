@@ -29,10 +29,11 @@ type Config struct {
 	Backoff       uretry.BackoffConfig `json:"backoff,omitempty"`
 	RetryAttempts *int                 `json:"retry_attempts,omitempty"`
 	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`
+	KeysPath      time.Duration        `json:"keys_path,omitempty"`
 }
 
 var TestConfig = Config{
-	RPCURL:      "https://fullnode.devnet.sui.io:443",
+	RPCURL:      "https://api-tn10.kaspa.org",
 	GrpcAddress: "localhost:16210",
 	Timeout:     5 * time.Second,
 	MnemonicEnv: "KASPA_MNEMONIC",

@@ -121,7 +121,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
-	c.logger.Info("Starting BNB Smart Chain Data Availability Layer Client.")
+	c.logger.Info("Starting Kaspa Data Availability Layer Client.")
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// other client has already been set
 	if c.client != nil {
@@ -139,7 +139,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
-	c.logger.Info("Stopping BNB Smart Chain Data Availability Layer Client.")
+	c.logger.Info("Stopping Kaspa Data Availability Layer Client.")
 	c.client.Disconnect()
 
 	return nil
