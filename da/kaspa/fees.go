@@ -174,10 +174,10 @@ func (s *Client) maybeSplitAndMergeTransaction(transaction *serialization.Partia
 			return nil, err
 		}
 
-		err = s.checkTransactionFeeRate(splitTransactions[i], maxFee)
+		/*err = s.checkTransactionFeeRate(splitTransactions[i], maxFee)
 		if err != nil {
 			return nil, err
-		}
+		}*/
 	}
 
 	if len(splitTransactions) > 1 {
