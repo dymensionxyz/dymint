@@ -362,44 +362,14 @@ func (s *Client) isUTXOSpendable(entry *walletUTXO, virtualDAAScore uint64) bool
 }
 
 func (s *Client) calculateFeeLimits(requestFeePolicy *pb.FeePolicy) (feeRate float64, maxFee uint64, err error) {
-	feeRate = minFeeRate
-	maxFee = math.MaxUint64
 
-	if requestFeePolicy == nil {
-		requestFeePolicy = &pb.FeePolicy{}
+	estimate, err := s.rpcClient.GetFeeEstimate()
+	if err != nil {
+		return 0, 0, err
 	}
-
-	switch requestFeePolicy := requestFeePolicy.FeePolicy.(type) {
-	case *pb.FeePolicy_ExactFeeRate:
-		feeRate = requestFeePolicy.ExactFeeRate
-		if feeRate < minFeeRate {
-			return 0, 0, errors.Errorf("requested fee rate %f is too low, minimum fee rate is %f", feeRate, minFeeRate)
-		}
-	case *pb.FeePolicy_MaxFeeRate:
-		estimate, err := s.rpcClient.GetFeeEstimate()
-		if err != nil {
-			return 0, 0, err
-		}
-		if requestFeePolicy.MaxFeeRate < minFeeRate {
-			return 0, 0, errors.Errorf("requested max fee rate %f is too low, minimum fee rate is %f", requestFeePolicy.MaxFeeRate, minFeeRate)
-		}
-		feeRate = math.Min(estimate.Estimate.NormalBuckets[0].Feerate, requestFeePolicy.MaxFeeRate)
-	case *pb.FeePolicy_MaxFee:
-		estimate, err := s.rpcClient.GetFeeEstimate()
-		if err != nil {
-			return 0, 0, err
-		}
-		feeRate = estimate.Estimate.NormalBuckets[0].Feerate
-		maxFee = requestFeePolicy.MaxFee
-	case nil:
-		estimate, err := s.rpcClient.GetFeeEstimate()
-		if err != nil {
-			return 0, 0, err
-		}
-		feeRate = estimate.Estimate.NormalBuckets[0].Feerate
-		// Default to a bound of max 1 KAS as fee
-		maxFee = constants.MaxSompi
-	}
+	feeRate = estimate.Estimate.NormalBuckets[0].Feerate
+	// Default to a bound of max 1 KAS as fee
+	maxFee = constants.MaxSompi
 
 	return feeRate, maxFee, nil
 }

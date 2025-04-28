@@ -3,6 +3,7 @@ package kaspa
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -27,7 +28,13 @@ const (
 type KaspaClient interface {
 	SubmitBlob(blob []byte) (string, error)
 	GetBlob(txHash string) ([]byte, error)
-	Disconnect()
+	Stop()
+}
+
+// Transaction is a partial struct to extract payload
+type Transaction struct {
+	TransactionID string `json:"transaction_id"`
+	Payload       string `json:"payload"`
 }
 
 type walletUTXO struct {
@@ -62,13 +69,13 @@ type Client struct {
 	coinbaseMaturity                uint64 // Is different from default if we use testnet-11
 	usedOutpoints                   map[externalapi.DomainOutpoint]time.Time
 	startTimeOfLastCompletedRefresh time.Time
-
-	utxosSortedByAmount  []*walletUTXO
-	keysFile             *keys.File
-	txMassCalculator     *txmass.Calculator
-	mempoolExcludedUTXOs map[externalapi.DomainOutpoint]*walletUTXO
-	addressSet           walletAddressSet
-	nextSyncStartIndex   uint32
+	apiURL                          string
+	utxosSortedByAmount             []*walletUTXO
+	keysFile                        *keys.File
+	txMassCalculator                *txmass.Calculator
+	mempoolExcludedUTXOs            map[externalapi.DomainOutpoint]*walletUTXO
+	addressSet                      walletAddressSet
+	nextSyncStartIndex              uint32
 }
 
 var _ KaspaClient = &Client{}
@@ -99,6 +106,7 @@ func NewClient(ctx context.Context, config *Config) (KaspaClient, error) {
 		keysFile:           keysFile,
 		params:             &dagconfig.TestnetParams,
 		nextSyncStartIndex: 0,
+		apiURL:             config.RPCURL,
 		addressSet:         make(walletAddressSet),
 		txMassCalculator:   txmass.NewCalculator(1, 10, 1000),
 		usedOutpoints:      map[externalapi.DomainOutpoint]time.Time{},
@@ -107,7 +115,7 @@ func NewClient(ctx context.Context, config *Config) (KaspaClient, error) {
 
 }
 
-func (c *Client) Disconnect() {
+func (c *Client) Stop() {
 	c.rpcClient.Disconnect()
 }
 
@@ -129,13 +137,11 @@ func (c *Client) SubmitBlob(blob []byte) (string, error) {
 
 	signedTransactions := make([][]byte, len(unsignedTransactions))
 	for i, unsignedTransaction := range unsignedTransactions {
-		fmt.Println(hex.EncodeToString(unsignedTransaction))
 
 		signedTransaction, err := libkaspawallet.Sign(c.params, mnemonics, unsignedTransaction, false)
 		if err != nil {
 			return "", err
 		}
-		fmt.Println(hex.EncodeToString(signedTransaction))
 
 		signedTransactions[i] = signedTransaction
 	}
@@ -150,16 +156,12 @@ func (c *Client) SubmitBlob(blob []byte) (string, error) {
 		}
 
 		chunk := signedTransactions[offset:end]
-		fmt.Println(hex.EncodeToString(chunk[0]))
 		txIDs, err := c.broadcast(chunk, false)
 		if err != nil {
 			return "", err
 		}
 
-		fmt.Printf("Broadcasted %d transaction(s) (broadcasted %.2f%% of the transactions so far)\n", len(chunk), 100*float64(end)/float64(len(signedTransactions)))
-		fmt.Println("Broadcasted Transaction ID(s): ")
 		for _, txID := range txIDs {
-			fmt.Printf("\t%s\n", txID)
 			return txID, nil
 		}
 	}
@@ -169,5 +171,24 @@ func (c *Client) SubmitBlob(blob []byte) (string, error) {
 }
 
 func (c *Client) GetBlob(txHash string) ([]byte, error) {
-	return nil, nil
+
+	url := fmt.Sprintf(c.apiURL+"/%s", txHash)
+
+	resp, err := c.httpClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("post failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var tx Transaction
+	if err := json.NewDecoder(resp.Body).Decode(&tx); err != nil {
+		return nil, fmt.Errorf("decode failed: %w", err)
+	}
+
+	data, err := hex.DecodeString(tx.Payload)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+
 }

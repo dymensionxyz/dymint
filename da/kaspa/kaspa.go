@@ -125,7 +125,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// other client has already been set
 	if c.client != nil {
-		c.logger.Info("Avail client already set.")
+		c.logger.Info("Kaspa client already set.")
 		return nil
 	}
 
@@ -140,8 +140,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.logger.Info("Stopping Kaspa Data Availability Layer Client.")
-	c.client.Disconnect()
-
+	c.client.Stop()
 	return nil
 }
 

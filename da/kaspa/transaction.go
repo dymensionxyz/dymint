@@ -1,8 +1,6 @@
 package kaspa
 
 import (
-	"encoding/hex"
-	"fmt"
 	"sort"
 	"time"
 
@@ -168,12 +166,10 @@ func (s *Client) createUnsignedTransactions(address string, blob []byte) ([][]by
 		return nil, err
 	}
 
-	fmt.Println("utx", unsignedTransaction.Tx)
 	unsignedTransactions, err := s.maybeAutoCompoundTransaction(unsignedTransaction, toAddress, changeAddress, changeWalletAddress, feeRate, maxFee)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("utx2", len(unsignedTransactions[0]), hex.EncodeToString(unsignedTransactions[0]))
 
 	return unsignedTransactions, nil
 }
