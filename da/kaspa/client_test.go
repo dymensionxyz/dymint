@@ -19,9 +19,9 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	//t.Skip("Skipping Kaspa client tests")
 
 	// Set up test environment
-	mnemonicEnv := "KASPA_MNEMONIC"
-	err := os.Setenv(mnemonicEnv, "catalog phone awful abuse derive type verb betray foil salad street scrub")
-	require.NoError(t, err)
+	//mnemonicEnv := "KASPA_MNEMONIC"
+	//err := os.Setenv(mnemonicEnv, "catalog phone awful abuse derive type verb betray foil salad street scrub")
+	//require.NoError(t, err)
 
 	// Create test config. By default, tests use Kaspa testnet tn-10.
 	config := kaspa.TestConfig

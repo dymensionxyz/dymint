@@ -39,6 +39,7 @@ var TestConfig = Config{
 	GrpcAddress: "localhost:16210",
 	Timeout:     5 * time.Second,
 	MnemonicEnv: "KASPA_MNEMONIC",
+	KeysPath:    "/home/sergi/keys.json",
 }
 
 func createConfig(bz []byte) (c Config, err error) {
