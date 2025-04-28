@@ -129,26 +129,8 @@ func (s *Client) transactionFeeRate(psTx *serialization.PartiallySignedTransacti
 	return float64(fee) / float64(mass), nil
 }
 
-func (s *Client) checkTransactionFeeRate(psTx *serialization.PartiallySignedTransaction, maxFee uint64) error {
-	feeRate, err := s.transactionFeeRate(psTx)
-	if err != nil {
-		return err
-	}
-
-	if feeRate < 1 {
-		return errors.Errorf("setting --max-fee to %d results in a fee rate of %f, which is below the minimum allowed fee rate of 1 sompi/gram", maxFee, feeRate)
-	}
-
-	return nil
-}
-
 func (s *Client) maybeSplitAndMergeTransaction(transaction *serialization.PartiallySignedTransaction, toAddress util.Address,
 	changeAddress util.Address, changeWalletAddress *walletAddress, feeRate float64, maxFee uint64) ([]*serialization.PartiallySignedTransaction, error) {
-
-	/*err := s.checkTransactionFeeRate(transaction, maxFee)
-	if err != nil {
-		return nil, err
-	}*/
 
 	transactionMass, err := s.estimateComputeMassAfterSignatures(transaction)
 	if err != nil {
@@ -174,10 +156,6 @@ func (s *Client) maybeSplitAndMergeTransaction(transaction *serialization.Partia
 			return nil, err
 		}
 
-		/*err = s.checkTransactionFeeRate(splitTransactions[i], maxFee)
-		if err != nil {
-			return nil, err
-		}*/
 	}
 
 	if len(splitTransactions) > 1 {

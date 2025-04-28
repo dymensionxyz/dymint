@@ -114,9 +114,7 @@ func (s *Client) usedOutpointHasExpired(outpointBroadcastTime time.Time) bool {
 }
 
 func (s *Client) createUnsignedTransactions(address string, blob []byte) ([][]byte, error) {
-	/*if !s.isSynced() {
-		return nil, errors.Errorf("wallet daemon is not synced yet, %s", s.formatSyncStateReport())
-	}*/
+
 	amount, err := utils.KasToSompi("1")
 	if err != nil {
 		return nil, err
