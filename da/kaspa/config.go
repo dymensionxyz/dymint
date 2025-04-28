@@ -12,7 +12,7 @@ import (
 const (
 	defaultRpcRetryDelay      = 3 * time.Second
 	defaultRpcRetryAttempts   = 5
-	maxBlobSizeBytes          = 10000
+	maxBlobSizeBytes          = 75000
 	defaultBatchRetryDelay    = 10 * time.Second
 	defaultBatchRetryAttempts = 10
 )
