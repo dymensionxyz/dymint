@@ -15,7 +15,6 @@ import (
 )
 
 func (c *Client) createUnsignedTransactions(utxos []*walletUTXO, address string, blob []byte) ([][]byte, error) {
-
 	feeRate, maxFee, err := c.calculateFeeLimits()
 	if err != nil {
 		return nil, err
@@ -76,8 +75,8 @@ func createUnsignedTransaction(
 	extendedPublicKey string,
 	payments []*libkaspawallet.Payment,
 	selectedUTXOs []*libkaspawallet.UTXO,
-	blob []byte) (*serialization.PartiallySignedTransaction, error) {
-
+	blob []byte,
+) (*serialization.PartiallySignedTransaction, error) {
 	inputs := make([]*externalapi.DomainTransactionInput, len(selectedUTXOs))
 	partiallySignedInputs := make([]*serialization.PartiallySignedInput, len(selectedUTXOs))
 
@@ -93,8 +92,9 @@ func createUnsignedTransaction(
 			return nil, err
 		}
 		emptyPubKeySignaturePair := []*serialization.PubKeySignaturePair{
-			&serialization.PubKeySignaturePair{
-				ExtendedPublicKey: derivedKey.String()},
+			{
+				ExtendedPublicKey: derivedKey.String(),
+			},
 		}
 
 		inputs[i] = &externalapi.DomainTransactionInput{PreviousOutpoint: *utxo.Outpoint}
@@ -137,7 +137,6 @@ func createUnsignedTransaction(
 		Tx:                    domainTransaction,
 		PartiallySignedInputs: partiallySignedInputs,
 	}, nil
-
 }
 
 // maybeAutoCompoundTransaction checks if a transaction's mass is higher that what is allowed for a standard
@@ -147,8 +146,8 @@ func createUnsignedTransaction(
 // An additional `mergeTransaction` is generated - which merges the outputs of the above splits into a single output
 // paying to the original transaction's payee.
 func (s *Client) maybeAutoCompoundTransaction(transaction *serialization.PartiallySignedTransaction, toAddress util.Address,
-	changeAddress util.Address, changeWalletAddress *walletAddress, feeRate float64, maxFee uint64, blob []byte) ([][]byte, error) {
-
+	changeAddress util.Address, changeWalletAddress *walletAddress, feeRate float64, maxFee uint64, blob []byte,
+) ([][]byte, error) {
 	splitTransactions, err := s.maybeSplitAndMergeTransaction(transaction, toAddress, changeAddress, changeWalletAddress, feeRate, maxFee, blob)
 	if err != nil {
 		return nil, err
@@ -164,13 +163,16 @@ func (s *Client) maybeAutoCompoundTransaction(transaction *serialization.Partial
 }
 
 func (s *Client) maybeSplitAndMergeTransaction(transaction *serialization.PartiallySignedTransaction, toAddress util.Address,
-	changeAddress util.Address, changeWalletAddress *walletAddress, feeRate float64, maxFee uint64, blob []byte) ([]*serialization.PartiallySignedTransaction, error) {
-
+	changeAddress util.Address, changeWalletAddress *walletAddress, feeRate float64, maxFee uint64, blob []byte,
+) ([]*serialization.PartiallySignedTransaction, error) {
 	transactionMass, err := s.estimateComputeMassAfterSignatures(transaction)
 	if err != nil {
 		return nil, err
 	}
 	transientMass, err := s.estimateTransientMassAfterSignatures(transaction)
+	if err != nil {
+		return nil, err
+	}
 
 	if max(transientMass, transactionMass) < mempool.MaximumStandardTransactionMass {
 		return []*serialization.PartiallySignedTransaction{transaction}, nil

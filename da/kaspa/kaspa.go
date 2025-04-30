@@ -102,6 +102,12 @@ func WithBatchRetryAttempts(attempts uint) da.Option {
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 
+	var err error
+	c.config, err = client.CreateConfig(config)
+	if err != nil {
+		return fmt.Errorf("create config: %w", err)
+	}
+
 	if len(config) > 0 {
 		err := json.Unmarshal(config, &c.config)
 		if err != nil {
@@ -113,7 +119,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	c.pubsubServer = pubsubServer
 
 	// TODO: Make configurable
-	//c.txInclusionTimeout = defaultTxInclusionTimeout
+	// c.txInclusionTimeout = defaultTxInclusionTimeout
 	c.batchRetryDelay = defaultBatchRetryDelay
 	c.batchRetryAttempts = defaultBatchRetryAttempts
 
@@ -152,7 +158,10 @@ func (c *DataAvailabilityLayerClient) Start() error {
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.logger.Info("Stopping Kaspa Data Availability Layer Client.")
-	c.client.Stop()
+	err := c.client.Stop()
+	if err != nil {
+		c.logger.Error("Stopping Kaspa client", "err", err)
+	}
 	return nil
 }
 
@@ -336,7 +345,6 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 
 // GetSignerBalance returns the balance for a specific address
 func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
-
 	return da.Balance{
 		Amount: math.NewIntFromUint64(d.client.GetBalance()),
 		Denom:  "KAS",

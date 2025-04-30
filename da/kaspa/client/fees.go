@@ -29,7 +29,7 @@ func createTransactionWithJunkFieldsForMassCalculation(transaction *serializatio
 
 	for i, input := range transaction.PartiallySignedInputs {
 		for j, pubKeyPair := range input.PubKeySignaturePairs {
-			if uint32(j) >= minimumSignatures {
+			if uint32(j) >= minimumSignatures { //nolint:gosec // input.PubKeySignaturePairs number cannot overflow
 				break
 			}
 			pubKeyPair.Signature = make([]byte, signatureSize+1) // +1 for SigHashType
@@ -50,12 +50,11 @@ func estimateComputeMassAfterSignatures(transaction *serialization.PartiallySign
 }
 
 func estimateTransientMass(transaction *serialization.PartiallySignedTransaction) (uint64, error) {
-
 	serializedTx, err := serialization.SerializePartiallySignedTransaction(transaction)
 	if err != nil {
 		return uint64(0), err
 	}
-	return uint64(len(serializedTx) * TRANSIENT_BYTE_TO_MASS_FACTOR), nil
+	return uint64(len(serializedTx) * TRANSIENT_BYTE_TO_MASS_FACTOR), nil //nolint:gosec // serializedTx size will not overflow
 }
 
 func EstimateMassAfterSignatures(transaction *serialization.PartiallySignedTransaction, ecdsa bool, minimumSignatures uint32, txMassCalculator *txmass.Calculator) (uint64, error) {
@@ -75,7 +74,6 @@ func (c *Client) isUTXOSpendable(entry *walletUTXO, virtualDAAScore uint64) bool
 }
 
 func (c *Client) calculateFeeLimits() (feeRate float64, maxFee uint64, err error) {
-
 	estimate, err := c.rpcClient.GetFeeEstimate()
 	if err != nil {
 		return 0, 0, err

@@ -10,7 +10,6 @@ import (
 )
 
 func (c *Client) broadcast(transactions [][]byte, isDomain bool) ([]string, error) {
-
 	txIDs := make([]string, len(transactions))
 	var tx *externalapi.DomainTransaction
 	var err error

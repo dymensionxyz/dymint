@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet/bip32"
@@ -29,7 +28,7 @@ const (
 type KaspaClient interface {
 	SubmitBlob(blob []byte) (string, error)
 	GetBlob(txHash string) ([]byte, error)
-	Stop()
+	Stop() error
 	GetBalance() uint64
 }
 
@@ -61,7 +60,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 	}
 
 	if config.Timeout != 0 {
-		rpcClient.SetTimeout(time.Duration(config.Timeout) * time.Second)
+		rpcClient.SetTimeout(config.Timeout)
 	}
 
 	var params *dagconfig.Params
@@ -71,7 +70,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 	case "mainnet":
 		params = &dagconfig.MainnetParams
 	default:
-		return nil, fmt.Errorf("Config network parameter not set to testnet or mainnet. Param: %d", config.Network)
+		return nil, fmt.Errorf("Config network parameter not set to testnet or mainnet. Param: %s", config.Network)
 	}
 
 	seed := bip39.NewSeed(mnemonic, "")
@@ -102,15 +101,13 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		txMassCalculator: txmass.NewCalculator(1, 10, 1000),
 	}
 	return kaspaClient, nil
-
 }
 
-func (c *Client) Stop() {
-	c.rpcClient.Disconnect()
+func (c *Client) Stop() error {
+	return c.rpcClient.Disconnect()
 }
 
 func (c *Client) SubmitBlob(blob []byte) (string, error) {
-
 	utxos, err := c.getUTXOs()
 	if err != nil {
 		return "", err
@@ -135,18 +132,22 @@ func (c *Client) SubmitBlob(blob []byte) (string, error) {
 		return "", err
 	}
 	return txIds[0], nil
-
 }
 
 func (c *Client) GetBlob(txHash string) ([]byte, error) {
-
 	url := fmt.Sprintf(c.apiURL+"/transactions/%s", txHash)
 
 	resp, err := c.httpClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("post failed: %w", err)
 	}
-	defer resp.Body.Close()
+	if resp != nil { // Essential to prevent nil dereference
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				return
+			}
+		}()
+	}
 
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("Http response status code not OK: Status: %d", resp.StatusCode)
@@ -162,7 +163,6 @@ func (c *Client) GetBlob(txHash string) ([]byte, error) {
 		return nil, err
 	}
 	return data, nil
-
 }
 
 func (c *Client) GetBalance() uint64 {

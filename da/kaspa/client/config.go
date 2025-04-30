@@ -34,7 +34,7 @@ var TestConfig = Config{
 	FromAddress: "kaspatest:qp75u7cuphjwyq9j6ghe2v0j3gtvxlppyurq279h4ckpdc7umdh6vrusw9c7d",
 }
 
-func createConfig(bz []byte) (c Config, err error) {
+func CreateConfig(bz []byte) (c Config, err error) {
 	if len(bz) <= 0 {
 		return c, errors.New("supplied config is empty")
 	}

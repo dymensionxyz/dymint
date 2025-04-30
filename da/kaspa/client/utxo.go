@@ -18,7 +18,6 @@ type walletUTXO struct {
 }
 
 func (c *Client) getUTXOs() ([]*walletUTXO, error) {
-
 	// It's important to check the mempool before calling `GetUTXOsByAddresses`:
 	// If we would do it the other way around an output can be spent in the mempool
 	// and not in consensus, and between the calls its spending transaction will be
@@ -89,7 +88,6 @@ func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempo
 }
 
 func (s *Client) selectUTXOs(utxos []*walletUTXO, feeRate float64, maxFee uint64, fromAddresses []*walletAddress, blob []byte) (selectedUTXOs []*libkaspawallet.UTXO, totalReceived uint64, changeSompi uint64, err error) {
-
 	totalValue := uint64(0)
 
 	dagInfo, err := s.rpcClient.GetBlockDAGInfo()
@@ -148,10 +146,8 @@ func (s *Client) selectUTXOs(utxos []*walletUTXO, feeRate float64, maxFee uint64
 			break
 		}
 	}
-	//}
 
-	var totalSpend uint64
-	totalSpend = spendAmount + fee
+	totalSpend := spendAmount + fee
 	totalReceived = spendAmount
 	if totalValue < totalSpend {
 		return nil, 0, 0, errors.Errorf("Insufficient funds for send: %f required, while only %f available",
