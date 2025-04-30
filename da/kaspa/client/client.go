@@ -39,19 +39,6 @@ type Transaction struct {
 	Payload       string `json:"payload"`
 }
 
-type balancesType struct{ available, pending uint64 }
-type balancesMapType map[*walletAddress]*balancesType
-
-type walletAddressSet map[string]*walletAddress
-
-func (was walletAddressSet) strings() []string {
-	addresses := make([]string, 0, len(was))
-	for addr := range was {
-		addresses = append(addresses, addr)
-	}
-	return addresses
-}
-
 type Client struct {
 	rpcClient        *rpcclient.RPCClient // RPC client for ongoing user requests
 	httpClient       *http.Client
