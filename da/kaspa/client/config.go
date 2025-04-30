@@ -31,7 +31,7 @@ var TestConfig = Config{
 	Timeout:     5 * time.Second,
 	MnemonicEnv: "KASPA_MNEMONIC",
 	Network:     "testnet",
-	FromAddress: "kaspatest:qp75u7cuphjwyq9j6ghe2v0j3gtvxlppyurq279h4ckpdc7umdh6vrusw9c7d",
+	FromAddress: "kaspatest:qzwyrgapjnhtjqkxdrmp7fpm3yddw296v2ajv9nmgmw5k3z0r38guevxyk7j0",
 }
 
 func CreateConfig(bz []byte) (c Config, err error) {
