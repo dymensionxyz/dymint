@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -135,7 +136,12 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	client, err := client.NewClient(c.ctx, &c.config)
+	mnemonic := os.Getenv(c.config.MnemonicEnv)
+	if mnemonic == "" {
+		return fmt.Errorf("mnemonic environment variable %s is not set or empty", c.config.MnemonicEnv)
+	}
+
+	client, err := client.NewClient(c.ctx, &c.config, mnemonic)
 	if err != nil {
 		return fmt.Errorf("error while establishing connection to DA layer: %w", err)
 	}

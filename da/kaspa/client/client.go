@@ -79,7 +79,7 @@ type Client struct {
 
 var _ KaspaClient = &Client{}
 
-func NewClient(ctx context.Context, config *Config) (KaspaClient, error) {
+func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClient, error) {
 	rpcClient, err := rpcclient.NewRPCClient(config.GrpcAddress)
 	if err != nil {
 		return nil, err
@@ -87,11 +87,6 @@ func NewClient(ctx context.Context, config *Config) (KaspaClient, error) {
 
 	if config.Timeout != 0 {
 		rpcClient.SetTimeout(time.Duration(config.Timeout) * time.Second)
-	}
-
-	mnemonic := "seed sun dice artwork mango length sudden trial shove wolf dove during aerobic embark copy border unveil convince cost civil there wrong echo front"
-	if mnemonic == "" {
-		return nil, fmt.Errorf("mnemonic environment variable %s is not set or empty", config.MnemonicEnv)
 	}
 
 	params := &dagconfig.TestnetParams
