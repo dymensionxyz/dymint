@@ -1,18 +1,15 @@
-package kaspa
+package client
 
 import (
-	"time"
-
 	"github.com/kaspanet/kaspad/app/appmessage"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
-	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet/serialization"
 	"github.com/kaspanet/kaspad/domain/consensus/model/externalapi"
 	"github.com/kaspanet/kaspad/domain/consensus/utils/consensushashing"
 	"github.com/kaspanet/kaspad/infrastructure/network/rpcclient"
 	"github.com/pkg/errors"
 )
 
-func (s *Client) broadcast(transactions [][]byte, isDomain bool) ([]string, error) {
+func (c *Client) broadcast(transactions [][]byte, isDomain bool) ([]string, error) {
 
 	txIDs := make([]string, len(transactions))
 	var tx *externalapi.DomainTransaction
@@ -20,29 +17,18 @@ func (s *Client) broadcast(transactions [][]byte, isDomain bool) ([]string, erro
 
 	for i, transaction := range transactions {
 
-		if isDomain {
-			tx, err = serialization.DeserializeDomainTransaction(transaction)
-			if err != nil {
-				return nil, err
-			}
-		} else if !isDomain { //default in proto3 is false
-			tx, err = libkaspawallet.ExtractTransaction(transaction, false)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		txIDs[i], err = sendTransaction(s.rpcClient, tx)
+		tx, err = libkaspawallet.ExtractTransaction(transaction, false)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, input := range tx.Inputs {
-			s.usedOutpoints[input.PreviousOutpoint] = time.Now()
+		txIDs[i], err = sendTransaction(c.rpcClient, tx)
+		if err != nil {
+			return nil, err
 		}
+
 	}
 
-	//s.forceSync()
 	return txIDs, nil
 }
 

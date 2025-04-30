@@ -10,11 +10,17 @@ import (
 	"cosmossdk.io/math"
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/kaspa/client"
 	"github.com/dymensionxyz/dymint/da/stub"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/metrics"
 	"github.com/tendermint/tendermint/libs/pubsub"
+)
+
+const (
+	defaultBatchRetryDelay    = 10 * time.Second
+	defaultBatchRetryAttempts = 10
 )
 
 // ToPath converts a SubmitMetaData to a path.
@@ -46,9 +52,9 @@ var (
 
 type DataAvailabilityLayerClient struct {
 	stub.Layer
-	client             KaspaClient
+	client             client.KaspaClient
 	pubsubServer       *pubsub.Server
-	config             Config
+	config             client.Config
 	logger             types.Logger
 	ctx                context.Context
 	cancel             context.CancelFunc
@@ -64,7 +70,7 @@ type SubmitMetaData struct {
 }
 
 // WithKaspaClient sets kaspa client.
-func WithKaspaClient(client KaspaClient) da.Option {
+func WithKaspaClient(client client.KaspaClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).client = client
 	}
@@ -129,7 +135,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	client, err := NewClient(c.ctx, &c.config)
+	client, err := client.NewClient(c.ctx, &c.config)
 	if err != nil {
 		return fmt.Errorf("error while establishing connection to DA layer: %w", err)
 	}
@@ -333,7 +339,7 @@ func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
-	return maxBlobSizeBytes
+	return client.MaxBlobSizeBytes
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {

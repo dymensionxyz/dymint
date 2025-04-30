@@ -1,4 +1,4 @@
-package kaspa
+package client
 
 import (
 	"context"
@@ -8,21 +8,31 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kaspanet/kaspad/cmd/kaspawallet/keys"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
+	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet/bip32"
 	"github.com/kaspanet/kaspad/domain/consensus/model/externalapi"
 	"github.com/kaspanet/kaspad/domain/consensus/utils/constants"
 	"github.com/kaspanet/kaspad/domain/dagconfig"
 	"github.com/kaspanet/kaspad/infrastructure/network/rpcclient"
 	"github.com/kaspanet/kaspad/util/txmass"
+	"github.com/pkg/errors"
+	"github.com/tyler-smith/go-bip39"
 )
 
 const (
-	minChangeTarget                     = constants.SompiPerKaspa * 10
-	minFeeRate                          = 1.0
-	address                             = "kaspatest:qp96y8xa6gqlh3a5c6wu9x73a5egvsw2vk7w7nzm8x98wvkavjlg29zvta4m6"
+	minChangeTarget = constants.SompiPerKaspa * 10
+	minFeeRate      = 1.0
+	//address                             = "kaspatest:qp75u7cuphjwyq9j6ghe2v0j3gtvxlppyurq279h4ckpdc7umdh6vrusw9c7d"
 	numIndexesToQueryForFarAddresses    = 100
 	numIndexesToQueryForRecentAddresses = 1000
+	// Purpose and CoinType constants
+	SingleSignerPurpose = 44
+	// Note: this is not entirely compatible to BIP 45 since
+	// TODO: Register the coin type in https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+	CoinType = 111111
+
+	TRANSIENT_BYTE_TO_MASS_FACTOR = 4
+	fromAddress                   = "kaspatest:qp75u7cuphjwyq9j6ghe2v0j3gtvxlppyurq279h4ckpdc7umdh6vrusw9c7d"
 )
 
 type KaspaClient interface {
@@ -35,18 +45,6 @@ type KaspaClient interface {
 type Transaction struct {
 	TransactionID string `json:"transaction_id"`
 	Payload       string `json:"payload"`
-}
-
-type walletUTXO struct {
-	Outpoint  *externalapi.DomainOutpoint
-	UTXOEntry externalapi.UTXOEntry
-	address   *walletAddress
-}
-
-type walletAddress struct {
-	index         uint32
-	cosignerIndex uint32
-	keyChain      uint8
 }
 
 type balancesType struct{ available, pending uint64 }
@@ -63,19 +61,20 @@ func (was walletAddressSet) strings() []string {
 }
 
 type Client struct {
-	rpcClient                       *rpcclient.RPCClient // RPC client for ongoing user requests
-	httpClient                      *http.Client
-	params                          *dagconfig.Params
-	coinbaseMaturity                uint64 // Is different from default if we use testnet-11
-	usedOutpoints                   map[externalapi.DomainOutpoint]time.Time
-	startTimeOfLastCompletedRefresh time.Time
-	apiURL                          string
-	utxosSortedByAmount             []*walletUTXO
-	keysFile                        *keys.File
-	txMassCalculator                *txmass.Calculator
-	mempoolExcludedUTXOs            map[externalapi.DomainOutpoint]*walletUTXO
-	addressSet                      walletAddressSet
-	nextSyncStartIndex              uint32
+	rpcClient        *rpcclient.RPCClient // RPC client for ongoing user requests
+	httpClient       *http.Client
+	params           *dagconfig.Params
+	coinbaseMaturity uint64 // Is different from default if we use testnet-11
+	usedOutpoints    map[externalapi.DomainOutpoint]time.Time
+	//startTimeOfLastCompletedRefresh time.Time
+	apiURL              string
+	utxosSortedByAmount []*walletUTXO
+	extendedKey         *bip32.ExtendedKey
+	//keysFile                        *keys.File
+	txMassCalculator     *txmass.Calculator
+	mempoolExcludedUTXOs map[externalapi.DomainOutpoint]*walletUTXO
+	addressSet           walletAddressSet
+	//nextSyncStartIndex   uint32
 }
 
 var _ KaspaClient = &Client{}
@@ -90,7 +89,19 @@ func NewClient(ctx context.Context, config *Config) (KaspaClient, error) {
 		rpcClient.SetTimeout(time.Duration(config.Timeout) * time.Second)
 	}
 
-	keysFile, err := keys.ReadKeysFile(&dagconfig.Params{}, config.KeysPath)
+	mnemonic := "seed sun dice artwork mango length sudden trial shove wolf dove during aerobic embark copy border unveil convince cost civil there wrong echo front"
+	if mnemonic == "" {
+		return nil, fmt.Errorf("mnemonic environment variable %s is not set or empty", config.MnemonicEnv)
+	}
+
+	params := &dagconfig.TestnetParams
+	seed := bip39.NewSeed(mnemonic, "")
+	version, err := versionFromParams(params)
+	if err != nil {
+		return nil, err
+	}
+
+	master, err := bip32.NewMasterWithPath(seed, version, defaultPath())
 	if err != nil {
 		return nil, err
 	}
@@ -100,16 +111,14 @@ func NewClient(ctx context.Context, config *Config) (KaspaClient, error) {
 	}
 
 	kaspaClient := &Client{
-		rpcClient:          rpcClient,
-		httpClient:         httpClient,
-		coinbaseMaturity:   100,
-		keysFile:           keysFile,
-		params:             &dagconfig.TestnetParams,
-		nextSyncStartIndex: 0,
-		apiURL:             config.RPCURL,
-		addressSet:         make(walletAddressSet),
-		txMassCalculator:   txmass.NewCalculator(1, 10, 1000),
-		usedOutpoints:      map[externalapi.DomainOutpoint]time.Time{},
+		rpcClient:        rpcClient,
+		httpClient:       httpClient,
+		coinbaseMaturity: 100,
+		extendedKey:      master,
+		params:           params,
+		apiURL:           config.RPCURL,
+		addressSet:       make(walletAddressSet),
+		txMassCalculator: txmass.NewCalculator(1, 10, 1000),
 	}
 	return kaspaClient, nil
 
@@ -121,14 +130,9 @@ func (c *Client) Stop() {
 
 func (c *Client) SubmitBlob(blob []byte) (string, error) {
 
-	err := c.collectFarAddresses()
-	if err != nil {
-		return "", err
-	}
-
 	c.refreshUTXOs()
 
-	unsignedTransactions, err := c.createUnsignedTransactions(address, blob)
+	unsignedTransactions, err := c.createUnsignedTransactions(fromAddress, blob)
 	if err != nil {
 		return "", err
 	}
@@ -148,7 +152,7 @@ func (c *Client) SubmitBlob(blob []byte) (string, error) {
 
 	fmt.Printf("Broadcasting %d transaction(s)\n", len(signedTransactions))
 
-	const chunkSize = 100 // To avoid sending a message bigger than the gRPC max message size, we split it to chunks
+	/*const chunkSize = 100 // To avoid sending a message bigger than the gRPC max message size, we split it to chunks
 	for offset := 0; offset < len(signedTransactions); offset += chunkSize {
 		end := len(signedTransactions)
 		if offset+chunkSize <= len(signedTransactions) {
@@ -164,9 +168,13 @@ func (c *Client) SubmitBlob(blob []byte) (string, error) {
 		for _, txID := range txIDs {
 			return txID, nil
 		}
+	}*/
+	txIds, err := c.broadcast(signedTransactions, false)
+	if err != nil {
+		return "", err
 	}
-
-	return "", fmt.Errorf("not found")
+	return txIds[0], nil
+	//return "", fmt.Errorf("not found")
 
 }
 
@@ -191,4 +199,23 @@ func (c *Client) GetBlob(txHash string) ([]byte, error) {
 	}
 	return data, nil
 
+}
+
+func versionFromParams(params *dagconfig.Params) ([4]byte, error) {
+	switch params.Name {
+	case dagconfig.MainnetParams.Name:
+		return bip32.KaspaMainnetPrivate, nil
+	case dagconfig.TestnetParams.Name:
+		return bip32.KaspaTestnetPrivate, nil
+	case dagconfig.DevnetParams.Name:
+		return bip32.KaspaDevnetPrivate, nil
+	case dagconfig.SimnetParams.Name:
+		return bip32.KaspaSimnetPrivate, nil
+	}
+
+	return [4]byte{}, errors.Errorf("unknown network %s", params.Name)
+}
+
+func defaultPath() string {
+	return fmt.Sprintf("m/%d'/%d'/0'", SingleSignerPurpose, CoinType)
 }
