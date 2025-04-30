@@ -20,8 +20,6 @@ import (
 
 const (
 	minChangeTarget                     = constants.SompiPerKaspa * 10
-	minFeeRate                          = 1.0
-	numIndexesToQueryForFarAddresses    = 100
 	numIndexesToQueryForRecentAddresses = 1000
 	SingleSignerPurpose                 = 44
 	CoinType                            = 111111
