@@ -26,10 +26,10 @@ const (
 )
 
 type KaspaClient interface {
-	SubmitBlob(blob []byte) (string, error)
-	GetBlob(txHash string) ([]byte, error)
 	Stop() error
 	GetBalance() uint64
+	SubmitBlob(blob []byte) (string, error)
+	GetBlob(txHash string) ([]byte, error)
 }
 
 // Transaction is a partial struct to extract payload
@@ -141,13 +141,11 @@ func (c *Client) GetBlob(txHash string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("post failed: %w", err)
 	}
-	if resp != nil { // Essential to prevent nil dereference
-		defer func() {
-			if cerr := resp.Body.Close(); cerr != nil {
-				return
-			}
-		}()
-	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			return
+		}
+	}()
 
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("Http response status code not OK: Status: %d", resp.StatusCode)
