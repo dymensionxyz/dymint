@@ -338,7 +338,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 
 	return da.Balance{
-		Amount: math.Int{},
+		Amount: math.NewIntFromUint64(d.client.GetBalance()),
 		Denom:  "KAS",
 	}, nil
 }

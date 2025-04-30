@@ -15,19 +15,23 @@ const (
 
 // Config stores Sui DALC configuration parameters.
 type Config struct {
-	RPCURL        string        `json:"rpc_url,omitempty"`
+	APIUrl        string        `json:"api_url,omitempty"`
 	GrpcAddress   string        `json:"grpc_address,omitempty"`
 	Timeout       time.Duration `json:"timeout,omitempty"`
 	MnemonicEnv   string        `json:"mnemonic_env,omitempty"`
 	RetryAttempts *int          `json:"retry_attempts,omitempty"`
 	RetryDelay    time.Duration `json:"retry_delay,omitempty"`
+	FromAddress   string        `json:"from_address,omitempty"`
+	Network       string        `json:"network,omitempty"`
 }
 
 var TestConfig = Config{
-	RPCURL:      "https://api-tn10.kaspa.org",
+	APIUrl:      "https://api-tn10.kaspa.org",
 	GrpcAddress: "localhost:16210",
 	Timeout:     5 * time.Second,
 	MnemonicEnv: "KASPA_MNEMONIC",
+	Network:     "testnet",
+	FromAddress: "kaspatest:qp75u7cuphjwyq9j6ghe2v0j3gtvxlppyurq279h4ckpdc7umdh6vrusw9c7d",
 }
 
 func createConfig(bz []byte) (c Config, err error) {

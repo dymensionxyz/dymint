@@ -17,31 +17,27 @@ type walletUTXO struct {
 	address   *walletAddress
 }
 
-func (c *Client) refreshUTXOs() error {
+func (c *Client) getUTXOs() ([]*walletUTXO, error) {
 
-	// No need to lock for reading since the only writer of this set is on `syncLoop` on the same goroutine.
-	//addresses := s.addressSet.strings()
-	addresses := []string{fromAddress}
 	// It's important to check the mempool before calling `GetUTXOsByAddresses`:
 	// If we would do it the other way around an output can be spent in the mempool
 	// and not in consensus, and between the calls its spending transaction will be
 	// added to consensus and removed from the mempool, so `getUTXOsByAddressesResponse`
 	// will include an obsolete output.
-	mempoolEntriesByAddresses, err := c.rpcClient.GetMempoolEntriesByAddresses(addresses, true, true)
+	mempoolEntriesByAddresses, err := c.rpcClient.GetMempoolEntriesByAddresses([]string{c.fromAddress}, true, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	getUTXOsByAddressesResponse, err := c.rpcClient.GetUTXOsByAddresses(addresses)
+	getUTXOsByAddressesResponse, err := c.rpcClient.GetUTXOsByAddresses([]string{c.fromAddress})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return c.updateUTXOSet(getUTXOsByAddressesResponse.Entries, mempoolEntriesByAddresses.Entries)
+	return c.collectUTXOs(getUTXOsByAddressesResponse.Entries, mempoolEntriesByAddresses.Entries)
 }
 
-// updateUTXOSet clears the current UTXO set, and re-fills it with the given entries
-func (c *Client) updateUTXOSet(entries []*appmessage.UTXOsByAddressesEntry, mempoolEntries []*appmessage.MempoolEntryByAddress) error {
+func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempoolEntries []*appmessage.MempoolEntryByAddress) ([]*walletUTXO, error) {
 	utxos := make([]*walletUTXO, 0, len(entries))
 
 	exclude := make(map[appmessage.RPCOutpoint]struct{})
@@ -57,12 +53,12 @@ func (c *Client) updateUTXOSet(entries []*appmessage.UTXOsByAddressesEntry, memp
 	for _, entry := range entries {
 		outpoint, err := appmessage.RPCOutpointToDomainOutpoint(entry.Outpoint)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		utxoEntry, err := appmessage.RPCUTXOEntryToUTXOEntry(entry.UTXOEntry)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		address := &walletAddress{
@@ -89,18 +85,10 @@ func (c *Client) updateUTXOSet(entries []*appmessage.UTXOsByAddressesEntry, memp
 
 	sort.Slice(utxos, func(i, j int) bool { return utxos[i].UTXOEntry.Amount() > utxos[j].UTXOEntry.Amount() })
 
-	c.utxosSortedByAmount = utxos
-	c.mempoolExcludedUTXOs = mempoolExcludedUTXOs
-
-	return nil
+	return utxos, nil
 }
 
-func (s *Client) selectUTXOs(feeRate float64, maxFee uint64, fromAddresses []*walletAddress, blob []byte) (selectedUTXOs []*libkaspawallet.UTXO, totalReceived uint64, changeSompi uint64, err error) {
-
-	spendAmount, err := utils.KasToSompi("1")
-	if err != nil {
-		return nil, 0, 0, err
-	}
+func (s *Client) selectUTXOs(utxos []*walletUTXO, feeRate float64, maxFee uint64, fromAddresses []*walletAddress, blob []byte) (selectedUTXOs []*libkaspawallet.UTXO, totalReceived uint64, changeSompi uint64, err error) {
 
 	totalValue := uint64(0)
 
@@ -110,6 +98,12 @@ func (s *Client) selectUTXOs(feeRate float64, maxFee uint64, fromAddresses []*wa
 	}
 
 	var fee uint64
+
+	spendAmount, err := utils.KasToSompi("1")
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
 	iteration := func(utxo *walletUTXO) (bool, error) {
 		if (fromAddresses != nil && !walletAddressesContain(fromAddresses, utxo.address)) ||
 			!s.isUTXOSpendable(utxo, dagInfo.VirtualDAAScore) {
@@ -123,6 +117,7 @@ func (s *Client) selectUTXOs(feeRate float64, maxFee uint64, fromAddresses []*wa
 		})
 
 		totalValue += utxo.UTXOEntry.Amount()
+
 		estimatedRecipientValue := spendAmount
 
 		fee, err = s.estimateFee(selectedUTXOs, feeRate, maxFee, estimatedRecipientValue, blob)
@@ -130,8 +125,7 @@ func (s *Client) selectUTXOs(feeRate float64, maxFee uint64, fromAddresses []*wa
 			return false, err
 		}
 
-		//totalSpend := spendAmount + fee
-		totalSpend := fee
+		totalSpend := spendAmount + fee
 		// Two break cases (if not send all):
 		// 		1. totalValue == totalSpend, so there's no change needed -> number of outputs = 1, so a single input is sufficient
 		// 		2. totalValue > totalSpend, so there will be change and 2 outputs, therefor in order to not struggle with --
@@ -144,7 +138,7 @@ func (s *Client) selectUTXOs(feeRate float64, maxFee uint64, fromAddresses []*wa
 		return true, nil
 	}
 
-	for _, utxo := range s.utxosSortedByAmount {
+	for _, utxo := range utxos {
 		shouldContinue, err := iteration(utxo)
 		if err != nil {
 			return nil, 0, 0, err

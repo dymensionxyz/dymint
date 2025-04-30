@@ -14,7 +14,7 @@ import (
 	"github.com/kaspanet/kaspad/util"
 )
 
-func (c *Client) createUnsignedTransactions(address string, blob []byte) ([][]byte, error) {
+func (c *Client) createUnsignedTransactions(utxos []*walletUTXO, address string, blob []byte) ([][]byte, error) {
 
 	feeRate, maxFee, err := c.calculateFeeLimits()
 	if err != nil {
@@ -30,12 +30,12 @@ func (c *Client) createUnsignedTransactions(address string, blob []byte) ([][]by
 
 	var fromAddresses []*walletAddress
 
-	changeAddress, err := util.DecodeAddress(fromAddress, c.params.Prefix)
+	changeAddress, err := util.DecodeAddress(c.fromAddress, c.params.Prefix)
 	if err != nil {
 		return nil, err
 	}
 
-	selectedUTXOs, spendValue, changeSompi, err := c.selectUTXOs(feeRate, maxFee, fromAddresses, blob)
+	selectedUTXOs, spendValue, changeSompi, err := c.selectUTXOs(utxos, feeRate, maxFee, fromAddresses, blob)
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +175,6 @@ func (s *Client) maybeSplitAndMergeTransaction(transaction *serialization.Partia
 	if max(transientMass, transactionMass) < mempool.MaximumStandardTransactionMass {
 		return []*serialization.PartiallySignedTransaction{transaction}, nil
 	} else {
-		panic("transaction mass to high")
+		return nil, fmt.Errorf("transaction mass to high. Max:%d,TransientMass:%d TransactionMass: %d", mempool.MaximumStandardTransactionMass, transientMass, transactionMass)
 	}
 }

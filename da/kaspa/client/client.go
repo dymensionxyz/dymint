@@ -10,7 +10,6 @@ import (
 
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet/bip32"
-	"github.com/kaspanet/kaspad/domain/consensus/model/externalapi"
 	"github.com/kaspanet/kaspad/domain/consensus/utils/constants"
 	"github.com/kaspanet/kaspad/domain/dagconfig"
 	"github.com/kaspanet/kaspad/infrastructure/network/rpcclient"
@@ -20,25 +19,20 @@ import (
 )
 
 const (
-	minChangeTarget = constants.SompiPerKaspa * 10
-	minFeeRate      = 1.0
-	//address                             = "kaspatest:qp75u7cuphjwyq9j6ghe2v0j3gtvxlppyurq279h4ckpdc7umdh6vrusw9c7d"
+	minChangeTarget                     = constants.SompiPerKaspa * 10
+	minFeeRate                          = 1.0
 	numIndexesToQueryForFarAddresses    = 100
 	numIndexesToQueryForRecentAddresses = 1000
-	// Purpose and CoinType constants
-	SingleSignerPurpose = 44
-	// Note: this is not entirely compatible to BIP 45 since
-	// TODO: Register the coin type in https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-	CoinType = 111111
-
-	TRANSIENT_BYTE_TO_MASS_FACTOR = 4
-	fromAddress                   = "kaspatest:qp75u7cuphjwyq9j6ghe2v0j3gtvxlppyurq279h4ckpdc7umdh6vrusw9c7d"
+	SingleSignerPurpose                 = 44
+	CoinType                            = 111111
+	TRANSIENT_BYTE_TO_MASS_FACTOR       = 4
 )
 
 type KaspaClient interface {
 	SubmitBlob(blob []byte) (string, error)
 	GetBlob(txHash string) ([]byte, error)
 	Stop()
+	GetBalance() uint64
 }
 
 // Transaction is a partial struct to extract payload
@@ -65,16 +59,12 @@ type Client struct {
 	httpClient       *http.Client
 	params           *dagconfig.Params
 	coinbaseMaturity uint64 // Is different from default if we use testnet-11
-	usedOutpoints    map[externalapi.DomainOutpoint]time.Time
-	//startTimeOfLastCompletedRefresh time.Time
-	apiURL              string
-	utxosSortedByAmount []*walletUTXO
-	extendedKey         *bip32.ExtendedKey
-	//keysFile                        *keys.File
-	txMassCalculator     *txmass.Calculator
-	mempoolExcludedUTXOs map[externalapi.DomainOutpoint]*walletUTXO
-	addressSet           walletAddressSet
-	//nextSyncStartIndex   uint32
+	apiURL           string
+	fromAddress      string
+	mnemonic         string
+	balance          uint64
+	extendedKey      *bip32.ExtendedKey
+	txMassCalculator *txmass.Calculator
 }
 
 var _ KaspaClient = &Client{}
@@ -89,7 +79,16 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		rpcClient.SetTimeout(time.Duration(config.Timeout) * time.Second)
 	}
 
-	params := &dagconfig.TestnetParams
+	var params *dagconfig.Params
+	switch config.Network {
+	case "testnet":
+		params = &dagconfig.TestnetParams
+	case "mainnet":
+		params = &dagconfig.MainnetParams
+	default:
+		return nil, fmt.Errorf("Config network parameter not set to testnet or mainnet. Param: %d", config.Network)
+	}
+
 	seed := bip39.NewSeed(mnemonic, "")
 	version, err := versionFromParams(params)
 	if err != nil {
@@ -110,9 +109,11 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		httpClient:       httpClient,
 		coinbaseMaturity: 100,
 		extendedKey:      master,
+		fromAddress:      config.FromAddress,
+		mnemonic:         mnemonic,
 		params:           params,
-		apiURL:           config.RPCURL,
-		addressSet:       make(walletAddressSet),
+		apiURL:           config.APIUrl,
+		balance:          uint64(0),
 		txMassCalculator: txmass.NewCalculator(1, 10, 1000),
 	}
 	return kaspaClient, nil
@@ -125,57 +126,36 @@ func (c *Client) Stop() {
 
 func (c *Client) SubmitBlob(blob []byte) (string, error) {
 
-	c.refreshUTXOs()
-
-	unsignedTransactions, err := c.createUnsignedTransactions(fromAddress, blob)
+	utxos, err := c.getUTXOs()
 	if err != nil {
 		return "", err
 	}
 
-	mnemonics := []string{"seed sun dice artwork mango length sudden trial shove wolf dove during aerobic embark copy border unveil convince cost civil there wrong echo front"}
+	unsignedTransactions, err := c.createUnsignedTransactions(utxos, c.fromAddress, blob)
+	if err != nil {
+		return "", err
+	}
 
 	signedTransactions := make([][]byte, len(unsignedTransactions))
 	for i, unsignedTransaction := range unsignedTransactions {
-
-		signedTransaction, err := libkaspawallet.Sign(c.params, mnemonics, unsignedTransaction, false)
+		signedTransaction, err := libkaspawallet.Sign(c.params, []string{c.mnemonic}, unsignedTransaction, false)
 		if err != nil {
 			return "", err
 		}
-
 		signedTransactions[i] = signedTransaction
 	}
 
-	fmt.Printf("Broadcasting %d transaction(s)\n", len(signedTransactions))
-
-	/*const chunkSize = 100 // To avoid sending a message bigger than the gRPC max message size, we split it to chunks
-	for offset := 0; offset < len(signedTransactions); offset += chunkSize {
-		end := len(signedTransactions)
-		if offset+chunkSize <= len(signedTransactions) {
-			end = offset + chunkSize
-		}
-
-		chunk := signedTransactions[offset:end]
-		txIDs, err := c.broadcast(chunk, false)
-		if err != nil {
-			return "", err
-		}
-
-		for _, txID := range txIDs {
-			return txID, nil
-		}
-	}*/
 	txIds, err := c.broadcast(signedTransactions, false)
 	if err != nil {
 		return "", err
 	}
 	return txIds[0], nil
-	//return "", fmt.Errorf("not found")
 
 }
 
 func (c *Client) GetBlob(txHash string) ([]byte, error) {
 
-	url := fmt.Sprintf(c.apiURL+"/%s", txHash)
+	url := fmt.Sprintf(c.apiURL+"/transactions/%s", txHash)
 
 	resp, err := c.httpClient.Get(url)
 	if err != nil {
@@ -183,9 +163,13 @@ func (c *Client) GetBlob(txHash string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("Http response status code not OK: Status: %d", resp.StatusCode)
+	}
+
 	var tx Transaction
 	if err := json.NewDecoder(resp.Body).Decode(&tx); err != nil {
-		return nil, fmt.Errorf("decode failed: %w", err)
+		return nil, fmt.Errorf("Kaspa transaction decode failed: %w", err)
 	}
 
 	data, err := hex.DecodeString(tx.Payload)
@@ -194,6 +178,10 @@ func (c *Client) GetBlob(txHash string) ([]byte, error) {
 	}
 	return data, nil
 
+}
+
+func (c *Client) GetBalance() uint64 {
+	return c.balance
 }
 
 func versionFromParams(params *dagconfig.Params) ([4]byte, error) {
