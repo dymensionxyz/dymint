@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/kaspanet/kaspad/app/appmessage"
@@ -48,6 +49,26 @@ func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempo
 		}
 	}
 
+	var address *walletAddress
+	for index := uint32(0); index < uint32(1000); index++ {
+		candidateAddress := &walletAddress{
+			index:         index,
+			cosignerIndex: 0,
+			keyChain:      libkaspawallet.ExternalKeychain,
+		}
+		addressString, err := c.walletAddressString(candidateAddress)
+		if err != nil {
+			return nil, err
+		}
+		if addressString == c.fromAddress {
+			address = candidateAddress
+			break
+		}
+	}
+	if address == nil {
+		return nil, fmt.Errorf("address not found")
+	}
+
 	mempoolExcludedUTXOs := make(map[externalapi.DomainOutpoint]*walletUTXO)
 	for _, entry := range entries {
 		outpoint, err := appmessage.RPCOutpointToDomainOutpoint(entry.Outpoint)
@@ -60,11 +81,6 @@ func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempo
 			return nil, err
 		}
 
-		address := &walletAddress{
-			index:         0,
-			cosignerIndex: 0,
-			keyChain:      libkaspawallet.ExternalKeychain,
-		}
 		utxo := &walletUTXO{
 			Outpoint:  outpoint,
 			UTXOEntry: utxoEntry,
