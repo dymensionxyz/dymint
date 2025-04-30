@@ -61,7 +61,7 @@ func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempo
 		}
 
 		address := &walletAddress{
-			index:         1,
+			index:         0,
 			cosignerIndex: 0,
 			keyChain:      libkaspawallet.ExternalKeychain,
 		}

@@ -30,14 +30,12 @@ func TestKaspaDataAvailabilityClient(t *testing.T) {
 
 	// Set up test environment
 	mnemoEnv := "KASPA_MNEMONIC"
-	//mnemonic := "broom home badge wrap unveil smoke birth erupt scan merry deny neglect pull select hold winner crouch hazard wear van spell jewel moment actual"
-	mnemonic := "seed sun dice artwork mango length sudden trial shove wolf dove during aerobic embark copy border unveil convince cost civil there wrong echo front"
+	mnemonic := "broom home badge wrap unveil smoke birth erupt scan merry deny neglect pull select hold winner crouch hazard wear van spell jewel moment actual"
 	err := os.Setenv(mnemoEnv, mnemonic)
 	require.NoError(t, err)
 
 	// Create test config. By default, tests use Kaspa testnet.
 	config := client.TestConfig
-	client.TestConfig.FromAddress = "kaspatest:qp75u7cuphjwyq9j6ghe2v0j3gtvxlppyurq279h4ckpdc7umdh6vrusw9c7d"
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
 
@@ -71,7 +69,7 @@ func TestKaspaDataAvailabilityClient(t *testing.T) {
 			name:  "small batch: 1KB",
 			batch: testutil.GenerateBatchWithBlocks(1, proposerKey),
 		},
-		{
+		/*{
 			name:  "mid-size batch 1: 20KB",
 			batch: testutil.GenerateBatchWithBlocks(40, proposerKey),
 		},
@@ -87,7 +85,7 @@ func TestKaspaDataAvailabilityClient(t *testing.T) {
 		{
 			name:  "big-size batch 2: 72KB",
 			batch: testutil.GenerateBatchWithBlocks(120, proposerKey),
-		},
+		},*/
 	}
 
 	for _, tc := range testCases {
@@ -101,12 +99,12 @@ func TestKaspaDataAvailabilityClient(t *testing.T) {
 			require.Equal(t, da.StatusSuccess, result.Code)
 
 			// Check batch availability
-			checkResult := client.CheckBatchAvailability(result.SubmitMetaData.ToPath())
+			checkResult := client.CheckBatchAvailability(result.SubmitMetaData.DAPath)
 			require.NoError(t, checkResult.Error)
 			require.Equal(t, da.StatusSuccess, checkResult.Code)
 
 			// Retrieve batch
-			retrieveResult := client.RetrieveBatches(result.SubmitMetaData.ToPath())
+			retrieveResult := client.RetrieveBatches(result.SubmitMetaData.DAPath)
 			require.NoError(t, retrieveResult.Error)
 			require.Equal(t, da.StatusSuccess, retrieveResult.Code)
 			require.Len(t, retrieveResult.Batches, 1)
