@@ -15,12 +15,10 @@ func (c *Client) broadcast(transactions [][]byte, isDomain bool) ([]string, erro
 	var err error
 
 	for i, transaction := range transactions {
-
 		tx, err = libkaspawallet.ExtractTransaction(transaction, false)
 		if err != nil {
 			return nil, err
 		}
-
 		txIDs[i], err = sendTransaction(c.rpcClient, tx)
 		if err != nil {
 			return nil, err

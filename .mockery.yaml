@@ -32,7 +32,7 @@ packages:
   github.com/dymensionxyz/dymint/da/bnb:
     interfaces:
      BNBClient:
-  github.com/dymensionxyz/dymint/da/kaspa:
+  github.com/dymensionxyz/dymint/da/kaspa/client:
     interfaces:
      KaspaClient:
   github.com/dymensionxyz/dymint/da:

@@ -5,14 +5,12 @@ import (
 	"testing"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/bnb"
 	"github.com/dymensionxyz/dymint/da/kaspa"
 	"github.com/dymensionxyz/dymint/da/kaspa/client"
 	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/go-ethereum/common"
 
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -22,10 +20,10 @@ import (
 
 	"github.com/tendermint/tendermint/libs/pubsub"
 
-	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/kaspa"
+	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/kaspa/client"
 )
 
-// TestBNB validates the SubmitBatch and RetrieveBatches method
+// TestKaspaSubmitRetrieve validates the SubmitBatch and RetrieveBatches method
 func TestKaspaSubmitRetrieve(t *testing.T) {
 
 	// init mock
@@ -38,11 +36,9 @@ func TestKaspaSubmitRetrieve(t *testing.T) {
 	}
 
 	// mock txhash, commitment and proof
-	txHash := common.BytesToHash([]byte("txhash"))
-	commitment := []byte("commitment")
-	proof := []byte("proof")
+	txHash := "txhash"
 
-	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, commitment, proof, nil)
+	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, nil)
 
 	// generate blob data from batch
 	blobData, err := batch.MarshalBinary()
@@ -94,7 +90,7 @@ func TestKaspaAvailCheck(t *testing.T) {
 				TxHash: "txhash",
 			}
 
-			mockClient.On("ValidateInclusion", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.err)
+			mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(nil, tc.err)
 
 			// validate avail check
 			rValidAvail := retriever.CheckBatchAvailability(metadata.ToPath())
@@ -105,7 +101,7 @@ func TestKaspaAvailCheck(t *testing.T) {
 	}
 
 }
-func setDAandMock(t *testing.T) (*mocks.MockBNBClient, da.DataAvailabilityLayerClient) {
+func setDAandMock(t *testing.T) (*mocks.MockKaspaClient, da.DataAvailabilityLayerClient) {
 	var err error
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
@@ -124,9 +120,9 @@ func setDAandMock(t *testing.T) (*mocks.MockBNBClient, da.DataAvailabilityLayerC
 	conf, err := json.Marshal(config)
 	require.NoError(err)
 
-	mockRPCClient := mocks.NewMockBNBClient(t)
+	mockKaspaClient := mocks.NewMockKaspaClient(t)
 	options := []da.Option{
-		bnb.WithRPCClient(mockRPCClient),
+		kaspa.WithKaspaClient(mockKaspaClient),
 	}
 
 	err = dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger(), options...)
@@ -135,5 +131,5 @@ func setDAandMock(t *testing.T) (*mocks.MockBNBClient, da.DataAvailabilityLayerC
 	err = dalc.Start()
 	require.NoError(err)
 
-	return mockRPCClient, dalc
+	return mockKaspaClient, dalc
 }
