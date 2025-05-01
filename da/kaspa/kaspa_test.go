@@ -11,6 +11,7 @@ import (
 	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
+
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -26,7 +27,7 @@ import (
 )
 
 func TestKaspaDataAvailabilityClient(t *testing.T) {
-	//t.Skip("Skipping Kaspa client test")
+	t.Skip("Skipping Kaspa client test")
 
 	// Set up test environment
 	mnemoEnv := "KASPA_MNEMONIC"

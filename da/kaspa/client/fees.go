@@ -85,7 +85,7 @@ func (c *Client) calculateFeeLimits() (feeRate float64, maxFee uint64, err error
 	return feeRate, maxFee, nil
 }
 
-func (c *Client) estimateFee(selectedUTXOs []*libkaspawallet.UTXO, feeRate float64, maxFee uint64, recipientValue uint64, blob []byte) (uint64, error) {
+func (c *Client) estimateFee(selectedUTXOs []*libkaspawallet.UTXO, feeRate float64, maxFee uint64, blob []byte) (uint64, error) {
 	fakePubKey := [util.PublicKeySizeECDSA]byte{}
 	fakeAddr, err := util.NewAddressPublicKeyECDSA(fakePubKey[:], c.params.Prefix) // We assume the worst case where the recipient address is ECDSA. In this case the scriptPubKey will be the longest.
 	if err != nil {
@@ -99,24 +99,11 @@ func (c *Client) estimateFee(selectedUTXOs []*libkaspawallet.UTXO, feeRate float
 
 	// This is an approximation for the distribution of value between the recipient output and the change output.
 	var mockPayments []*libkaspawallet.Payment
-	if totalValue > recipientValue {
-		mockPayments = []*libkaspawallet.Payment{
-			{
-				Address: fakeAddr,
-				Amount:  recipientValue,
-			},
-			{
-				Address: fakeAddr,
-				Amount:  totalValue - recipientValue, // We ignore the fee since we expect it to be insignificant in mass calculation.
-			},
-		}
-	} else {
-		mockPayments = []*libkaspawallet.Payment{
-			{
-				Address: fakeAddr,
-				Amount:  totalValue,
-			},
-		}
+	mockPayments = []*libkaspawallet.Payment{
+		{
+			Address: fakeAddr,
+			Amount:  totalValue,
+		},
 	}
 
 	publickey, err := c.extendedKey.Public()

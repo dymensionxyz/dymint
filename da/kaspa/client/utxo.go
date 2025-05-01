@@ -6,7 +6,6 @@ import (
 
 	"github.com/kaspanet/kaspad/app/appmessage"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
-	"github.com/kaspanet/kaspad/cmd/kaspawallet/utils"
 	"github.com/kaspanet/kaspad/domain/consensus/model/externalapi"
 	"github.com/kaspanet/kaspad/domain/consensus/utils/constants"
 	"github.com/pkg/errors"
@@ -103,20 +102,15 @@ func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempo
 	return utxos, nil
 }
 
-func (s *Client) selectUTXOs(utxos []*walletUTXO, feeRate float64, maxFee uint64, fromAddresses []*walletAddress, blob []byte) (selectedUTXOs []*libkaspawallet.UTXO, totalReceived uint64, changeSompi uint64, err error) {
+func (s *Client) selectUTXOs(utxos []*walletUTXO, feeRate float64, maxFee uint64, fromAddresses []*walletAddress, blob []byte) (selectedUTXOs []*libkaspawallet.UTXO, changeSompi uint64, err error) {
 	totalValue := uint64(0)
 
 	dagInfo, err := s.rpcClient.GetBlockDAGInfo()
 	if err != nil {
-		return nil, 0, 0, err
+		return nil, 0, err
 	}
 
 	var fee uint64
-
-	spendAmount, err := utils.KasToSompi("1")
-	if err != nil {
-		return nil, 0, 0, err
-	}
 
 	iteration := func(utxo *walletUTXO) (bool, error) {
 		if (fromAddresses != nil && !walletAddressesContain(fromAddresses, utxo.address)) ||
@@ -132,14 +126,13 @@ func (s *Client) selectUTXOs(utxos []*walletUTXO, feeRate float64, maxFee uint64
 
 		totalValue += utxo.UTXOEntry.Amount()
 
-		estimatedRecipientValue := spendAmount
-
-		fee, err = s.estimateFee(selectedUTXOs, feeRate, maxFee, estimatedRecipientValue, blob)
+		fee, err = s.estimateFee(selectedUTXOs, feeRate, maxFee, blob)
 		if err != nil {
 			return false, err
 		}
 
-		totalSpend := spendAmount + fee
+		//totalSpend := spendAmount + fee
+		totalSpend := fee
 		// Two break cases (if not send all):
 		// 		1. totalValue == totalSpend, so there's no change needed -> number of outputs = 1, so a single input is sufficient
 		// 		2. totalValue > totalSpend, so there will be change and 2 outputs, therefor in order to not struggle with --
@@ -155,7 +148,7 @@ func (s *Client) selectUTXOs(utxos []*walletUTXO, feeRate float64, maxFee uint64
 	for _, utxo := range utxos {
 		shouldContinue, err := iteration(utxo)
 		if err != nil {
-			return nil, 0, 0, err
+			return nil, 0, err
 		}
 
 		if !shouldContinue {
@@ -163,12 +156,12 @@ func (s *Client) selectUTXOs(utxos []*walletUTXO, feeRate float64, maxFee uint64
 		}
 	}
 
-	totalSpend := spendAmount + fee
-	totalReceived = spendAmount
+	totalSpend := fee
+	//totalReceived = spendAmount
 	if totalValue < totalSpend {
-		return nil, 0, 0, errors.Errorf("Insufficient funds for send: %f required, while only %f available",
+		return nil, 0, errors.Errorf("Insufficient funds for send: %f required, while only %f available",
 			float64(totalSpend)/constants.SompiPerKaspa, float64(totalValue)/constants.SompiPerKaspa)
 	}
 
-	return selectedUTXOs, totalReceived, totalValue - totalSpend, nil
+	return selectedUTXOs, totalValue - totalSpend, nil
 }

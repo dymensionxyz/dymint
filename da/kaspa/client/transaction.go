@@ -34,7 +34,7 @@ func (c *Client) createUnsignedTransactions(utxos []*walletUTXO, address string,
 		return nil, err
 	}
 
-	selectedUTXOs, spendValue, changeSompi, err := c.selectUTXOs(utxos, feeRate, maxFee, fromAddresses, blob)
+	selectedUTXOs, change, err := c.selectUTXOs(utxos, feeRate, maxFee, fromAddresses, blob)
 	if err != nil {
 		return nil, err
 	}
@@ -44,16 +44,9 @@ func (c *Client) createUnsignedTransactions(utxos []*walletUTXO, address string,
 	}
 
 	payments := []*libkaspawallet.Payment{{
-		Address: toAddress,
-		Amount:  spendValue,
+		Address: changeAddress,
+		Amount:  change,
 	}}
-	if changeSompi > 0 {
-		payments = append(payments, &libkaspawallet.Payment{
-			Address: changeAddress,
-			Amount:  changeSompi,
-		})
-	}
-
 	publickey, err := c.extendedKey.Public()
 	if err != nil {
 		return nil, err
