@@ -9,7 +9,8 @@ import (
 	"github.com/kaspanet/kaspad/infrastructure/network/rpcclient"
 )
 
-func (c *Client) broadcast(transactions [][]byte, isDomain bool) ([]string, error) {
+// broadcast sends signed txs to the Kaspa node, and returns tx ids if not rejected.
+func (c *Client) broadcast(transactions [][]byte) ([]string, error) {
 	txIDs := make([]string, len(transactions))
 	var tx *externalapi.DomainTransaction
 	var err error
@@ -29,6 +30,7 @@ func (c *Client) broadcast(transactions [][]byte, isDomain bool) ([]string, erro
 	return txIDs, nil
 }
 
+// sendTransaction sends a grpc message to the Kaspa node including a tx, and returns the result received from the node
 func sendTransaction(client *rpcclient.RPCClient, tx *externalapi.DomainTransaction) (string, error) {
 	submitTransactionResponse, err := client.SubmitTransaction(appmessage.DomainTransactionToRPCTransaction(tx), consensushashing.TransactionID(tx).String(), false)
 	if err != nil {

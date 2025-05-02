@@ -16,6 +16,7 @@ type walletUTXO struct {
 	address   *walletAddress
 }
 
+// getUTXOs retrieves spendable Utxos per address from Kaspa node
 func (c *Client) getUTXOs() ([]*walletUTXO, error) {
 	// It's important to check the mempool before calling `GetUTXOsByAddresses`:
 	// If we would do it the other way around an output can be spent in the mempool
@@ -32,11 +33,11 @@ func (c *Client) getUTXOs() ([]*walletUTXO, error) {
 		return nil, err
 	}
 
-	return c.collectUTXOs(getUTXOsByAddressesResponse.Entries, mempoolEntriesByAddresses.Entries)
+	return c.generateWalletUtxos(getUTXOsByAddressesResponse.Entries, mempoolEntriesByAddresses.Entries)
 }
 
-// collectUTXOs
-func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempoolEntries []*appmessage.MempoolEntryByAddress) ([]*walletUTXO, error) {
+// generateWalletUtxos translates entries received from Kaspa Node to walletUTXO
+func (c *Client) generateWalletUtxos(entries []*appmessage.UTXOsByAddressesEntry, mempoolEntries []*appmessage.MempoolEntryByAddress) ([]*walletUTXO, error) {
 	utxos := make([]*walletUTXO, 0, len(entries))
 
 	exclude := make(map[appmessage.RPCOutpoint]struct{})
@@ -103,6 +104,7 @@ func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempo
 	return utxos, nil
 }
 
+// selectUTXOs, returns Utxos to be used, necessary to send tx. Returns error in case not enough funds.
 func (c *Client) selectUTXOs(feeRate float64, maxFee uint64, blob []byte) (selectedUTXOs []*libkaspawallet.UTXO, changeSompi uint64, err error) {
 	utxos, err := c.getUTXOs()
 	if err != nil {
@@ -136,7 +138,6 @@ func (c *Client) selectUTXOs(feeRate float64, maxFee uint64, blob []byte) (selec
 			return false, err
 		}
 
-		// totalSpend := spendAmount + fee
 		totalSpend := fee
 		// Two break cases (if not send all):
 		// 		1. totalValue == totalSpend, so there's no change needed -> number of outputs = 1, so a single input is sufficient

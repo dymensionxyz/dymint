@@ -46,7 +46,7 @@ type Client struct {
 	wAddress         *walletAddress
 	mnemonic         string
 	balance          uint64
-	extendedKey      *bip32.ExtendedKey
+	publicKey        *bip32.ExtendedKey
 	txMassCalculator *txmass.Calculator
 }
 
@@ -92,10 +92,15 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		Timeout: config.Timeout,
 	}
 
+	pubKey, err := master.Public()
+	if err != nil {
+		return nil, err
+	}
+
 	kaspaClient := &Client{
 		rpcClient:        rpcClient,
 		httpClient:       httpClient,
-		extendedKey:      master,
+		publicKey:        pubKey,
 		address:          address,
 		mnemonic:         mnemonic,
 		params:           params,
@@ -106,37 +111,45 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 	return kaspaClient, nil
 }
 
+// Stop disconnects from grpc
 func (c *Client) Stop() error {
 	return c.rpcClient.Disconnect()
 }
 
+// SubmitBlob sends the blob to Kaspa network, including the blob in  Kaspa Txs
 func (c *Client) SubmitBlob(blob []byte) ([]string, error) {
 
-	unsignedTransactions, err := c.createUnsignedTransactions(blob)
+	// generate txs
+	blobTxs, err := c.generateBlobTxs(blob)
 	if err != nil {
 		return nil, err
 	}
 
-	signedTransactions := make([][]byte, len(unsignedTransactions))
-	for i, unsignedTransaction := range unsignedTransactions {
-		signedTransaction, err := libkaspawallet.Sign(c.params, []string{c.mnemonic}, unsignedTransaction, false)
+	// sign tx
+	signedTxs := make([][]byte, len(blobTxs))
+	for i, tx := range blobTxs {
+		signedTx, err := libkaspawallet.Sign(c.params, []string{c.mnemonic}, tx, false)
 		if err != nil {
 			return nil, err
 		}
-		signedTransactions[i] = signedTransaction
+		signedTxs[i] = signedTx
 	}
 
-	txIds, err := c.broadcast(signedTransactions, false)
+	// send txs to Kaspa node
+	txIds, err := c.broadcast(signedTxs)
 	if err != nil {
 		return nil, err
 	}
+
+	// return tx ids obtained
 	return txIds, nil
 }
 
+// GetBlob retrieves the blob from Kaspa network, by tx ids
 func (c *Client) GetBlob(txHash []string) ([]byte, error) {
 	txData := make([][]byte, len(txHash))
 	for i, hash := range txHash {
-		tx, err := c.retrieveKaspaTx(hash)
+		tx, err := c.retrieveBlobTx(hash)
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +169,8 @@ func (c *Client) GetBalance() uint64 {
 	return c.balance
 }
 
-func (c *Client) retrieveKaspaTx(txHash string) (*Transaction, error) {
+// retrieveBlobTx gets Tx, that includes blob parts, using  Kaspa REST-API server (https://api.kaspa.org/docs)
+func (c *Client) retrieveBlobTx(txHash string) (*Transaction, error) {
 	url := fmt.Sprintf(c.apiURL+"/transactions/%s", txHash)
 
 	resp, err := c.httpClient.Get(url)
@@ -180,6 +194,7 @@ func (c *Client) retrieveKaspaTx(txHash string) (*Transaction, error) {
 	return &tx, nil
 }
 
+// returns version params depending on the network used (mainnet or testnet)
 func versionFromParams(params *dagconfig.Params) ([4]byte, error) {
 	switch params.Name {
 	case dagconfig.MainnetParams.Name:

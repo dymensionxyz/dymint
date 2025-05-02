@@ -17,7 +17,8 @@ import (
 	"github.com/kaspanet/kaspad/util/txmass"
 )
 
-func (c *Client) createUnsignedTransactions(blob []byte) ([][]byte, error) {
+// generateBlobTxs returns serialized Kaspa txs that includes the blob in the payload
+func (c *Client) generateBlobTxs(blob []byte) ([][]byte, error) {
 	feeRate, maxFee, err := c.calculateFeeLimits()
 	if err != nil {
 		return nil, err
@@ -36,16 +37,13 @@ func (c *Client) createUnsignedTransactions(blob []byte) ([][]byte, error) {
 		Address: c.address,
 		Amount:  change,
 	}}
-	publickey, err := c.extendedKey.Public()
-	if err != nil {
-		return nil, err
-	}
-	unsignedTransaction, err := createUnsignedTransaction(publickey.String(), payments, selectedUTXOs, blob)
+
+	unsignedTransaction, err := createUnsignedTransaction(c.publicKey.String(), payments, selectedUTXOs, blob)
 	if err != nil {
 		return nil, err
 	}
 
-	unsignedTransactions, err := c.maybeAutoCompoundTransaction(unsignedTransaction, c.address, c.wAddress, feeRate, maxFee, blob)
+	unsignedTransactions, err := c.serializeTransaction(unsignedTransaction, c.address, c.wAddress, feeRate, maxFee, blob)
 	if err != nil {
 		return nil, err
 	}
@@ -53,16 +51,11 @@ func (c *Client) createUnsignedTransactions(blob []byte) ([][]byte, error) {
 	return unsignedTransactions, nil
 }
 
-// maybeAutoCompoundTransaction checks if a transaction's mass is higher that what is allowed for a standard
-// transaction.
-// If it is - the transaction is split into multiple transactions, each with a portion of the inputs and a single output
-// into a change address.
-// An additional `mergeTransaction` is generated - which merges the outputs of the above splits into a single output
-// paying to the original transaction's payee.
-func (c *Client) maybeAutoCompoundTransaction(transaction *serialization.PartiallySignedTransaction, address util.Address, wAddress *walletAddress,
+// serializeTransaction splits the transaction, when necessary, into multiple depending on the mass and serializes them into []byte
+func (c *Client) serializeTransaction(transaction *serialization.PartiallySignedTransaction, address util.Address, wAddress *walletAddress,
 	feeRate float64, maxFee uint64, blob []byte,
 ) ([][]byte, error) {
-	splitTransactions, err := c.maybeSplitAndMergeTransaction(transaction, address, wAddress, feeRate, maxFee, blob)
+	splitTransactions, err := c.calculateMassAndSplitTransaction(transaction, address, wAddress, feeRate, maxFee, blob)
 	if err != nil {
 		return nil, err
 	}
@@ -76,25 +69,31 @@ func (c *Client) maybeAutoCompoundTransaction(transaction *serialization.Partial
 	return splitTransactionsBytes, nil
 }
 
-func (c *Client) maybeSplitAndMergeTransaction(transaction *serialization.PartiallySignedTransaction, address util.Address, wAddress *walletAddress,
+// calculateMassAndSplitTransaction splits the transaction into multiple in case transientMass is above the mempool limit (maximum mass accepted by nodes, otherwise they reject the tx before added to mempool).
+func (c *Client) calculateMassAndSplitTransaction(transaction *serialization.PartiallySignedTransaction, address util.Address, wAddress *walletAddress,
 	feeRate float64, maxFee uint64, blob []byte,
 ) ([]*serialization.PartiallySignedTransaction, error) {
-	mockTx := transaction.Clone()
-	mockTx.Tx.Payload = nil
-	transactionMass, err := c.estimateComputeMassAfterSignatures(mockTx)
-	if err != nil {
-		return nil, err
-	}
+
 	transientMass, err := c.estimateTransientMassAfterSignatures(transaction)
 	if err != nil {
 		return nil, err
 	}
+
+	// we assume transientMass is always higher than overall transaction mass, which will be the case when including payload with small number of inputs.
 	if transientMass < mempool.MaximumStandardTransactionMass {
 		return []*serialization.PartiallySignedTransaction{transaction}, nil
 	} else {
+		mockTx := transaction.Clone()
+		mockTx.Tx.Payload = nil
 
-		maxChunkSize := (int)((mempool.MaximumStandardTransactionMass - transactionMass) / TRANSIENT_BYTE_TO_MASS_FACTOR) //nolint:gosec // maxChunkSize will not overflow
-		splitCount := (len(blob) / maxChunkSize)
+		seralizedTx, err := serialization.SerializePartiallySignedTransaction(mockTx)
+		if err != nil {
+			return nil, err
+		}
+
+		// this calculated the number of txs necessary and creates them (based on available size for the payload), chunking the blob and including a part of it into each tx sequentially
+		maxChunkSize := (mempool.MaximumStandardTransactionMass / TRANSIENT_BYTE_TO_MASS_FACTOR) - len(seralizedTx)
+		splitCount := len(blob) / maxChunkSize
 
 		if len(blob)%maxChunkSize > 0 {
 			splitCount++
@@ -137,12 +136,9 @@ func (c *Client) maybeSplitAndMergeTransaction(transaction *serialization.Partia
 			}
 
 			totalSompi -= fee
-			publickey, err := c.extendedKey.Public()
-			if err != nil {
-				return nil, err
-			}
+
 			payload := blob[startChunkIndex:endChunkIndex]
-			tx, err := createUnsignedTransaction(publickey.String(),
+			tx, err := createUnsignedTransaction(c.publicKey.String(),
 				[]*libkaspawallet.Payment{{
 					Address: address,
 					Amount:  totalSompi,
@@ -157,6 +153,9 @@ func (c *Client) maybeSplitAndMergeTransaction(transaction *serialization.Partia
 	}
 }
 
+// createUnsignedTransaction generates the transaction, using the selectedUTXOs as input, and generating outputs including the specified payments.
+// The payment basically substracts the fee from the initial Utxo value and sends the change to the same address.
+// The blob is included to the tx as payload.
 func createUnsignedTransaction(
 	extendedPublicKey string,
 	payments []*libkaspawallet.Payment,
@@ -168,11 +167,11 @@ func createUnsignedTransaction(
 
 	for i, utxo := range selectedUTXOs {
 
+		//TODO: verify this part of the code (copied from Kaspad code). Maybe not necessary
 		extendedKey, err := bip32.DeserializeExtendedKey(extendedPublicKey)
 		if err != nil {
 			return nil, err
 		}
-
 		derivedKey, err := extendedKey.DeriveFromPath(utxo.DerivationPath)
 		if err != nil {
 			return nil, err
@@ -225,6 +224,7 @@ func createUnsignedTransaction(
 	}, nil
 }
 
+// createTransactionWithJunkFieldsForMassCalculation creates tx used only for estimating fees
 func createTransactionWithJunkFieldsForMassCalculation(transaction *serialization.PartiallySignedTransaction, ecdsa bool, minimumSignatures uint32, txMassCalculator *txmass.Calculator) (*externalapi.DomainTransaction, error) {
 	transaction = transaction.Clone()
 	signatureSize := uint64(64)

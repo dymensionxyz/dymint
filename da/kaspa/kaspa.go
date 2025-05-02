@@ -67,7 +67,6 @@ type DataAvailabilityLayerClient struct {
 	logger             types.Logger
 	ctx                context.Context
 	cancel             context.CancelFunc
-	txInclusionTimeout time.Duration
 	batchRetryDelay    time.Duration
 	batchRetryAttempts uint
 }
@@ -81,13 +80,6 @@ type SubmitMetaData struct {
 func WithKaspaClient(client client.KaspaClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).client = client
-	}
-}
-
-// WithTxInclusionTimeout is an option which sets the timeout for waiting for transaction inclusion.
-func WithTxInclusionTimeout(timeout time.Duration) da.Option {
-	return func(dalc da.DataAvailabilityLayerClient) {
-		dalc.(*DataAvailabilityLayerClient).txInclusionTimeout = timeout
 	}
 }
 
@@ -125,10 +117,8 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	// Set defaults
 	c.pubsubServer = pubsubServer
 
-	// TODO: Make configurable
-	c.txInclusionTimeout = defaultTxInclusionTimeout
-	c.batchRetryDelay = defaultBatchRetryDelay
-	c.batchRetryAttempts = defaultBatchRetryAttempts
+	c.batchRetryDelay = c.config.RetryDelay
+	c.batchRetryAttempts = uint(*c.config.RetryAttempts)
 
 	// Apply options
 	for _, apply := range options {
@@ -233,14 +223,8 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 
 			err = retry.Do(
 				func() error {
-					var err error
 					result := c.checkBatchAvailability(submitMetadata)
-					err = result.Error
-					if err != nil {
-						c.logger.Error("submission availability check", "error", err)
-						return err
-					}
-					return nil
+					return result.Error
 				},
 				retry.Context(c.ctx),
 				retry.LastErrorOnly(true),
