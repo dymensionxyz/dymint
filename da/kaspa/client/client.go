@@ -139,7 +139,6 @@ func (c *Client) SubmitBlob(blob []byte) ([]string, error) {
 }
 
 func (c *Client) GetBlob(txHash []string) ([]byte, error) {
-
 	txData := make([][]byte, len(txHash))
 	for i, hash := range txHash {
 		tx, err := c.retrieveKaspaTx(hash)

@@ -29,13 +29,3 @@ func (c *Client) walletAddressString(wAddr *walletAddress) (string, error) {
 
 	return addr.String(), nil
 }
-
-func walletAddressesContain(addresses []*walletAddress, contain *walletAddress) bool {
-	for _, address := range addresses {
-		if *address == *contain {
-			return true
-		}
-	}
-
-	return false
-}

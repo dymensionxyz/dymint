@@ -102,7 +102,6 @@ func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempo
 }
 
 func (c *Client) selectUTXOs(feeRate float64, maxFee uint64, blob []byte) (selectedUTXOs []*libkaspawallet.UTXO, changeSompi uint64, err error) {
-
 	utxos, err := c.getUTXOs()
 	if err != nil {
 		return nil, 0, err
@@ -134,7 +133,7 @@ func (c *Client) selectUTXOs(feeRate float64, maxFee uint64, blob []byte) (selec
 			return false, err
 		}
 
-		//totalSpend := spendAmount + fee
+		// totalSpend := spendAmount + fee
 		totalSpend := fee
 		// Two break cases (if not send all):
 		// 		1. totalValue == totalSpend, so there's no change needed -> number of outputs = 1, so a single input is sufficient
@@ -160,7 +159,7 @@ func (c *Client) selectUTXOs(feeRate float64, maxFee uint64, blob []byte) (selec
 	}
 
 	totalSpend := fee
-	//totalReceived = spendAmount
+	// totalReceived = spendAmount
 	if totalValue < totalSpend {
 		return nil, 0, fmt.Errorf("Insufficient funds for send: %f required, while only %f available",
 			float64(totalSpend)/constants.SompiPerKaspa, float64(totalValue)/constants.SompiPerKaspa)

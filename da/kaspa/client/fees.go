@@ -54,8 +54,7 @@ func (c *Client) estimateFee(selectedUTXOs []*libkaspawallet.UTXO, feeRate float
 	}
 
 	// This is an approximation for the distribution of value between the recipient output and the change output.
-	var mockPayments []*libkaspawallet.Payment
-	mockPayments = []*libkaspawallet.Payment{
+	mockPayments := []*libkaspawallet.Payment{
 		{
 			Address: fakeAddr,
 			Amount:  totalValue,

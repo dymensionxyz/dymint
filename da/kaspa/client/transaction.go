@@ -76,28 +76,9 @@ func (c *Client) maybeAutoCompoundTransaction(transaction *serialization.Partial
 	return splitTransactionsBytes, nil
 }
 
-/*func (c *Client) maybeSplitAndMergeTransaction(transaction *serialization.PartiallySignedTransaction, toAddress util.Address,
-	changeAddress util.Address, changeWalletAddress *walletAddress, feeRate float64, maxFee uint64, blob []byte,
-) ([]*serialization.PartiallySignedTransaction, error) {
-	transactionMass, err := c.estimateComputeMassAfterSignatures(transaction)
-	if err != nil {
-		return nil, err
-	}
-	transientMass, err := c.estimateTransientMassAfterSignatures(transaction)
-	if err != nil {
-		return nil, err
-	}
-
-	if max(transientMass, transactionMass) < mempool.MaximumStandardTransactionMass {
-		return []*serialization.PartiallySignedTransaction{transaction}, nil
-	} else {
-		return nil, fmt.Errorf("transaction mass to high. Max:%d,TransientMass:%d TransactionMass: %d", mempool.MaximumStandardTransactionMass, transientMass, transactionMass)
-	}
-}*/
-
 func (c *Client) maybeSplitAndMergeTransaction(transaction *serialization.PartiallySignedTransaction, address util.Address, wAddress *walletAddress,
-	feeRate float64, maxFee uint64, blob []byte) ([]*serialization.PartiallySignedTransaction, error) {
-
+	feeRate float64, maxFee uint64, blob []byte,
+) ([]*serialization.PartiallySignedTransaction, error) {
 	mockTx := transaction.Clone()
 	mockTx.Tx.Payload = nil
 	transactionMass, err := c.estimateComputeMassAfterSignatures(mockTx)
@@ -112,8 +93,8 @@ func (c *Client) maybeSplitAndMergeTransaction(transaction *serialization.Partia
 		return []*serialization.PartiallySignedTransaction{transaction}, nil
 	} else {
 
-		maxChunkSize := (int)((mempool.MaximumStandardTransactionMass - transactionMass) / TRANSIENT_BYTE_TO_MASS_FACTOR)
-		splitCount := (int)(len(blob) / maxChunkSize)
+		maxChunkSize := (int)((mempool.MaximumStandardTransactionMass - transactionMass) / TRANSIENT_BYTE_TO_MASS_FACTOR) //nolint:gosec // maxChunkSize will not overflow
+		splitCount := (len(blob) / maxChunkSize)
 
 		if len(blob)%maxChunkSize > 0 {
 			splitCount++
@@ -166,7 +147,9 @@ func (c *Client) maybeSplitAndMergeTransaction(transaction *serialization.Partia
 					Address: address,
 					Amount:  totalSompi,
 				}}, selectedUTXOs, payload)
-
+			if err != nil {
+				return nil, err
+			}
 			splitTransactions[i] = tx
 		}
 
