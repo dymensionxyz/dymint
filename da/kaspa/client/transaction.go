@@ -73,7 +73,6 @@ func (c *Client) serializeTransaction(transaction *serialization.PartiallySigned
 func (c *Client) calculateMassAndSplitTransaction(transaction *serialization.PartiallySignedTransaction, address util.Address, wAddress *walletAddress,
 	feeRate float64, maxFee uint64, blob []byte,
 ) ([]*serialization.PartiallySignedTransaction, error) {
-
 	transientMass, err := c.estimateTransientMassAfterSignatures(transaction)
 	if err != nil {
 		return nil, err
@@ -167,7 +166,7 @@ func createUnsignedTransaction(
 
 	for i, utxo := range selectedUTXOs {
 
-		//TODO: verify this part of the code (copied from kaspawallet https://github.com/kaspanet/kaspad). It may be redundant
+		// TODO: verify this part of the code (copied from kaspawallet https://github.com/kaspanet/kaspad). It may be redundant
 		extendedKey, err := bip32.DeserializeExtendedKey(extendedPublicKey)
 		if err != nil {
 			return nil, err

@@ -105,7 +105,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		mnemonic:         mnemonic,
 		params:           params,
 		apiURL:           config.APIUrl,
-		balance:          uint64(0), //TODO: refresh balance every time utxos are retrieved. (https://github.com/dymensionxyz/dymint/issues/1415)
+		balance:          uint64(0), // TODO: refresh balance every time utxos are retrieved. (https://github.com/dymensionxyz/dymint/issues/1415)
 		txMassCalculator: txmass.NewCalculator(1, 10, 1000),
 	}
 	return kaspaClient, nil
@@ -118,7 +118,6 @@ func (c *Client) Stop() error {
 
 // SubmitBlob sends the blob to Kaspa network, including the blob in  Kaspa Txs
 func (c *Client) SubmitBlob(blob []byte) ([]string, error) {
-
 	// generate txs
 	blobTxs, err := c.generateBlobTxs(blob)
 	if err != nil {

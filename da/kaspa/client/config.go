@@ -11,7 +11,7 @@ import (
 
 const (
 	defaultRetryDelay    = 3 * time.Second
-	defaultRetryAttempts = 5
+	defaultRetryAttempts = uint(5)
 	maxAddressesUtxo     = uint32(100)
 	MaxBlobSizeBytes     = 500000
 )
@@ -27,7 +27,7 @@ type Config struct {
 	GrpcAddress   string               `json:"grpc_address,omitempty"`   // Kaspa node address+port used to submit txs using GRPC
 	Timeout       time.Duration        `json:"timeout,omitempty"`        // Timeout used in http requests
 	MnemonicEnv   string               `json:"mnemonic_env,omitempty"`   // mnemonic used to generate key
-	RetryAttempts *int                 `json:"retry_attempts,omitempty"` // num retries before failing when submitting or retrieving blobs
+	RetryAttempts *uint                `json:"retry_attempts,omitempty"` // num retries before failing when submitting or retrieving blobs
 	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`    // waiting time after failing before failing when submitting or retrieving blobs
 	Address       string               `json:"address,omitempty"`        // Address with funds used to send Kaspa Txs
 	Network       string               `json:"network,omitempty"`        // mainnet or testnet

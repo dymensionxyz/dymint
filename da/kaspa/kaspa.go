@@ -112,7 +112,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	c.pubsubServer = pubsubServer
 
 	c.batchRetryDelay = c.config.RetryDelay
-	c.batchRetryAttempts = uint(*c.config.RetryAttempts)
+	c.batchRetryAttempts = *c.config.RetryAttempts
 
 	// Apply options
 	for _, apply := range options {
@@ -190,7 +190,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			err := retry.Do(
 				func() error {
 					var err error
-					//TODO: differentiate between unrecoverable and recoverable errors.(https://github.com/dymensionxyz/dymint/issues/1416)
+					// TODO: differentiate between unrecoverable and recoverable errors.(https://github.com/dymensionxyz/dymint/issues/1416)
 					txHash, err = c.client.SubmitBlob(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
@@ -226,7 +226,6 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				retry.DelayType(retry.FixedDelay),
 				retry.Attempts(c.batchRetryAttempts),
 			)
-
 			if err != nil {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
