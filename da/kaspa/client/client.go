@@ -105,7 +105,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		mnemonic:         mnemonic,
 		params:           params,
 		apiURL:           config.APIUrl,
-		balance:          uint64(0), //TODO: refresh balance every time utxos are retrieved.
+		balance:          uint64(0), //TODO: refresh balance every time utxos are retrieved. (https://github.com/dymensionxyz/dymint/issues/1415)
 		txMassCalculator: txmass.NewCalculator(1, 10, 1000),
 	}
 	return kaspaClient, nil

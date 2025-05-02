@@ -167,7 +167,7 @@ func createUnsignedTransaction(
 
 	for i, utxo := range selectedUTXOs {
 
-		//TODO: verify this part of the code (copied from Kaspad code). Maybe not necessary
+		//TODO: verify this part of the code (copied from kaspawallet https://github.com/kaspanet/kaspad). It may be redundant
 		extendedKey, err := bip32.DeserializeExtendedKey(extendedPublicKey)
 		if err != nil {
 			return nil, err

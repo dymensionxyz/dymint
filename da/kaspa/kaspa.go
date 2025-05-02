@@ -196,7 +196,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			err := retry.Do(
 				func() error {
 					var err error
-					//TODO: differentiate between unrecoverable and recoverable errors.
+					//TODO: differentiate between unrecoverable and recoverable errors.(https://github.com/dymensionxyz/dymint/issues/1416)
 					txHash, err = c.client.SubmitBlob(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
@@ -350,7 +350,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 	return result
 }
 
-// GetSignerBalance returns the balance for a specific address. //TODO: implement balance refresh func.
+// GetSignerBalance returns the balance for a specific address. //TODO: implement balance refresh func.(https://github.com/dymensionxyz/dymint/issues/1415)
 func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	return da.Balance{
 		Amount: math.NewIntFromUint64(d.client.GetBalance()),
