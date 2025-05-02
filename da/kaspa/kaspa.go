@@ -19,12 +19,6 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-const (
-	defaultBatchRetryDelay    = 10 * time.Second
-	defaultBatchRetryAttempts = 10
-	defaultTxInclusionTimeout = 30 * time.Second
-)
-
 // ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
 	path := []string{}

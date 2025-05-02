@@ -49,7 +49,7 @@ func (c *Client) generateWalletUtxos(entries []*appmessage.UTXOsByAddressesEntry
 		}
 	}
 
-	// we obtain walletAddress corresponding to the configuration address, by generating the addresses corresponding to different index (max 100) and breaking once found
+	// we obtain walletAddress corresponding to the configuration address, by generating the addresses corresponding to different index (max 100) and stopping once found
 	var address *walletAddress
 	for index := uint32(0); index < maxAddressesUtxo; index++ {
 		candidateAddress := &walletAddress{

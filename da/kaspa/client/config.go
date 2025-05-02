@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	defaultRpcRetryDelay    = 3 * time.Second
-	defaultRpcRetryAttempts = 5
-	maxAddressesUtxo        = uint32(100)
-	MaxBlobSizeBytes        = 500000
+	defaultRetryDelay    = 3 * time.Second
+	defaultRetryAttempts = 5
+	maxAddressesUtxo     = uint32(100)
+	MaxBlobSizeBytes     = 500000
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -54,13 +54,13 @@ func CreateConfig(bz []byte) (c Config, err error) {
 	}
 
 	if c.RetryDelay == 0 {
-		c.RetryDelay = defaultRpcRetryDelay
+		c.RetryDelay = defaultRetryDelay
 	}
 	if c.Backoff == (uretry.BackoffConfig{}) {
 		c.Backoff = defaultSubmitBackoff
 	}
 	if c.RetryAttempts == nil {
-		attempts := defaultRpcRetryAttempts
+		attempts := defaultRetryAttempts
 		c.RetryAttempts = &attempts
 	}
 	return c, nil

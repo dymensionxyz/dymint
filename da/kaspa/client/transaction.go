@@ -154,7 +154,7 @@ func (c *Client) calculateMassAndSplitTransaction(transaction *serialization.Par
 }
 
 // createUnsignedTransaction generates the transaction, using the selectedUTXOs as input, and generating outputs including the specified payments.
-// The payment basically substracts the fee from the initial Utxo value and sends the change to the same address.
+// The payment basically subtracts the fee from the initial Utxo value and sends the change to the same address.
 // The blob is included to the tx as payload.
 func createUnsignedTransaction(
 	extendedPublicKey string,
