@@ -27,7 +27,7 @@ const (
 type KaspaClient interface {
 	Stop() error
 	GetBalance() uint64
-	SubmitBlob(blob []byte) ([]string, string, error)
+	SubmitBlob(blob []byte) ([]string, error)
 	GetBlob(txHash []string) ([]byte, error)
 }
 
@@ -111,31 +111,31 @@ func (c *Client) Stop() error {
 	return c.rpcClient.Disconnect()
 }
 
-func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
+func (c *Client) SubmitBlob(blob []byte) ([]string, error) {
 	utxos, err := c.getUTXOs()
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	unsignedTransactions, err := c.createUnsignedTransactions(utxos, blob)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	signedTransactions := make([][]byte, len(unsignedTransactions))
 	for i, unsignedTransaction := range unsignedTransactions {
 		signedTransaction, err := libkaspawallet.Sign(c.params, []string{c.mnemonic}, unsignedTransaction, false)
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 		signedTransactions[i] = signedTransaction
 	}
 
 	txIds, err := c.broadcast(signedTransactions, false)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	return txIds, "", nil
+	return txIds, nil
 }
 
 func (c *Client) GetBlob(txHash []string) ([]byte, error) {

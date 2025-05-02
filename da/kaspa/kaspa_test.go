@@ -126,7 +126,7 @@ func TestKaspaSubmitRetrieve(t *testing.T) {
 	}
 
 	// mock txhash, commitment and proof
-	txHash := "txhash"
+	txHash := []string{"txhash"}
 
 	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, nil)
 
