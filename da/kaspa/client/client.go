@@ -41,7 +41,6 @@ type Client struct {
 	rpcClient        *rpcclient.RPCClient // RPC client for ongoing user requests
 	httpClient       *http.Client
 	params           *dagconfig.Params
-	coinbaseMaturity uint64 // Is different from default if we use testnet-11
 	apiURL           string
 	address          util.Address
 	mnemonic         string
@@ -95,13 +94,12 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 	kaspaClient := &Client{
 		rpcClient:        rpcClient,
 		httpClient:       httpClient,
-		coinbaseMaturity: 100,
 		extendedKey:      master,
 		address:          address,
 		mnemonic:         mnemonic,
 		params:           params,
 		apiURL:           config.APIUrl,
-		balance:          uint64(0),
+		balance:          uint64(0), //TODO: refresh balance every time utxos are retrieved.
 		txMassCalculator: txmass.NewCalculator(1, 10, 1000),
 	}
 	return kaspaClient, nil

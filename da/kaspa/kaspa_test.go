@@ -49,7 +49,7 @@ func TestKaspaDataAvailabilityClient(t *testing.T) {
 	require.NoError(t, err)
 	defer client.Stop()
 
-	// Ensure that the client has enough APT tokens to submit batches
+	// TODO: add balance checks
 	/*balance, err := client.GetSignerBalance()
 	require.NoError(t, err)
 	if balance.Amount.LT(math.NewInt(minAPTBalance)) {

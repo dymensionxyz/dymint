@@ -26,7 +26,7 @@ func (c *Client) isUTXOSpendable(entry *walletUTXO, virtualDAAScore uint64) bool
 	if !entry.UTXOEntry.IsCoinbase() {
 		return true
 	}
-	return entry.UTXOEntry.BlockDAAScore()+c.coinbaseMaturity < virtualDAAScore
+	return entry.UTXOEntry.BlockDAAScore()+c.params.BlockCoinbaseMaturity < virtualDAAScore
 }
 
 func (c *Client) calculateFeeLimits() (feeRate float64, maxFee uint64, err error) {

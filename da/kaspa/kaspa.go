@@ -22,6 +22,7 @@ import (
 const (
 	defaultBatchRetryDelay    = 10 * time.Second
 	defaultBatchRetryAttempts = 10
+	defaultTxInclusionTimeout = 30 * time.Second
 )
 
 // ToPath converts a SubmitMetaData to a path.
@@ -125,7 +126,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	c.pubsubServer = pubsubServer
 
 	// TODO: Make configurable
-	// c.txInclusionTimeout = defaultTxInclusionTimeout
+	c.txInclusionTimeout = defaultTxInclusionTimeout
 	c.batchRetryDelay = defaultBatchRetryDelay
 	c.batchRetryAttempts = defaultBatchRetryAttempts
 
@@ -192,9 +193,10 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	return c.submitBatchLoop(blob)
 }
 
-// submitBatchLoop tries submitting the batch. In case we get a configuration error we would like to stop trying,
-// otherwise, for network error we keep trying indefinitely.
+// submitBatchLoop tries submitting the batch, keep trying indefinitely.
 func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.ResultSubmitBatch {
+	backoff := c.config.Backoff.Backoff()
+
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -204,6 +206,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			err := retry.Do(
 				func() error {
 					var err error
+					//TODO: differentiate between unrecoverable and recoverable errors.
 					txHash, err = c.client.SubmitBlob(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
@@ -220,23 +223,20 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			)
 			if err != nil {
 				err = fmt.Errorf("broadcast data blob: %w", err)
-
-				if !retry.IsRecoverable(err) {
-					return da.ResultSubmitBatch{
-						BaseResult: da.BaseResult{
-							Code:    da.StatusError,
-							Message: err.Error(),
-							Error:   err,
-						},
-					}
-				}
-
 				c.logger.Error(err.Error())
 				continue
 			}
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 			submitMetadata := &SubmitMetaData{
 				TxHash: txHash,
+			}
+
+			result := c.checkBatchAvailability(submitMetadata)
+			if result.Error != nil {
+				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
+				metrics.RollappConsecutiveFailedDASubmission.Inc()
+				backoff.Sleep()
+				continue
 			}
 
 			c.logger.Debug("Successfully submitted batch.")
@@ -349,7 +349,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 	return result
 }
 
-// GetSignerBalance returns the balance for a specific address
+// GetSignerBalance returns the balance for a specific address. //TODO: implement balance refresh func.
 func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	return da.Balance{
 		Amount: math.NewIntFromUint64(d.client.GetBalance()),
