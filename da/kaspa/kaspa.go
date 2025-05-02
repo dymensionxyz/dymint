@@ -231,8 +231,26 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				TxHash: txHash,
 			}
 
-			result := c.checkBatchAvailability(submitMetadata)
-			if result.Error != nil {
+			err = retry.Do(
+				func() error {
+					var err error
+					result := c.checkBatchAvailability(submitMetadata)
+					err = result.Error
+					if err != nil {
+						metrics.RollappConsecutiveFailedDASubmission.Inc()
+						c.logger.Error("broadcasting batch", "error", err)
+						return err
+					}
+					return nil
+				},
+				retry.Context(c.ctx),
+				retry.LastErrorOnly(true),
+				retry.Delay(c.batchRetryDelay),
+				retry.DelayType(retry.FixedDelay),
+				retry.Attempts(c.batchRetryAttempts),
+			)
+
+			if err != nil {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
