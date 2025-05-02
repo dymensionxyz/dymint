@@ -43,6 +43,7 @@ type Client struct {
 	params           *dagconfig.Params
 	apiURL           string
 	address          util.Address
+	wAddress         *walletAddress
 	mnemonic         string
 	balance          uint64
 	extendedKey      *bip32.ExtendedKey
@@ -110,12 +111,8 @@ func (c *Client) Stop() error {
 }
 
 func (c *Client) SubmitBlob(blob []byte) ([]string, error) {
-	utxos, err := c.getUTXOs()
-	if err != nil {
-		return nil, err
-	}
 
-	unsignedTransactions, err := c.createUnsignedTransactions(utxos, blob)
+	unsignedTransactions, err := c.createUnsignedTransactions(blob)
 	if err != nil {
 		return nil, err
 	}

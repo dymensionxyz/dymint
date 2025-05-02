@@ -35,6 +35,7 @@ func (c *Client) getUTXOs() ([]*walletUTXO, error) {
 	return c.collectUTXOs(getUTXOsByAddressesResponse.Entries, mempoolEntriesByAddresses.Entries)
 }
 
+// collectUTXOs
 func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempoolEntries []*appmessage.MempoolEntryByAddress) ([]*walletUTXO, error) {
 	utxos := make([]*walletUTXO, 0, len(entries))
 
@@ -47,6 +48,7 @@ func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempo
 		}
 	}
 
+	// we obtain walletAddress corresponding to the configuration address, by generating the addresses corresponding to different index (max 100) and breaking once found
 	var address *walletAddress
 	for index := uint32(0); index < maxAddressesUtxo; index++ {
 		candidateAddress := &walletAddress{
@@ -106,6 +108,7 @@ func (c *Client) selectUTXOs(feeRate float64, maxFee uint64, blob []byte) (selec
 	if err != nil {
 		return nil, 0, err
 	}
+	c.wAddress = utxos[0].address
 	totalValue := uint64(0)
 
 	dagInfo, err := c.rpcClient.GetBlockDAGInfo()

@@ -17,7 +17,7 @@ import (
 	"github.com/kaspanet/kaspad/util/txmass"
 )
 
-func (c *Client) createUnsignedTransactions(utxos []*walletUTXO, blob []byte) ([][]byte, error) {
+func (c *Client) createUnsignedTransactions(blob []byte) ([][]byte, error) {
 	feeRate, maxFee, err := c.calculateFeeLimits()
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (c *Client) createUnsignedTransactions(utxos []*walletUTXO, blob []byte) ([
 		return nil, err
 	}
 
-	unsignedTransactions, err := c.maybeAutoCompoundTransaction(unsignedTransaction, c.address, utxos[0].address, feeRate, maxFee, blob)
+	unsignedTransactions, err := c.maybeAutoCompoundTransaction(unsignedTransaction, c.address, c.wAddress, feeRate, maxFee, blob)
 	if err != nil {
 		return nil, err
 	}
