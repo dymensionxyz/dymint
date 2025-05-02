@@ -8,7 +8,6 @@ import (
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
 	"github.com/kaspanet/kaspad/domain/consensus/model/externalapi"
 	"github.com/kaspanet/kaspad/domain/consensus/utils/constants"
-	"github.com/pkg/errors"
 )
 
 type walletUTXO struct {
@@ -23,12 +22,12 @@ func (c *Client) getUTXOs() ([]*walletUTXO, error) {
 	// and not in consensus, and between the calls its spending transaction will be
 	// added to consensus and removed from the mempool, so `getUTXOsByAddressesResponse`
 	// will include an obsolete output.
-	mempoolEntriesByAddresses, err := c.rpcClient.GetMempoolEntriesByAddresses([]string{c.fromAddress}, true, true)
+	mempoolEntriesByAddresses, err := c.rpcClient.GetMempoolEntriesByAddresses([]string{c.address.String()}, true, true)
 	if err != nil {
 		return nil, err
 	}
 
-	getUTXOsByAddressesResponse, err := c.rpcClient.GetUTXOsByAddresses([]string{c.fromAddress})
+	getUTXOsByAddressesResponse, err := c.rpcClient.GetUTXOsByAddresses([]string{c.address.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +48,7 @@ func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempo
 	}
 
 	var address *walletAddress
-	for index := uint32(0); index < uint32(1000); index++ {
+	for index := uint32(0); index < maxAddressesUtxo; index++ {
 		candidateAddress := &walletAddress{
 			index:         index,
 			cosignerIndex: 0,
@@ -59,7 +58,7 @@ func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempo
 		if err != nil {
 			return nil, err
 		}
-		if addressString == c.fromAddress {
+		if addressString == c.address.String() {
 			address = candidateAddress
 			break
 		}
@@ -102,10 +101,15 @@ func (c *Client) collectUTXOs(entries []*appmessage.UTXOsByAddressesEntry, mempo
 	return utxos, nil
 }
 
-func (s *Client) selectUTXOs(utxos []*walletUTXO, feeRate float64, maxFee uint64, fromAddresses []*walletAddress, blob []byte) (selectedUTXOs []*libkaspawallet.UTXO, changeSompi uint64, err error) {
+func (c *Client) selectUTXOs(feeRate float64, maxFee uint64, blob []byte) (selectedUTXOs []*libkaspawallet.UTXO, changeSompi uint64, err error) {
+
+	utxos, err := c.getUTXOs()
+	if err != nil {
+		return nil, 0, err
+	}
 	totalValue := uint64(0)
 
-	dagInfo, err := s.rpcClient.GetBlockDAGInfo()
+	dagInfo, err := c.rpcClient.GetBlockDAGInfo()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -113,8 +117,7 @@ func (s *Client) selectUTXOs(utxos []*walletUTXO, feeRate float64, maxFee uint64
 	var fee uint64
 
 	iteration := func(utxo *walletUTXO) (bool, error) {
-		if (fromAddresses != nil && !walletAddressesContain(fromAddresses, utxo.address)) ||
-			!s.isUTXOSpendable(utxo, dagInfo.VirtualDAAScore) {
+		if !c.isUTXOSpendable(utxo, dagInfo.VirtualDAAScore) {
 			return true, nil
 		}
 
@@ -126,7 +129,7 @@ func (s *Client) selectUTXOs(utxos []*walletUTXO, feeRate float64, maxFee uint64
 
 		totalValue += utxo.UTXOEntry.Amount()
 
-		fee, err = s.estimateFee(selectedUTXOs, feeRate, maxFee, blob)
+		fee, err = c.estimateFee(selectedUTXOs, feeRate, maxFee, blob)
 		if err != nil {
 			return false, err
 		}
@@ -159,7 +162,7 @@ func (s *Client) selectUTXOs(utxos []*walletUTXO, feeRate float64, maxFee uint64
 	totalSpend := fee
 	//totalReceived = spendAmount
 	if totalValue < totalSpend {
-		return nil, 0, errors.Errorf("Insufficient funds for send: %f required, while only %f available",
+		return nil, 0, fmt.Errorf("Insufficient funds for send: %f required, while only %f available",
 			float64(totalSpend)/constants.SompiPerKaspa, float64(totalValue)/constants.SompiPerKaspa)
 	}
 

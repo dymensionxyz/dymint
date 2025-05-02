@@ -63,7 +63,7 @@ func (_c *MockKaspaClient_GetBalance_Call) RunAndReturn(run func() uint64) *Mock
 }
 
 // GetBlob provides a mock function with given fields: txHash
-func (_m *MockKaspaClient) GetBlob(txHash string) ([]byte, error) {
+func (_m *MockKaspaClient) GetBlob(txHash []string) ([]byte, error) {
 	ret := _m.Called(txHash)
 
 	if len(ret) == 0 {
@@ -72,10 +72,10 @@ func (_m *MockKaspaClient) GetBlob(txHash string) ([]byte, error) {
 
 	var r0 []byte
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) ([]byte, error)); ok {
+	if rf, ok := ret.Get(0).(func([]string) ([]byte, error)); ok {
 		return rf(txHash)
 	}
-	if rf, ok := ret.Get(0).(func(string) []byte); ok {
+	if rf, ok := ret.Get(0).(func([]string) []byte); ok {
 		r0 = rf(txHash)
 	} else {
 		if ret.Get(0) != nil {
@@ -83,7 +83,7 @@ func (_m *MockKaspaClient) GetBlob(txHash string) ([]byte, error) {
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
+	if rf, ok := ret.Get(1).(func([]string) error); ok {
 		r1 = rf(txHash)
 	} else {
 		r1 = ret.Error(1)
@@ -98,14 +98,14 @@ type MockKaspaClient_GetBlob_Call struct {
 }
 
 // GetBlob is a helper method to define mock.On call
-//   - txHash string
+//   - txHash []string
 func (_e *MockKaspaClient_Expecter) GetBlob(txHash interface{}) *MockKaspaClient_GetBlob_Call {
 	return &MockKaspaClient_GetBlob_Call{Call: _e.mock.On("GetBlob", txHash)}
 }
 
-func (_c *MockKaspaClient_GetBlob_Call) Run(run func(txHash string)) *MockKaspaClient_GetBlob_Call {
+func (_c *MockKaspaClient_GetBlob_Call) Run(run func(txHash []string)) *MockKaspaClient_GetBlob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].([]string))
 	})
 	return _c
 }
@@ -115,7 +115,7 @@ func (_c *MockKaspaClient_GetBlob_Call) Return(_a0 []byte, _a1 error) *MockKaspa
 	return _c
 }
 
-func (_c *MockKaspaClient_GetBlob_Call) RunAndReturn(run func(string) ([]byte, error)) *MockKaspaClient_GetBlob_Call {
+func (_c *MockKaspaClient_GetBlob_Call) RunAndReturn(run func([]string) ([]byte, error)) *MockKaspaClient_GetBlob_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -166,31 +166,40 @@ func (_c *MockKaspaClient_Stop_Call) RunAndReturn(run func() error) *MockKaspaCl
 }
 
 // SubmitBlob provides a mock function with given fields: blob
-func (_m *MockKaspaClient) SubmitBlob(blob []byte) (string, error) {
+func (_m *MockKaspaClient) SubmitBlob(blob []byte) ([]string, string, error) {
 	ret := _m.Called(blob)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SubmitBlob")
 	}
 
-	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func([]byte) (string, error)); ok {
+	var r0 []string
+	var r1 string
+	var r2 error
+	if rf, ok := ret.Get(0).(func([]byte) ([]string, string, error)); ok {
 		return rf(blob)
 	}
-	if rf, ok := ret.Get(0).(func([]byte) string); ok {
+	if rf, ok := ret.Get(0).(func([]byte) []string); ok {
 		r0 = rf(blob)
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func([]byte) error); ok {
+	if rf, ok := ret.Get(1).(func([]byte) string); ok {
 		r1 = rf(blob)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(string)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func([]byte) error); ok {
+		r2 = rf(blob)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // MockKaspaClient_SubmitBlob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubmitBlob'
@@ -211,12 +220,12 @@ func (_c *MockKaspaClient_SubmitBlob_Call) Run(run func(blob []byte)) *MockKaspa
 	return _c
 }
 
-func (_c *MockKaspaClient_SubmitBlob_Call) Return(_a0 string, _a1 error) *MockKaspaClient_SubmitBlob_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockKaspaClient_SubmitBlob_Call) Return(_a0 []string, _a1 string, _a2 error) *MockKaspaClient_SubmitBlob_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockKaspaClient_SubmitBlob_Call) RunAndReturn(run func([]byte) (string, error)) *MockKaspaClient_SubmitBlob_Call {
+func (_c *MockKaspaClient_SubmitBlob_Call) RunAndReturn(run func([]byte) ([]string, string, error)) *MockKaspaClient_SubmitBlob_Call {
 	_c.Call.Return(run)
 	return _c
 }

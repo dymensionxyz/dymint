@@ -26,9 +26,12 @@ const (
 
 // ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
-	path := []string{
-		d.TxHash,
+	path := []string{}
+
+	for _, hash := range d.TxHash {
+		path = append(path, hash)
 	}
+
 	for i, part := range path {
 		path[i] = strings.Trim(part, da.PathSeparator)
 	}
@@ -38,11 +41,17 @@ func (d *SubmitMetaData) ToPath() string {
 // FromPath parses a path to a SubmitMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(da.PathSeparator[0]) })
-	if len(pathParts) != 1 {
+	if len(pathParts) == 0 {
 		return nil, fmt.Errorf("invalid DA path")
 	}
 
-	submitData := &SubmitMetaData{TxHash: pathParts[0]}
+	submitData := &SubmitMetaData{
+		TxHash: []string{},
+	}
+
+	for i := 0; i < len(pathParts); i++ {
+		submitData.TxHash = append(submitData.TxHash, pathParts[i])
+	}
 	return submitData, nil
 }
 
@@ -66,8 +75,7 @@ type DataAvailabilityLayerClient struct {
 
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
 type SubmitMetaData struct {
-	// Height is the height of the block in the da layer
-	TxHash string
+	TxHash []string
 }
 
 // WithKaspaClient sets kaspa client.
@@ -194,11 +202,11 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 		case <-c.ctx.Done():
 			return da.ResultSubmitBatch{}
 		default:
-			var txHash string
+			var txHash []string
 			err := retry.Do(
 				func() error {
 					var err error
-					txHash, err = c.client.SubmitBlob(dataBlob)
+					txHash, _, err = c.client.SubmitBlob(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)

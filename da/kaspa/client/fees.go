@@ -5,14 +5,13 @@ import (
 
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet/serialization"
-	"github.com/kaspanet/kaspad/domain/consensus/model/externalapi"
 	"github.com/kaspanet/kaspad/domain/consensus/utils/constants"
 	"github.com/kaspanet/kaspad/util"
 	"github.com/kaspanet/kaspad/util/txmass"
 )
 
 func (c *Client) estimateMassAfterSignatures(transaction *serialization.PartiallySignedTransaction) (uint64, error) {
-	return EstimateMassAfterSignatures(transaction, false, 1, c.txMassCalculator)
+	return estimateMassAfterSignatures(transaction, false, 1, c.txMassCalculator)
 }
 
 func (c *Client) estimateTransientMassAfterSignatures(transaction *serialization.PartiallySignedTransaction) (uint64, error) {
@@ -21,49 +20,6 @@ func (c *Client) estimateTransientMassAfterSignatures(transaction *serialization
 
 func (c *Client) estimateComputeMassAfterSignatures(transaction *serialization.PartiallySignedTransaction) (uint64, error) {
 	return estimateComputeMassAfterSignatures(transaction, false, 1, c.txMassCalculator)
-}
-
-func createTransactionWithJunkFieldsForMassCalculation(transaction *serialization.PartiallySignedTransaction, ecdsa bool, minimumSignatures uint32, txMassCalculator *txmass.Calculator) (*externalapi.DomainTransaction, error) {
-	transaction = transaction.Clone()
-	signatureSize := uint64(64)
-
-	for i, input := range transaction.PartiallySignedInputs {
-		for j, pubKeyPair := range input.PubKeySignaturePairs {
-			if uint32(j) >= minimumSignatures { //nolint:gosec // input.PubKeySignaturePairs number cannot overflow
-				break
-			}
-			pubKeyPair.Signature = make([]byte, signatureSize+1) // +1 for SigHashType
-		}
-		transaction.Tx.Inputs[i].SigOpCount = byte(len(input.PubKeySignaturePairs))
-	}
-
-	return libkaspawallet.ExtractTransactionDeserialized(transaction, ecdsa)
-}
-
-func estimateComputeMassAfterSignatures(transaction *serialization.PartiallySignedTransaction, ecdsa bool, minimumSignatures uint32, txMassCalculator *txmass.Calculator) (uint64, error) {
-	transactionWithSignatures, err := createTransactionWithJunkFieldsForMassCalculation(transaction, ecdsa, minimumSignatures, txMassCalculator)
-	if err != nil {
-		return 0, err
-	}
-
-	return txMassCalculator.CalculateTransactionMass(transactionWithSignatures), nil
-}
-
-func estimateTransientMass(transaction *serialization.PartiallySignedTransaction) (uint64, error) {
-	serializedTx, err := serialization.SerializePartiallySignedTransaction(transaction)
-	if err != nil {
-		return uint64(0), err
-	}
-	return uint64(len(serializedTx) * TRANSIENT_BYTE_TO_MASS_FACTOR), nil //nolint:gosec // serializedTx size will not overflow
-}
-
-func EstimateMassAfterSignatures(transaction *serialization.PartiallySignedTransaction, ecdsa bool, minimumSignatures uint32, txMassCalculator *txmass.Calculator) (uint64, error) {
-	transactionWithSignatures, err := createTransactionWithJunkFieldsForMassCalculation(transaction, ecdsa, minimumSignatures, txMassCalculator)
-	if err != nil {
-		return 0, err
-	}
-
-	return txMassCalculator.CalculateTransactionOverallMass(transactionWithSignatures), nil
 }
 
 func (c *Client) isUTXOSpendable(entry *walletUTXO, virtualDAAScore uint64) bool {
@@ -122,4 +78,30 @@ func (c *Client) estimateFee(selectedUTXOs []*libkaspawallet.UTXO, feeRate float
 	}
 
 	return min(uint64(math.Ceil(float64(mass)*feeRate)), maxFee), nil
+}
+
+func estimateComputeMassAfterSignatures(transaction *serialization.PartiallySignedTransaction, ecdsa bool, minimumSignatures uint32, txMassCalculator *txmass.Calculator) (uint64, error) {
+	transactionWithSignatures, err := createTransactionWithJunkFieldsForMassCalculation(transaction, ecdsa, minimumSignatures, txMassCalculator)
+	if err != nil {
+		return 0, err
+	}
+
+	return txMassCalculator.CalculateTransactionMass(transactionWithSignatures), nil
+}
+
+func estimateTransientMass(transaction *serialization.PartiallySignedTransaction) (uint64, error) {
+	serializedTx, err := serialization.SerializePartiallySignedTransaction(transaction)
+	if err != nil {
+		return uint64(0), err
+	}
+	return uint64(len(serializedTx) * TRANSIENT_BYTE_TO_MASS_FACTOR), nil //nolint:gosec // serializedTx size will not overflow
+}
+
+func estimateMassAfterSignatures(transaction *serialization.PartiallySignedTransaction, ecdsa bool, minimumSignatures uint32, txMassCalculator *txmass.Calculator) (uint64, error) {
+	transactionWithSignatures, err := createTransactionWithJunkFieldsForMassCalculation(transaction, ecdsa, minimumSignatures, txMassCalculator)
+	if err != nil {
+		return 0, err
+	}
+
+	return txMassCalculator.CalculateTransactionOverallMass(transactionWithSignatures), nil
 }

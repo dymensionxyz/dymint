@@ -10,7 +10,8 @@ import (
 const (
 	defaultRpcRetryDelay    = 3 * time.Second
 	defaultRpcRetryAttempts = 5
-	MaxBlobSizeBytes        = 22000
+	maxAddressesUtxo        = uint32(100)
+	MaxBlobSizeBytes        = 500000
 )
 
 // Config stores Sui DALC configuration parameters.
@@ -21,7 +22,7 @@ type Config struct {
 	MnemonicEnv   string        `json:"mnemonic_env,omitempty"`
 	RetryAttempts *int          `json:"retry_attempts,omitempty"`
 	RetryDelay    time.Duration `json:"retry_delay,omitempty"`
-	FromAddress   string        `json:"from_address,omitempty"`
+	Address       string        `json:"address,omitempty"`
 	Network       string        `json:"network,omitempty"`
 }
 
@@ -31,7 +32,7 @@ var TestConfig = Config{
 	Timeout:     5 * time.Second,
 	MnemonicEnv: "KASPA_MNEMONIC",
 	Network:     "testnet",
-	FromAddress: "kaspatest:qzwyrgapjnhtjqkxdrmp7fpm3yddw296v2ajv9nmgmw5k3z0r38guevxyk7j0",
+	Address:     "kaspatest:qzwyrgapjnhtjqkxdrmp7fpm3yddw296v2ajv9nmgmw5k3z0r38guevxyk7j0",
 }
 
 func CreateConfig(bz []byte) (c Config, err error) {

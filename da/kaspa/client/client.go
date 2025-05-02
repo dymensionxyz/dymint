@@ -12,24 +12,23 @@ import (
 	"github.com/kaspanet/kaspad/domain/consensus/utils/constants"
 	"github.com/kaspanet/kaspad/domain/dagconfig"
 	"github.com/kaspanet/kaspad/infrastructure/network/rpcclient"
+	"github.com/kaspanet/kaspad/util"
 	"github.com/kaspanet/kaspad/util/txmass"
-	"github.com/pkg/errors"
 	"github.com/tyler-smith/go-bip39"
 )
 
 const (
-	minChangeTarget                     = constants.SompiPerKaspa * 10
-	numIndexesToQueryForRecentAddresses = 1000
-	SingleSignerPurpose                 = 44
-	CoinType                            = 111111
-	TRANSIENT_BYTE_TO_MASS_FACTOR       = 4
+	minChangeTarget               = constants.SompiPerKaspa * 10
+	SingleSignerPurpose           = 44
+	CoinType                      = 111111
+	TRANSIENT_BYTE_TO_MASS_FACTOR = 4
 )
 
 type KaspaClient interface {
 	Stop() error
 	GetBalance() uint64
-	SubmitBlob(blob []byte) (string, error)
-	GetBlob(txHash string) ([]byte, error)
+	SubmitBlob(blob []byte) ([]string, string, error)
+	GetBlob(txHash []string) ([]byte, error)
 }
 
 // Transaction is a partial struct to extract payload
@@ -44,7 +43,7 @@ type Client struct {
 	params           *dagconfig.Params
 	coinbaseMaturity uint64 // Is different from default if we use testnet-11
 	apiURL           string
-	fromAddress      string
+	address          util.Address
 	mnemonic         string
 	balance          uint64
 	extendedKey      *bip32.ExtendedKey
@@ -70,7 +69,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 	case "mainnet":
 		params = &dagconfig.MainnetParams
 	default:
-		return nil, fmt.Errorf("Config network parameter not set to testnet or mainnet. Param: %s", config.Network)
+		return nil, fmt.Errorf("Kaspa network not set to testnet or mainnet. Param: %s", config.Network)
 	}
 
 	seed := bip39.NewSeed(mnemonic, "")
@@ -84,6 +83,11 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		return nil, err
 	}
 
+	address, err := util.DecodeAddress(config.Address, params.Prefix)
+	if err != nil {
+		return nil, err
+	}
+
 	httpClient := &http.Client{
 		Timeout: config.Timeout,
 	}
@@ -93,7 +97,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		httpClient:       httpClient,
 		coinbaseMaturity: 100,
 		extendedKey:      master,
-		fromAddress:      config.FromAddress,
+		address:          address,
 		mnemonic:         mnemonic,
 		params:           params,
 		apiURL:           config.APIUrl,
@@ -107,34 +111,58 @@ func (c *Client) Stop() error {
 	return c.rpcClient.Disconnect()
 }
 
-func (c *Client) SubmitBlob(blob []byte) (string, error) {
+func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
 	utxos, err := c.getUTXOs()
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
-	unsignedTransactions, err := c.createUnsignedTransactions(utxos, c.fromAddress, blob)
+	unsignedTransactions, err := c.createUnsignedTransactions(utxos, blob)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
 	signedTransactions := make([][]byte, len(unsignedTransactions))
 	for i, unsignedTransaction := range unsignedTransactions {
 		signedTransaction, err := libkaspawallet.Sign(c.params, []string{c.mnemonic}, unsignedTransaction, false)
 		if err != nil {
-			return "", err
+			return nil, "", err
 		}
 		signedTransactions[i] = signedTransaction
 	}
 
 	txIds, err := c.broadcast(signedTransactions, false)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
-	return txIds[0], nil
+	return txIds, "", nil
 }
 
-func (c *Client) GetBlob(txHash string) ([]byte, error) {
+func (c *Client) GetBlob(txHash []string) ([]byte, error) {
+
+	txData := make([][]byte, len(txHash))
+	for i, hash := range txHash {
+		tx, err := c.retrieveKaspaTx(hash)
+		if err != nil {
+			return nil, err
+		}
+		txData[i], err = hex.DecodeString(tx.Payload)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var blob []byte
+	for _, data := range txData {
+		blob = append(blob, data...)
+	}
+	return blob, nil
+}
+
+func (c *Client) GetBalance() uint64 {
+	return c.balance
+}
+
+func (c *Client) retrieveKaspaTx(txHash string) (*Transaction, error) {
 	url := fmt.Sprintf(c.apiURL+"/transactions/%s", txHash)
 
 	resp, err := c.httpClient.Get(url)
@@ -155,16 +183,7 @@ func (c *Client) GetBlob(txHash string) ([]byte, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&tx); err != nil {
 		return nil, fmt.Errorf("Kaspa transaction decode failed: %w", err)
 	}
-
-	data, err := hex.DecodeString(tx.Payload)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-func (c *Client) GetBalance() uint64 {
-	return c.balance
+	return &tx, nil
 }
 
 func versionFromParams(params *dagconfig.Params) ([4]byte, error) {
@@ -173,13 +192,9 @@ func versionFromParams(params *dagconfig.Params) ([4]byte, error) {
 		return bip32.KaspaMainnetPrivate, nil
 	case dagconfig.TestnetParams.Name:
 		return bip32.KaspaTestnetPrivate, nil
-	case dagconfig.DevnetParams.Name:
-		return bip32.KaspaDevnetPrivate, nil
-	case dagconfig.SimnetParams.Name:
-		return bip32.KaspaSimnetPrivate, nil
 	}
 
-	return [4]byte{}, errors.Errorf("unknown network %s", params.Name)
+	return [4]byte{}, fmt.Errorf("kaspa network not valid %s", params.Name)
 }
 
 func defaultPath() string {

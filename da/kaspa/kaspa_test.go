@@ -27,7 +27,7 @@ import (
 )
 
 func TestKaspaDataAvailabilityClient(t *testing.T) {
-	t.Skip("Skipping Kaspa client test")
+	//t.Skip("Skipping Kaspa client test")
 
 	// Set up test environment
 	mnemoEnv := "KASPA_MNEMONIC"
@@ -70,23 +70,14 @@ func TestKaspaDataAvailabilityClient(t *testing.T) {
 			name:  "small batch: 1KB",
 			batch: testutil.GenerateBatchWithBlocks(1, proposerKey),
 		},
-		/*{
-			name:  "mid-size batch 1: 20KB",
-			batch: testutil.GenerateBatchWithBlocks(40, proposerKey),
+		{
+			name:  "mid-size batch: 75KB",
+			batch: testutil.GenerateBatchWithBlocks(100, proposerKey),
 		},
 		{
-			name:  "mid-size batch 2: 48KB",
-			batch: testutil.GenerateBatchWithBlocks(80, proposerKey),
+			name:  "big-size batch: 320KB",
+			batch: testutil.GenerateBatchWithBlocks(500, proposerKey),
 		},
-		{
-			name:  "mid-size batch 2: almost 64KB",
-			batch: testutil.GenerateBatchWithBlocks(107, proposerKey),
-		},
-		// Error: EXCEEDED_MAX_TRANSACTION_SIZE
-		{
-			name:  "big-size batch 2: 72KB",
-			batch: testutil.GenerateBatchWithBlocks(120, proposerKey),
-		},*/
 	}
 
 	for _, tc := range testCases {
@@ -186,7 +177,7 @@ func TestKaspaAvailCheck(t *testing.T) {
 			retriever := client.(da.BatchRetriever)
 
 			metadata := kaspa.SubmitMetaData{
-				TxHash: "txhash",
+				TxHash: []string{"txhash"},
 			}
 
 			mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(nil, tc.err)
@@ -213,7 +204,7 @@ func setDAandMock(t *testing.T) (*mocks.MockKaspaClient, da.DataAvailabilityLaye
 
 	require := require.New(t)
 
-	// init avail DA with mock RPC client
+	// init kaspa DA with mock client
 	dalc := registry.GetClient("kaspa")
 
 	config := client.TestConfig

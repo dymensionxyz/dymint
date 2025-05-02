@@ -1,12 +1,12 @@
 package client
 
 import (
+	"cosmossdk.io/errors"
 	"github.com/kaspanet/kaspad/app/appmessage"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
 	"github.com/kaspanet/kaspad/domain/consensus/model/externalapi"
 	"github.com/kaspanet/kaspad/domain/consensus/utils/consensushashing"
 	"github.com/kaspanet/kaspad/infrastructure/network/rpcclient"
-	"github.com/pkg/errors"
 )
 
 func (c *Client) broadcast(transactions [][]byte, isDomain bool) ([]string, error) {
