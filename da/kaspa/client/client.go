@@ -119,7 +119,6 @@ func (c *Client) Stop() error {
 
 // SubmitBlob sends the blob to Kaspa network, including the blob in  Kaspa Txs
 func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
-
 	// generate txs
 	blobTxs, err := c.generateBlobTxs(blob)
 	if err != nil {
