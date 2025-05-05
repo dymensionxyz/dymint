@@ -2,6 +2,8 @@ package kaspa
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -39,10 +41,11 @@ func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	}
 
 	submitData := &SubmitMetaData{
-		TxHash: []string{},
+		TxHash:   []string{},
+		BlobHash: pathParts[len(pathParts)],
 	}
 
-	for i := 0; i < len(pathParts); i++ {
+	for i := 0; i < len(pathParts)-1; i++ {
 		submitData.TxHash = append(submitData.TxHash, pathParts[i])
 	}
 	return submitData, nil
@@ -67,7 +70,8 @@ type DataAvailabilityLayerClient struct {
 
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
 type SubmitMetaData struct {
-	TxHash []string
+	TxHash   []string
+	BlobHash string
 }
 
 // WithKaspaClient sets kaspa client.
@@ -187,11 +191,12 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			return da.ResultSubmitBatch{}
 		default:
 			var txHash []string
+			var blobHash string
 			err := retry.Do(
 				func() error {
 					var err error
 					// TODO: differentiate between unrecoverable and recoverable errors.(https://github.com/dymensionxyz/dymint/issues/1416)
-					txHash, err = c.client.SubmitBlob(dataBlob)
+					txHash, blobHash, err = c.client.SubmitBlob(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
@@ -212,7 +217,8 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			}
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 			submitMetadata := &SubmitMetaData{
-				TxHash: txHash,
+				TxHash:   txHash,
+				BlobHash: blobHash,
 			}
 
 			err = retry.Do(
@@ -358,8 +364,14 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
 	// Check if the transaction exists by trying to fetch it
-	_, err := c.client.GetBlob(daMetaData.TxHash)
-	if err != nil {
+	blob, err := c.client.GetBlob(daMetaData.TxHash)
+
+	// calculate blobhash
+	h := sha256.New()
+	h.Write(blob)
+	blobHash := h.Sum(nil)
+
+	if hex.EncodeToString(blobHash) == daMetaData.BlobHash || err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,

@@ -166,7 +166,7 @@ func (_c *MockKaspaClient_Stop_Call) RunAndReturn(run func() error) *MockKaspaCl
 }
 
 // SubmitBlob provides a mock function with given fields: blob
-func (_m *MockKaspaClient) SubmitBlob(blob []byte) ([]string, error) {
+func (_m *MockKaspaClient) SubmitBlob(blob []byte) ([]string, string, error) {
 	ret := _m.Called(blob)
 
 	if len(ret) == 0 {
@@ -174,8 +174,9 @@ func (_m *MockKaspaClient) SubmitBlob(blob []byte) ([]string, error) {
 	}
 
 	var r0 []string
-	var r1 error
-	if rf, ok := ret.Get(0).(func([]byte) ([]string, error)); ok {
+	var r1 string
+	var r2 error
+	if rf, ok := ret.Get(0).(func([]byte) ([]string, string, error)); ok {
 		return rf(blob)
 	}
 	if rf, ok := ret.Get(0).(func([]byte) []string); ok {
@@ -186,13 +187,19 @@ func (_m *MockKaspaClient) SubmitBlob(blob []byte) ([]string, error) {
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func([]byte) error); ok {
+	if rf, ok := ret.Get(1).(func([]byte) string); ok {
 		r1 = rf(blob)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(string)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func([]byte) error); ok {
+		r2 = rf(blob)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // MockKaspaClient_SubmitBlob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubmitBlob'
@@ -213,12 +220,12 @@ func (_c *MockKaspaClient_SubmitBlob_Call) Run(run func(blob []byte)) *MockKaspa
 	return _c
 }
 
-func (_c *MockKaspaClient_SubmitBlob_Call) Return(_a0 []string, _a1 error) *MockKaspaClient_SubmitBlob_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockKaspaClient_SubmitBlob_Call) Return(_a0 []string, _a1 string, _a2 error) *MockKaspaClient_SubmitBlob_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockKaspaClient_SubmitBlob_Call) RunAndReturn(run func([]byte) ([]string, error)) *MockKaspaClient_SubmitBlob_Call {
+func (_c *MockKaspaClient_SubmitBlob_Call) RunAndReturn(run func([]byte) ([]string, string, error)) *MockKaspaClient_SubmitBlob_Call {
 	_c.Call.Return(run)
 	return _c
 }

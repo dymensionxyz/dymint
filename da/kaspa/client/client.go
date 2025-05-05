@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -27,7 +28,7 @@ const (
 type KaspaClient interface {
 	Stop() error
 	GetBalance() uint64
-	SubmitBlob(blob []byte) ([]string, error)
+	SubmitBlob(blob []byte) ([]string, string, error)
 	GetBlob(txHash []string) ([]byte, error)
 }
 
@@ -105,7 +106,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		mnemonic:         mnemonic,
 		params:           params,
 		apiURL:           config.APIUrl,
-		balance:          uint64(0), // TODO: refresh balance every time utxos are retrieved. (https://github.com/dymensionxyz/dymint/issues/1415)
+		balance:          uint64(0),
 		txMassCalculator: txmass.NewCalculator(1, 10, 1000),
 	}
 	return kaspaClient, nil
@@ -117,11 +118,12 @@ func (c *Client) Stop() error {
 }
 
 // SubmitBlob sends the blob to Kaspa network, including the blob in  Kaspa Txs
-func (c *Client) SubmitBlob(blob []byte) ([]string, error) {
+func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
+
 	// generate txs
 	blobTxs, err := c.generateBlobTxs(blob)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// sign tx
@@ -129,7 +131,7 @@ func (c *Client) SubmitBlob(blob []byte) ([]string, error) {
 	for i, tx := range blobTxs {
 		signedTx, err := libkaspawallet.Sign(c.params, []string{c.mnemonic}, tx, false)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		signedTxs[i] = signedTx
 	}
@@ -137,11 +139,14 @@ func (c *Client) SubmitBlob(blob []byte) ([]string, error) {
 	// send txs to Kaspa node
 	txIds, err := c.broadcast(signedTxs)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
+	h := sha256.New()
+	h.Write(blob)
+	blobHash := h.Sum(nil)
 	// return tx ids obtained
-	return txIds, nil
+	return txIds, hex.EncodeToString(blobHash), nil
 }
 
 // GetBlob retrieves the blob from Kaspa network, by tx ids
