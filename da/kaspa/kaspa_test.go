@@ -127,8 +127,9 @@ func TestKaspaSubmitRetrieve(t *testing.T) {
 
 	// mock txhash, commitment and proof
 	txHash := []string{"txhash"}
+	blobHash := "blobhash"
 
-	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, nil)
+	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, blobHash, nil)
 
 	// generate blob data from batch
 	blobData, err := batch.MarshalBinary()
@@ -138,6 +139,7 @@ func TestKaspaSubmitRetrieve(t *testing.T) {
 
 	// submit blob
 	rsubmit := client.SubmitBatch(batch)
+	assert.Equal(t, da.StatusSuccess, rsubmit.Code)
 
 	retriever := client.(da.BatchRetriever)
 

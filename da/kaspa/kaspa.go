@@ -42,7 +42,7 @@ func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 
 	submitData := &SubmitMetaData{
 		TxHash:   []string{},
-		BlobHash: pathParts[len(pathParts)],
+		BlobHash: pathParts[len(pathParts)-1],
 	}
 
 	for i := 0; i < len(pathParts)-1; i++ {
