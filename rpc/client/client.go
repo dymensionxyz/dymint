@@ -1170,7 +1170,7 @@ func (c *Client) getMintDenom(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return respDenom.MintDenom, nil
+	return respDenom.Params.MintDenom, nil
 }
 
 func (c *Client) getStakingDenom(ctx context.Context) (string, error) {

@@ -2,7 +2,7 @@ BUILDDIR?=$(CURDIR)/build
 OUTPUT?=$(BUILDDIR)/dymint
 
 BUILD_TAGS?=dymint
-CGO_ENABLED ?= 0
+CGO_ENABLED ?= 1
 VERSION ?= $(shell git describe --tags --always)
 LD_FLAGS = -X github.com/dymensionxyz/dymint/version.BuildVersion=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
