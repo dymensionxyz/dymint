@@ -14,9 +14,11 @@ import (
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
+const maxTxData = 900
+
 type SolanaClient interface {
-	SubmitBlob(blob []byte) (string, string, error)
-	GetBlob(txHash string) ([]byte, error)
+	SubmitBlob(blob []byte) ([]string, string, error)
+	GetBlob(txHash []string) ([]byte, error)
 	GetAccountAddress() string
 	GetSignerBalance() (*big.Int, error)
 	GetBalance() (uint64, error)
@@ -31,6 +33,7 @@ type Client struct {
 	ctx       context.Context
 	cfg       *Config
 	pkey      *solana.PrivateKey
+	programId *solana.PublicKey
 }
 
 func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
@@ -54,71 +57,66 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 		panic(err)
 	}
 
+	programID := solana.MustPublicKeyFromBase58("3ZjisFKx4KGHg3yRnq6FX7izAnt6gzyKiVfJz66Tdyqc")
+
 	client := &Client{
 		ctx:       ctx,
 		rpcClient: rpcClient,
 		cfg:       config,
 		wsClient:  wsClient,
 		pkey:      &sender,
+		programId: &programID,
 	}
 
 	return client, nil
 }
 
-func (c *Client) SubmitBlob(blob []byte) (string, string, error) {
-
-	programID := solana.MustPublicKeyFromBase58("3ZjisFKx4KGHg3yRnq6FX7izAnt6gzyKiVfJz66Tdyqc")
-
-	instruction := solana.NewInstruction(
-		programID,
-		[]*solana.AccountMeta{},
-		blob,
-	)
+func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
 
 	// Build transaction
 	recentBlockhash, err := c.rpcClient.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
 
 	if err != nil {
-		return "", "", err
+		return nil, "", err
 	}
 
-	tx, err := solana.NewTransaction(
-		[]solana.Instruction{instruction},
-		recentBlockhash.Value.Blockhash,
-		solana.TransactionPayer(c.pkey.PublicKey()),
-	)
-
+	txs, err := c.generateBlobTxs(blob, recentBlockhash.Value.Blockhash)
 	if err != nil {
-		return "", "", err
+		return nil, "", err
 	}
 
-	_, err = tx.Sign(
-		func(key solana.PublicKey) *solana.PrivateKey {
-			if c.pkey.PublicKey().Equals(key) {
-				return c.pkey
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		panic(fmt.Errorf("unable to sign transaction: %w", err))
-	}
+	txHash := make([]string, len(txs))
 
-	sig, err := confirm.SendAndConfirmTransaction(
-		c.ctx,
-		c.rpcClient,
-		c.wsClient,
-		tx,
-	)
-	if err != nil {
-		return "", "", err
+	for _, tx := range txs {
+		_, err = tx.Sign(
+			func(key solana.PublicKey) *solana.PrivateKey {
+				if c.pkey.PublicKey().Equals(key) {
+					return c.pkey
+				}
+				return nil
+			},
+		)
+		if err != nil {
+			return nil, "", fmt.Errorf("unable to sign transaction. err: %w", err)
+		}
+
+		sig, err := confirm.SendAndConfirmTransaction(
+			c.ctx,
+			c.rpcClient,
+			c.wsClient,
+			tx,
+		)
+		if err != nil {
+			return nil, "", fmt.Errorf("unable to send and confirm transaction. err: %w", err)
+		}
+		txHash = append(txHash, sig.String())
 	}
-	return sig.String(), "", nil
+	return txHash, "", nil
 }
 
-func (c *Client) GetBlob(txHash string) ([]byte, error) {
+func (c *Client) GetBlob(txHash []string) ([]byte, error) {
 
-	txSig := solana.MustSignatureFromBase58(txHash)
+	txSig := solana.MustSignatureFromBase58(txHash[0])
 
 	out, err := c.rpcClient.GetTransaction(
 		c.ctx,
@@ -159,4 +157,36 @@ func (c *Client) GetBalance() (uint64, error) {
 	}
 	// Balance is in lamports (1 SOL = 1_000_000_000 lamports)
 	return resp.Value, nil
+}
+
+func (c *Client) generateBlobTxs(blob []byte, blockHash solana.Hash) ([]*solana.Transaction, error) {
+
+	// this calculated the number of txs necessary and creates them (based on available size for the payload), chunking the blob and including a part of it into each tx sequentially
+	splitCount := len(blob) / maxTxData
+
+	if len(blob)%maxTxData > 0 {
+		splitCount++
+	}
+	splitTransactions := make([]*solana.Transaction, splitCount)
+
+	for i := 0; i < splitCount; i++ {
+		instruction := solana.NewInstruction(
+			*c.programId,
+			[]*solana.AccountMeta{},
+			blob,
+		)
+
+		tx, err := solana.NewTransaction(
+			[]solana.Instruction{instruction},
+			blockHash,
+			solana.TransactionPayer(c.pkey.PublicKey()),
+		)
+
+		if err != nil {
+			return nil, err
+		}
+		splitTransactions[i] = tx
+	}
+
+	return splitTransactions, nil
 }
