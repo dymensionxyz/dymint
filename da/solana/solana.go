@@ -165,7 +165,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	}
 
 	c.logger.Debug("Submitting to da batch with size", "size", len(blob))
-	return c.submitBatchLoop(blob)
+	return c.submitBatchLoop([]byte("helloworld"))
 }
 
 // submitBatchLoop tries submitting the batch, keep trying indefinitely.

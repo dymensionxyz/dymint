@@ -67,19 +67,16 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 
 func (c *Client) SubmitBlob(blob []byte) (string, string, error) {
 
-	programID := solana.MustPublicKeyFromBase58("J9sagyiVwBwGB1DoaD6T38W6CWPbLfgBafExRnqSKDE")
-	// Create instruction with custom data
-	data := []byte("HelloGagliardetto")
+	programID := solana.MustPublicKeyFromBase58("3ZjisFKx4KGHg3yRnq6FX7izAnt6gzyKiVfJz66Tdyqc")
+
 	instruction := solana.NewInstruction(
 		programID,
-		[]*solana.AccountMeta{
-			{PublicKey: c.pkey.PublicKey(), IsSigner: true, IsWritable: true},
-		},
-		data,
+		[]*solana.AccountMeta{},
+		blob,
 	)
 
 	// Build transaction
-	recentBlockhash, err := c.rpcClient.GetRecentBlockhash(context.Background(), rpc.CommitmentFinalized)
+	recentBlockhash, err := c.rpcClient.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
 
 	if err != nil {
 		return "", "", err
@@ -113,6 +110,9 @@ func (c *Client) SubmitBlob(blob []byte) (string, string, error) {
 		c.wsClient,
 		tx,
 	)
+	if err != nil {
+		return "", "", err
+	}
 	return sig.String(), "", nil
 }
 

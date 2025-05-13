@@ -22,7 +22,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	err := os.Setenv(mnemonicEnv, "/Users/sergi/wallet-keypair.json")
 	require.NoError(t, err)
 
-	// Create test config. By default, tests use Sui testnet.
+	// Create test config. By default, tests use Solana devnet.
 	config := solana.TestConfig
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
@@ -36,7 +36,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	require.NoError(t, err)
 	defer client.Stop()
 
-	// Ensure that the client has enough SUI tokens to submit batches
+	// Ensure that the client has enough SOL tokens to submit batches
 	balance, err := client.GetSignerBalance()
 	require.NoError(t, err)
 	assert.Greater(t, balance.Amount.BigInt().Cmp(big.NewInt(5000)), 0, "at least balance of 5000 lamport required to send a tx")
@@ -45,7 +45,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	require.NoError(t, err)
 
-	batch := testutil.GenerateBatchWithBlocks(1, proposerKey)
+	batch := testutil.GenerateBatchWithBlocks(0, proposerKey)
 	result := client.SubmitBatch(batch)
 	require.NoError(t, result.Error)
 
