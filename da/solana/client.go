@@ -19,7 +19,7 @@ type SolanaClient interface {
 	GetBlob(txHash string) ([]byte, error)
 	GetAccountAddress() string
 	GetSignerBalance() (*big.Int, error)
-	GetBalance() uint64
+	GetBalance() (uint64, error)
 	// ValidateInclusion(txHash string, commitment []byte, proof []byte) error
 }
 
@@ -55,6 +55,7 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 	}
 
 	client := &Client{
+		ctx:       ctx,
 		rpcClient: rpcClient,
 		cfg:       config,
 		wsClient:  wsClient,
@@ -147,6 +148,15 @@ func (c *Client) GetAccountAddress() string {
 	return ""
 }
 
-func (c *Client) GetBalance() uint64 {
-	return uint64(0)
+func (c *Client) GetBalance() (uint64, error) {
+	resp, err := c.rpcClient.GetBalance(
+		c.ctx,
+		c.pkey.PublicKey(),
+		rpc.CommitmentFinalized,
+	)
+	if err != nil {
+		return uint64(0), err
+	}
+	// Balance is in lamports (1 SOL = 1_000_000_000 lamports)
+	return resp.Value, nil
 }

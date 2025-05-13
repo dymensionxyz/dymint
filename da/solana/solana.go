@@ -338,9 +338,13 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 
 // GetSignerBalance returns the balance for a specific address. //TODO: implement balance refresh func.(https://github.com/dymensionxyz/dymint/issues/1415)
 func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	balance, err := d.client.GetBalance()
+	if err != nil {
+		return da.Balance{}, err
+	}
 	return da.Balance{
-		Amount: math.NewIntFromUint64(d.client.GetBalance()),
-		Denom:  "SOL",
+		Amount: math.NewIntFromUint64(balance),
+		Denom:  "lamport",
 	}, nil
 }
 
