@@ -26,7 +26,7 @@ func (d *SubmitMetaData) ToPath() string {
 	path := []string{}
 
 	path = append(path, d.TxHash...)
-
+	path = append(path, d.BlobHash)
 	for i, part := range path {
 		path[i] = strings.Trim(part, da.PathSeparator)
 	}
