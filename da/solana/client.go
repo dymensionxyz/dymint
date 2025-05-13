@@ -15,10 +15,11 @@ import (
 )
 
 type SolanaClient interface {
-	SubmitBlob(blob []byte) (string, error)
+	SubmitBlob(blob []byte) (string, string, error)
 	GetBlob(txHash string) ([]byte, error)
 	GetAccountAddress() string
 	GetSignerBalance() (*big.Int, error)
+	GetBalance() uint64
 	// ValidateInclusion(txHash string, commitment []byte, proof []byte) error
 }
 
@@ -63,7 +64,7 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 	return client, nil
 }
 
-func (c *Client) SubmitBlob(blob []byte) (string, error) {
+func (c *Client) SubmitBlob(blob []byte) (string, string, error) {
 
 	programID := solana.MustPublicKeyFromBase58("J9sagyiVwBwGB1DoaD6T38W6CWPbLfgBafExRnqSKDE")
 	// Create instruction with custom data
@@ -80,7 +81,7 @@ func (c *Client) SubmitBlob(blob []byte) (string, error) {
 	recentBlockhash, err := c.rpcClient.GetRecentBlockhash(context.Background(), rpc.CommitmentFinalized)
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	tx, err := solana.NewTransaction(
@@ -90,7 +91,7 @@ func (c *Client) SubmitBlob(blob []byte) (string, error) {
 	)
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	_, err = tx.Sign(
@@ -111,7 +112,7 @@ func (c *Client) SubmitBlob(blob []byte) (string, error) {
 		c.wsClient,
 		tx,
 	)
-	return sig.String(), nil
+	return sig.String(), "", nil
 }
 
 func (c *Client) GetBlob(txHash string) ([]byte, error) {
@@ -144,4 +145,8 @@ func (c *Client) GetSignerBalance() (*big.Int, error) {
 
 func (c *Client) GetAccountAddress() string {
 	return ""
+}
+
+func (c *Client) GetBalance() uint64 {
+	return uint64(0)
 }
