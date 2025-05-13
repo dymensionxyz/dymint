@@ -19,7 +19,7 @@ type DataAvailabilityLayerClient struct {
 	stub.Layer
 	client             SolanaClient
 	pubsubServer       *pubsub.Server
-	config             SolanaConfig
+	config             Config
 	logger             types.Logger
 	ctx                context.Context
 	cancel             context.CancelFunc

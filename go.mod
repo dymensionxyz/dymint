@@ -19,6 +19,7 @@ require (
 	github.com/dymensionxyz/gerr-cosmos v1.0.0
 	github.com/dymensionxyz/go-ethereum v0.0.0-20250326232313-18b28aa27ff2
 	github.com/ethereum/go-ethereum v1.12.0
+	github.com/gagliardetto/solana-go v1.12.0
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.1+incompatible
 	github.com/gogo/protobuf v1.3.3
@@ -40,6 +41,7 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.10.0
 	github.com/tendermint/tendermint v0.34.29
+	github.com/test-go/testify v1.1.4
 	github.com/vedhavyas/go-subkey/v2 v2.0.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.34.0
@@ -57,7 +59,10 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
+	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/bits-and-blooms/bitset v1.17.0 // indirect
+	github.com/blendle/zapdriver v1.3.1 // indirect
+	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1 // indirect
 	github.com/cockroachdb/fifo v0.0.0-20240606204812-0bbfbd93a7ce // indirect
@@ -74,7 +79,10 @@ require (
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.3 // indirect
 	github.com/ethereum/c-kzg-4844 v1.0.0 // indirect
+	github.com/fatih/color v1.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/gagliardetto/binary v0.8.0 // indirect
+	github.com/gagliardetto/treeout v0.1.4 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -89,10 +97,16 @@ require (
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 	github.com/itering/scale.go v1.9.14 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/leodido/go-urn v1.2.2 // indirect
+	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
+	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/mostynb/zstdpool-freelist v0.0.0-20201229113212-927304c0c3b1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opencontainers/runc v1.1.5 // indirect
 	github.com/prometheus/tsdb v0.10.0 // indirect
@@ -101,10 +115,13 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/zerolog v1.29.1 // indirect
 	github.com/shirou/gopsutil v3.21.6+incompatible // indirect
-	github.com/shopspring/decimal v1.2.0 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
+	github.com/streamingfast/logging v0.0.0-20230608130331-f22c91403091 // indirect
 	github.com/supranational/blst v0.3.14 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
+	go.mongodb.org/mongo-driver v1.12.2 // indirect
+	go.uber.org/ratelimit v0.2.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
