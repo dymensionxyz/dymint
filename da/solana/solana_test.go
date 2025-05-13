@@ -45,7 +45,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	require.NoError(t, err)
 
-	batch := testutil.GenerateBatchWithBlocks(0, proposerKey)
+	batch := testutil.GenerateBatchWithBlocks(1, proposerKey)
 	result := client.SubmitBatch(batch)
 	require.NoError(t, result.Error)
 
