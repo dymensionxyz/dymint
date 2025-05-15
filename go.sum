@@ -432,8 +432,8 @@ github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20250110140627-2a26ee51f5b9 h
 github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20250110140627-2a26ee51f5b9/go.mod h1:PkUjaaNI78eATE1jcX197OJ3DX66YwZuRI9XRTeDcG8=
 github.com/dymensionxyz/dymension-rdk v1.10.0-rc01.0.20250408075532-9f34ff12fa64 h1:uvuKIE103fg7sIGxv9Z1xTIqguAUgGHKNeIIhLsPZes=
 github.com/dymensionxyz/dymension-rdk v1.10.0-rc01.0.20250408075532-9f34ff12fa64/go.mod h1:0FM3wcS9rQdT+jEBKx/PKVc34zr482yp8gEWrrMWc14=
-github.com/dymensionxyz/evmos/v12 v12.1.7-0.20250515102555-fe08e9f0bf76 h1:nCDvLjTZTzi9Y/2l+SAYNZ3LypoFWDamuuBPyr8u61Y=
-github.com/dymensionxyz/evmos/v12 v12.1.7-0.20250515102555-fe08e9f0bf76/go.mod h1:CI6D89pkoiIm4BjoMFNnEaCLdKBEobLuwvhS0c1zh7Y=
+github.com/dymensionxyz/evmos/v12 v12.1.7-0.20250515135623-2b44c7159623 h1:v554wqkCW1lrfjxwHhPZQCWjfT+W+3ph70CqJ92LiAU=
+github.com/dymensionxyz/evmos/v12 v12.1.7-0.20250515135623-2b44c7159623/go.mod h1:CI6D89pkoiIm4BjoMFNnEaCLdKBEobLuwvhS0c1zh7Y=
 github.com/dymensionxyz/gerr-cosmos v1.0.0 h1:oi91rgOkpJWr41oX9JOyjvvBnhGY54tj513x8VlDAEc=
 github.com/dymensionxyz/gerr-cosmos v1.0.0/go.mod h1:n+0olxPogzWqFKba45mCpvrHLGmeS8W9UZjggHnWk6c=
 github.com/dymensionxyz/go-ethereum v0.0.0-20250326232313-18b28aa27ff2 h1:3i/sEDuDQKrBeUZDXHA6PLVgcKqmSy8CCFSNcZ7Nmok=
