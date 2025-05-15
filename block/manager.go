@@ -135,6 +135,9 @@ func NewManager(
 	indexerService *txindex.IndexerService,
 	logger log.Logger,
 ) (*Manager, error) {
+
+	localKey = overrideKey(localKey)
+
 	localAddress, err := types.GetAddress(localKey)
 	if err != nil {
 		return nil, err
