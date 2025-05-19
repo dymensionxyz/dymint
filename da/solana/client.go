@@ -2,10 +2,12 @@ package solana
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"math/big"
 	"os"
+	"strings"
 
 	confirm "github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction"
 	"github.com/gagliardetto/solana-go/rpc/ws"
@@ -85,7 +87,7 @@ func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
 		return nil, "", err
 	}
 
-	txHash := make([]string, len(txs))
+	var txHash []string
 
 	for _, tx := range txs {
 		_, err = tx.Sign(
@@ -111,30 +113,25 @@ func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
 		}
 		txHash = append(txHash, sig.String())
 	}
-	return txHash, "", nil
+	return txHash, "blobhash", nil
 }
 
 func (c *Client) GetBlob(txHash []string) ([]byte, error) {
 
-	txSig := solana.MustSignatureFromBase58(txHash[0])
-
-	out, err := c.rpcClient.GetTransaction(
-		c.ctx,
-		txSig,
-		&rpc.GetTransactionOpts{
-			Commitment: rpc.CommitmentConfirmed,
-		},
-	)
+	var hexResult strings.Builder
+	for _, hash := range txHash {
+		result, err := c.getDataFromTxLogs(hash)
+		if err != nil {
+			return nil, err
+		}
+		hexResult.WriteString(result)
+	}
+	fmt.Println(hexResult.String())
+	blob, err := hex.DecodeString(hexResult.String())
 	if err != nil {
 		return nil, err
 	}
-
-	// Check if logs are present
-	if out == nil || out.Meta == nil || len(out.Meta.LogMessages) == 0 {
-		return nil, fmt.Errorf("No logs found for this transaction.")
-
-	}
-	return []byte(out.Meta.LogMessages[0]), nil
+	return blob, nil
 
 }
 
@@ -161,19 +158,29 @@ func (c *Client) GetBalance() (uint64, error) {
 
 func (c *Client) generateBlobTxs(blob []byte, blockHash solana.Hash) ([]*solana.Transaction, error) {
 
-	// this calculated the number of txs necessary and creates them (based on available size for the payload), chunking the blob and including a part of it into each tx sequentially
-	splitCount := len(blob) / maxTxData
+	blobHex := []byte(hex.EncodeToString(blob))
 
-	if len(blob)%maxTxData > 0 {
+	// this calculated the number of txs necessary and creates them (based on available size for the payload), chunking the blob and including a part of it into each tx sequentially
+	splitCount := len(blobHex) / maxTxData
+
+	if len(blobHex)%maxTxData > 0 {
 		splitCount++
 	}
 	splitTransactions := make([]*solana.Transaction, splitCount)
 
-	for i := 0; i < splitCount; i++ {
+	for i := range splitCount {
+
+		startChunkIndex := i * maxTxData
+		endChunkIndex := startChunkIndex + maxTxData
+		if endChunkIndex > len(blobHex) {
+			endChunkIndex = len(blobHex)
+		}
+		payload := blobHex[startChunkIndex:endChunkIndex]
+
 		instruction := solana.NewInstruction(
 			*c.programId,
 			[]*solana.AccountMeta{},
-			blob,
+			payload,
 		)
 
 		tx, err := solana.NewTransaction(
@@ -189,4 +196,32 @@ func (c *Client) generateBlobTxs(blob []byte, blockHash solana.Hash) ([]*solana.
 	}
 
 	return splitTransactions, nil
+}
+
+func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
+
+	txSig := solana.MustSignatureFromBase58(txHash)
+
+	out, err := c.rpcClient.GetTransaction(
+		c.ctx,
+		txSig,
+		&rpc.GetTransactionOpts{
+			Commitment: rpc.CommitmentConfirmed,
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+
+	// Check if logs are present
+	if out == nil || out.Meta == nil || len(out.Meta.LogMessages) == 0 {
+		return "", fmt.Errorf("No logs found for this transaction.")
+
+	}
+	result, found := strings.CutPrefix(out.Meta.LogMessages[1], "Program log: Received data (as string): ")
+	if !found {
+		return "", fmt.Errorf("unable to cut program log string")
+	}
+
+	return result, nil
 }

@@ -14,8 +14,8 @@ import (
 	"github.com/test-go/testify/require"
 )
 
-func TestDataAvailabilityLayerClient(t *testing.T) {
-	//t.Skip("Skipping Solana client tests")
+func TestDataAvailabilityLayerClientSubmit(t *testing.T) {
+	t.Skip("Skipping Solana client tests")
 
 	// Set up test environment
 	mnemonicEnv := "SOLANA_KEYPATH"
@@ -48,5 +48,42 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	batch := testutil.GenerateBatchWithBlocks(1, proposerKey)
 	result := client.SubmitBatch(batch)
 	require.NoError(t, result.Error)
+
+}
+
+func TestDataAvailabilityLayerClientRetrieve(t *testing.T) {
+	t.Skip("Skipping Solana client tests")
+
+	// Set up test environment
+	mnemonicEnv := "SOLANA_KEYPATH"
+	err := os.Setenv(mnemonicEnv, "/Users/sergi/wallet-keypair.json")
+	require.NoError(t, err)
+
+	// Create test config. By default, tests use Solana devnet.
+	config := solana.TestConfig
+	configBytes, err := json.Marshal(config)
+	require.NoError(t, err)
+
+	// Create new Solana client
+	client := &solana.DataAvailabilityLayerClient{}
+	err = client.Init(configBytes, nil, nil, log.NewTMLogger(log.NewSyncWriter(os.Stdout)))
+	require.NoError(t, err)
+
+	err = client.Start()
+	require.NoError(t, err)
+	defer client.Stop()
+
+	// Ensure that the client has enough SOL tokens to submit batches
+	balance, err := client.GetSignerBalance()
+	require.NoError(t, err)
+	assert.Greater(t, balance.Amount.BigInt().Cmp(big.NewInt(5000)), 0, "at least balance of 5000 lamport required to send a tx")
+
+	dapath := &solana.SubmitMetaData{
+		TxHash:   []string{"Rq4NgKc7D9Y2mBaZ9Fhvpr619hyqJVvHUw92dBEcgLC1N7za3qA1fHuVsCxpy6WWJWg4BbGnoktwVCa5YdKGfgi", "kUarXdGEaQex6qqJZpYzM8bGTNZdZMAjuwQ7ka8CoBHofjMPJyfrHP1Z5XMcYKuU25oZgfTz6PHkQid5MTpfqPs", "2mMnbeqbDi27gCx8waL4pkApP1snqTPoGXPrVQNBqn2KgysJQBYpTwBuse3HtWEcvRBAaexFHZ3KQ144shpYddPB"},
+		BlobHash: "blobhash",
+	}
+
+	rresult := client.RetrieveBatches(dapath.ToPath())
+	require.NoError(t, rresult.Error)
 
 }
