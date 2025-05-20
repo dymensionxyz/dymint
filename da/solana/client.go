@@ -9,8 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gagliardetto/solana-go/rpc/ws"
-
 	"github.com/gagliardetto/solana-go"
 
 	"github.com/gagliardetto/solana-go/rpc"
@@ -30,7 +28,6 @@ var _ SolanaClient = &Client{}
 
 type Client struct {
 	rpcClient *rpc.Client
-	wsClient  *ws.Client
 	ctx       context.Context
 	cfg       *Config
 	pkey      *solana.PrivateKey
@@ -58,7 +55,6 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 		ctx:       ctx,
 		rpcClient: rpcClient,
 		cfg:       config,
-		//	wsClient:  wsClient,
 		pkey:      &sender,
 		programId: &programID,
 	}
@@ -73,7 +69,6 @@ func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
 		return nil, "", err
 	}
 
-	//c.waitForConfirmation(txHash)
 	return txHash, "blobhash", nil
 }
 
