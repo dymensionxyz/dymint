@@ -35,7 +35,6 @@ type Client struct {
 }
 
 func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
-
 	rpcClient := rpc.New(config.Endpoint)
 
 	keyPath := os.Getenv(config.KeyPathEnv)
@@ -63,7 +62,6 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 }
 
 func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
-
 	txHash, err := c.generateAndSubmitBlobTxs(blob)
 	if err != nil {
 		return nil, "", err
@@ -73,7 +71,6 @@ func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
 }
 
 func (c *Client) GetBlob(txHash []string) ([]byte, error) {
-
 	var hexResult strings.Builder
 	for _, hash := range txHash {
 		result, err := c.getDataFromTxLogs(hash)
@@ -87,7 +84,6 @@ func (c *Client) GetBlob(txHash []string) ([]byte, error) {
 		return nil, err
 	}
 	return blob, nil
-
 }
 
 func (c *Client) GetSignerBalance() (*big.Int, error) {
@@ -112,7 +108,6 @@ func (c *Client) GetBalance() (uint64, error) {
 }
 
 func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
-
 	blobHex := []byte(hex.EncodeToString(blob))
 
 	// this calculated the number of txs necessary and creates them (based on available size for the payload), chunking the blob and including a part of it into each tx sequentially
@@ -133,7 +128,6 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 
 		// Build transaction
 		recentBlockhash, err := c.rpcClient.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
-
 		if err != nil {
 			return nil, err
 		}
@@ -149,7 +143,6 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 			recentBlockhash.Value.Blockhash,
 			solana.TransactionPayer(c.pkey.PublicKey()),
 		)
-
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +170,6 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 }
 
 func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
-
 	txSig := solana.MustSignatureFromBase58(txHash)
 
 	out, err := c.rpcClient.GetTransaction(
@@ -194,7 +186,6 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
 	// Check if logs are present
 	if out == nil || out.Meta == nil || len(out.Meta.LogMessages) == 0 {
 		return "", fmt.Errorf("No logs found for this transaction.")
-
 	}
 	result, found := strings.CutPrefix(out.Meta.LogMessages[1], "Program log: ")
 	if !found {
