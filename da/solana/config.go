@@ -21,18 +21,20 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 	uretry.WithMaxDelay(time.Second*6),
 )
 
-// Config stores Kaspa client configuration parameters.
+// Config stores Solana client configuration parameters.
 type Config struct {
 	Timeout       time.Duration        `json:"timeout,omitempty"`        // Timeout used in http requests
 	KeyPathEnv    string               `json:"keypath_env,omitempty"`    // mnemonic used to generate key
 	RetryAttempts *uint                `json:"retry_attempts,omitempty"` // num retries before failing when submitting or retrieving blobs
 	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`    // waiting time after failing before failing when submitting or retrieving blobs
 	Backoff       uretry.BackoffConfig `json:"backoff,omitempty"`        // backoff function used before retrying after all retries failed when submitting
+	Endpoint      string               `json:"endpoint,omitempty"`       // rpc endpoint
 }
 
 var TestConfig = Config{
 	Timeout:    5 * time.Second,
 	KeyPathEnv: "SOLANA_KEYPATH",
+	Endpoint:   "http://barcelona:8899",
 }
 
 // CreateConfig, generates config from da_config field received in DA client Init()

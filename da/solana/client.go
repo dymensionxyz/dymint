@@ -9,10 +9,10 @@ import (
 	"os"
 	"strings"
 
-	confirm "github.com/gagliardetto/solana-go/rpc/sendAndConfirmTransaction"
 	"github.com/gagliardetto/solana-go/rpc/ws"
 
 	"github.com/gagliardetto/solana-go"
+
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
@@ -40,8 +40,8 @@ type Client struct {
 
 func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 
-	endpoint := rpc.DevNet_RPC
-	rpcClient := rpc.New(endpoint)
+	//endpoint := rpc.DevNet_RPC
+	rpcClient := rpc.New("http://barcelona:8899")
 
 	keyPath := os.Getenv(config.KeyPathEnv)
 	if keyPath == "" {
@@ -54,18 +54,13 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 		log.Fatalf("Failed to load keypair: %v", err)
 	}
 
-	wsClient, err := ws.Connect(context.Background(), rpc.DevNet_WS)
-	if err != nil {
-		panic(err)
-	}
-
 	programID := solana.MustPublicKeyFromBase58("3ZjisFKx4KGHg3yRnq6FX7izAnt6gzyKiVfJz66Tdyqc")
 
 	client := &Client{
 		ctx:       ctx,
 		rpcClient: rpcClient,
 		cfg:       config,
-		wsClient:  wsClient,
+		//	wsClient:  wsClient,
 		pkey:      &sender,
 		programId: &programID,
 	}
@@ -75,44 +70,12 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 
 func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
 
-	// Build transaction
-	recentBlockhash, err := c.rpcClient.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
-
+	txHash, err := c.generateAndSubmitBlobTxs(blob)
 	if err != nil {
 		return nil, "", err
 	}
 
-	txs, err := c.generateBlobTxs(blob, recentBlockhash.Value.Blockhash)
-	if err != nil {
-		return nil, "", err
-	}
-
-	var txHash []string
-
-	for _, tx := range txs {
-		_, err = tx.Sign(
-			func(key solana.PublicKey) *solana.PrivateKey {
-				if c.pkey.PublicKey().Equals(key) {
-					return c.pkey
-				}
-				return nil
-			},
-		)
-		if err != nil {
-			return nil, "", fmt.Errorf("unable to sign transaction. err: %w", err)
-		}
-
-		sig, err := confirm.SendAndConfirmTransaction(
-			c.ctx,
-			c.rpcClient,
-			c.wsClient,
-			tx,
-		)
-		if err != nil {
-			return nil, "", fmt.Errorf("unable to send and confirm transaction. err: %w", err)
-		}
-		txHash = append(txHash, sig.String())
-	}
+	//c.waitForConfirmation(txHash)
 	return txHash, "blobhash", nil
 }
 
@@ -126,7 +89,6 @@ func (c *Client) GetBlob(txHash []string) ([]byte, error) {
 		}
 		hexResult.WriteString(result)
 	}
-	fmt.Println(hexResult.String())
 	blob, err := hex.DecodeString(hexResult.String())
 	if err != nil {
 		return nil, err
@@ -156,7 +118,7 @@ func (c *Client) GetBalance() (uint64, error) {
 	return resp.Value, nil
 }
 
-func (c *Client) generateBlobTxs(blob []byte, blockHash solana.Hash) ([]*solana.Transaction, error) {
+func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 
 	blobHex := []byte(hex.EncodeToString(blob))
 
@@ -166,8 +128,7 @@ func (c *Client) generateBlobTxs(blob []byte, blockHash solana.Hash) ([]*solana.
 	if len(blobHex)%maxTxData > 0 {
 		splitCount++
 	}
-	splitTransactions := make([]*solana.Transaction, splitCount)
-
+	var txHash []string
 	for i := range splitCount {
 
 		startChunkIndex := i * maxTxData
@@ -177,6 +138,13 @@ func (c *Client) generateBlobTxs(blob []byte, blockHash solana.Hash) ([]*solana.
 		}
 		payload := blobHex[startChunkIndex:endChunkIndex]
 
+		// Build transaction
+		recentBlockhash, err := c.rpcClient.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
+
+		if err != nil {
+			return nil, err
+		}
+
 		instruction := solana.NewInstruction(
 			*c.programId,
 			[]*solana.AccountMeta{},
@@ -185,17 +153,34 @@ func (c *Client) generateBlobTxs(blob []byte, blockHash solana.Hash) ([]*solana.
 
 		tx, err := solana.NewTransaction(
 			[]solana.Instruction{instruction},
-			blockHash,
+			recentBlockhash.Value.Blockhash,
 			solana.TransactionPayer(c.pkey.PublicKey()),
 		)
 
 		if err != nil {
 			return nil, err
 		}
-		splitTransactions[i] = tx
+
+		_, err = tx.Sign(
+			func(key solana.PublicKey) *solana.PrivateKey {
+				if c.pkey.PublicKey().Equals(key) {
+					return c.pkey
+				}
+				return nil
+			},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("unable to sign transaction. err: %w", err)
+		}
+
+		sig, err := c.rpcClient.SendTransaction(c.ctx, tx)
+		if err != nil {
+			return nil, fmt.Errorf("unable to send and confirm transaction. err: %w", err)
+		}
+		txHash = append(txHash, sig.String())
 	}
 
-	return splitTransactions, nil
+	return txHash, nil
 }
 
 func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
@@ -206,7 +191,7 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
 		c.ctx,
 		txSig,
 		&rpc.GetTransactionOpts{
-			Commitment: rpc.CommitmentConfirmed,
+			Commitment: rpc.CommitmentFinalized,
 		},
 	)
 	if err != nil {
@@ -218,7 +203,7 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
 		return "", fmt.Errorf("No logs found for this transaction.")
 
 	}
-	result, found := strings.CutPrefix(out.Meta.LogMessages[1], "Program log: Received data (as string): ")
+	result, found := strings.CutPrefix(out.Meta.LogMessages[1], "Program log: ")
 	if !found {
 		return "", fmt.Errorf("unable to cut program log string")
 	}

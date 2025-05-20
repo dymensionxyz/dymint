@@ -49,33 +49,6 @@ func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	return submitData, nil
 }
 
-// ToPath converts a SubmitMetaData to a path.
-/*func (d *SubmitMetaData) ToPath() string {
-	path := []string{}
-
-	path = append(path, d.TxHash...)
-
-	for i, part := range path {
-		path[i] = strings.Trim(part, da.PathSeparator)
-	}
-	return strings.Join(path, da.PathSeparator)
-}
-
-// FromPath parses a path to a SubmitMetaData.
-func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
-	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(da.PathSeparator[0]) })
-	if len(pathParts) != 2 {
-		return nil, fmt.Errorf("invalid DA path")
-	}
-
-	submitData := &SubmitMetaData{
-		TxHash:   pathParts[0],
-		BlobHash: pathParts[len(pathParts)-1],
-	}
-
-	return submitData, nil
-}*/
-
 var (
 	_ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
