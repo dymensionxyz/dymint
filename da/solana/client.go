@@ -24,7 +24,6 @@ type SolanaClient interface {
 	GetAccountAddress() string
 	GetSignerBalance() (*big.Int, error)
 	GetBalance() (uint64, error)
-	// ValidateInclusion(txHash string, commitment []byte, proof []byte) error
 }
 
 var _ SolanaClient = &Client{}
@@ -40,8 +39,7 @@ type Client struct {
 
 func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 
-	//endpoint := rpc.DevNet_RPC
-	rpcClient := rpc.New("http://barcelona:8899")
+	rpcClient := rpc.New(config.Endpoint)
 
 	keyPath := os.Getenv(config.KeyPathEnv)
 	if keyPath == "" {
