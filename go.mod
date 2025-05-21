@@ -45,6 +45,7 @@ require (
 	github.com/vedhavyas/go-subkey/v2 v2.0.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.34.0
+	golang.org/x/time v0.9.0
 	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.67.1
 	google.golang.org/protobuf v1.34.2
@@ -62,7 +63,6 @@ require (
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/bits-and-blooms/bitset v1.17.0 // indirect
 	github.com/blendle/zapdriver v1.3.1 // indirect
-	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1 // indirect
 	github.com/cockroachdb/fifo v0.0.0-20240606204812-0bbfbd93a7ce // indirect
@@ -122,7 +122,6 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	go.mongodb.org/mongo-driver v1.12.2 // indirect
 	go.uber.org/ratelimit v0.2.0 // indirect
-	golang.org/x/time v0.9.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
@@ -366,6 +365,7 @@ replace (
 replace (
 	github.com/cosmos/cosmos-sdk => github.com/dymensionxyz/cosmos-sdk v0.46.17-0.20241128210616-e9dfe47b8c73
 	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
+	github.com/gagliardetto/solana-go => github.com/srene/solana-go v0.0.0-20250521091951-785576f3810c
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2
 	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20250109171128-0ea81b630cbc

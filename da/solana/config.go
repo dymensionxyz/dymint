@@ -10,9 +10,11 @@ import (
 )
 
 const (
-	defaultRetryDelay    = 3 * time.Second
-	defaultRetryAttempts = uint(5)
+	defaultRetryDelay    = 5 * time.Second
+	defaultRetryAttempts = uint(10)
 	MaxBlobSizeBytes     = 500000
+	defaultTxRate        = uint(1)
+	defaultRequestRate   = uint(10)
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -24,18 +26,28 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 type Config struct {
 	Timeout        time.Duration        `json:"timeout,omitempty"`         // Timeout used in http requests
 	KeyPathEnv     string               `json:"keypath_env,omitempty"`     // mnemonic used to generate key
+	ApiKeyEnv      string               `json:"apikey_env,omitempty"`      // apikey used for the rpc client
 	RetryAttempts  *uint                `json:"retry_attempts,omitempty"`  // num retries before failing when submitting or retrieving blobs
 	RetryDelay     time.Duration        `json:"retry_delay,omitempty"`     // waiting time after failing before failing when submitting or retrieving blobs
 	Backoff        uretry.BackoffConfig `json:"backoff,omitempty"`         // backoff function used before retrying after all retries failed when submitting
 	Endpoint       string               `json:"endpoint,omitempty"`        // rpc endpoint
 	ProgramAddress string               `json:"program_address,omitempty"` // address of the Solana program used to write/read data
+	SubmitTxRate   *uint                `json:"tx_rate,omitempty"`         // rate limit to send transactions
+	RequestTxRate  *uint                `json:"req_rate,omitempty"`        // rate limit for querying transactions
 }
 
+var txRate = uint(100)
+var reqRate = uint(100)
+
 var TestConfig = Config{
-	Timeout:        5 * time.Second,
-	KeyPathEnv:     "SOLANA_KEYPATH",
+	Timeout:    5 * time.Second,
+	KeyPathEnv: "SOLANA_KEYPATH",
+	ApiKeyEnv:  "API_KEY",
+	//Endpoint:       "https://api.devnet.solana.com/",
 	Endpoint:       "http://barcelona:8899",
 	ProgramAddress: "3ZjisFKx4KGHg3yRnq6FX7izAnt6gzyKiVfJz66Tdyqc",
+	SubmitTxRate:   &txRate,
+	RequestTxRate:  &reqRate,
 }
 
 // CreateConfig, generates config from da_config field received in DA client Init()
@@ -57,6 +69,14 @@ func CreateConfig(bz []byte) (c Config, err error) {
 	if c.RetryAttempts == nil {
 		attempts := defaultRetryAttempts
 		c.RetryAttempts = &attempts
+	}
+	if c.SubmitTxRate == nil {
+		rate := defaultTxRate
+		c.SubmitTxRate = &rate
+	}
+	if c.RequestTxRate == nil {
+		rate := defaultRequestRate
+		c.RequestTxRate = &rate
 	}
 	return c, nil
 }

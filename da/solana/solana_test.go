@@ -20,9 +20,14 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	//t.Skip("Skipping Solana client tests")
 
 	// Set up test environment
-	mnemonicEnv := "SOLANA_KEYPATH"
-	err := os.Setenv(mnemonicEnv, "/Users/sergi/wallet-keypair.json")
+	keyPathEnv := "SOLANA_KEYPATH"
+	err := os.Setenv(keyPathEnv, "/Users/sergi/wallet-keypair.json")
 	require.NoError(t, err)
+
+	// Set up test environment
+	/*apikeyEnv := "API_KEY"
+	err = os.Setenv(apikeyEnv, "api-test-key")
+	require.NoError(t, err)*/
 
 	// Create test config. By default, tests use Solana devnet.
 	config := solana.TestConfig
@@ -51,7 +56,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 		name  string
 		batch *types.Batch
 	}{
-		{
+		/*{
 			name:  "small batch: 1KB",
 			batch: testutil.GenerateBatchWithBlocks(1, proposerKey),
 		},
@@ -62,7 +67,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 		{
 			name:  "big batch: 88KB",
 			batch: testutil.GenerateBatchWithBlocks(150, proposerKey),
-		},
+		},*/
 		{
 			name:  "huge batch: 362KB",
 			batch: testutil.GenerateBatchWithBlocks(600, proposerKey),

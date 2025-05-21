@@ -9,13 +9,16 @@ import (
 	"math/big"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gagliardetto/solana-go"
+	"golang.org/x/time/rate"
 
 	"github.com/gagliardetto/solana-go/rpc"
+	"github.com/gagliardetto/solana-go/rpc/jsonrpc"
 )
 
-const maxTxData = 900
+const maxTxData = 1037 // 1232 max tx size - 195 bytes (64 signature + 3 header + 96 accounts + 32 blockhash)
 
 type SolanaClient interface {
 	SubmitBlob(blob []byte) ([]string, string, error)
@@ -28,15 +31,36 @@ type SolanaClient interface {
 var _ SolanaClient = &Client{}
 
 type Client struct {
-	rpcClient *rpc.Client
-	ctx       context.Context
-	cfg       *Config
-	pkey      *solana.PrivateKey
-	programId *solana.PublicKey
+	submitTxRpcClient  *rpc.Client
+	requestTxRpcClient *rpc.Client
+	ctx                context.Context
+	cfg                *Config
+	pkey               *solana.PrivateKey
+	programId          *solana.PublicKey
 }
 
 func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
-	rpcClient := rpc.New(config.Endpoint)
+
+	var jsonTxRpcClient rpc.JSONRPCClient
+	var jsonReqRpcClient rpc.JSONRPCClient
+
+	if os.Getenv(config.ApiKeyEnv) != "" {
+		apiKey := os.Getenv(config.ApiKeyEnv)
+		jsonTxRpcClient = rpc.NewWithLimiterWithCustomHeaders(config.Endpoint, rate.Every(time.Second), int(*config.SubmitTxRate), map[string]string{
+			"x-api-key": apiKey,
+		})
+		jsonReqRpcClient = rpc.NewWithLimiterWithCustomHeaders(config.Endpoint, rate.Every(time.Second), int(*config.RequestTxRate), map[string]string{
+			"x-api-key": apiKey,
+		})
+	} else {
+		//jsonTxRpcClient = rpc.NewWithLimiter(config.Endpoint, rate.Every(time.Second), int(*config.SubmitTxRate))
+		//jsonReqRpcClient = rpc.NewWithLimiter(config.Endpoint, rate.Every(time.Second), int(*config.SubmitTxRate))
+		jsonTxRpcClient = jsonrpc.NewClient(config.Endpoint)
+		jsonReqRpcClient = jsonrpc.NewClient(config.Endpoint)
+	}
+
+	txRpcClient := rpc.NewWithCustomRPCClient(jsonTxRpcClient)
+	reqRpcClient := rpc.NewWithCustomRPCClient(jsonReqRpcClient)
 
 	keyPath := os.Getenv(config.KeyPathEnv)
 	if keyPath == "" {
@@ -52,11 +76,12 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 	programID := solana.MustPublicKeyFromBase58(config.ProgramAddress)
 
 	client := &Client{
-		ctx:       ctx,
-		rpcClient: rpcClient,
-		cfg:       config,
-		pkey:      &sender,
-		programId: &programID,
+		ctx:                ctx,
+		submitTxRpcClient:  txRpcClient,
+		requestTxRpcClient: reqRpcClient,
+		cfg:                config,
+		pkey:               &sender,
+		programId:          &programID,
 	}
 
 	return client, nil
@@ -101,7 +126,7 @@ func (c *Client) GetAccountAddress() string {
 }
 
 func (c *Client) GetBalance() (uint64, error) {
-	resp, err := c.rpcClient.GetBalance(
+	resp, err := c.requestTxRpcClient.GetBalance(
 		c.ctx,
 		c.pkey.PublicKey(),
 		rpc.CommitmentFinalized,
@@ -116,7 +141,7 @@ func (c *Client) GetBalance() (uint64, error) {
 func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 	blobHex := []byte(hex.EncodeToString(blob))
 
-	// this calculated the number of txs necessary and creates them (based on available size for the payload), chunking the blob and including a part of it into each tx sequentially
+	// this calculates the number of txs necessary and creates them (based on available size for the payload), chunking the blob and including a part of it into each tx sequentially
 	splitCount := len(blobHex) / maxTxData
 
 	if len(blobHex)%maxTxData > 0 {
@@ -133,7 +158,7 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 		payload := blobHex[startChunkIndex:endChunkIndex]
 
 		// Build transaction
-		recentBlockhash, err := c.rpcClient.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
+		recentBlockhash, err := c.requestTxRpcClient.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
 		if err != nil {
 			return nil, err
 		}
@@ -149,6 +174,7 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 			recentBlockhash.Value.Blockhash,
 			solana.TransactionPayer(c.pkey.PublicKey()),
 		)
+
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +191,7 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 			return nil, fmt.Errorf("unable to sign transaction. err: %w", err)
 		}
 
-		sig, err := c.rpcClient.SendTransaction(c.ctx, tx)
+		sig, err := c.submitTxRpcClient.SendTransaction(c.ctx, tx)
 		if err != nil {
 			return nil, fmt.Errorf("unable to send and confirm transaction. err: %w", err)
 		}
@@ -178,7 +204,7 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
 	txSig := solana.MustSignatureFromBase58(txHash)
 
-	out, err := c.rpcClient.GetTransaction(
+	out, err := c.requestTxRpcClient.GetTransaction(
 		c.ctx,
 		txSig,
 		&rpc.GetTransactionOpts{
