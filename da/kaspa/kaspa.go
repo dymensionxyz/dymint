@@ -371,7 +371,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 	h.Write(blob)
 	blobHash := h.Sum(nil)
 
-	if hex.EncodeToString(blobHash) == daMetaData.BlobHash || err != nil {
+	if hex.EncodeToString(blobHash) != daMetaData.BlobHash || err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,

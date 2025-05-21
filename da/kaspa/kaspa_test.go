@@ -1,6 +1,8 @@
 package kaspa_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"testing"
@@ -48,14 +50,6 @@ func TestKaspaDataAvailabilityClient(t *testing.T) {
 	err = client.Start()
 	require.NoError(t, err)
 	defer client.Stop()
-
-	// TODO: add balance checks
-	/*balance, err := client.GetSignerBalance()
-	require.NoError(t, err)
-	if balance.Amount.LT(math.NewInt(minAPTBalance)) {
-		t.Log("Insufficient APT balance for testing: ", balance)
-		t.Fail()
-	}*/
 
 	// Proposer key for generating test batches
 	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
@@ -125,23 +119,30 @@ func TestKaspaSubmitRetrieve(t *testing.T) {
 		Blocks: []*types.Block{block},
 	}
 
-	// mock txhash, commitment and proof
+	// mock txhash
 	txHash := []string{"txhash"}
-	blobHash := "blobhash"
-
-	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, blobHash, nil)
 
 	// generate blob data from batch
 	blobData, err := batch.MarshalBinary()
 	require.NoError(t, err)
 
+	// calculate blobhash
+	h := sha256.New()
+	h.Write(blobData)
+	blobHash := h.Sum(nil)
+
+	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, hex.EncodeToString(blobHash), nil)
+	mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(blobData, nil)
 	mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(blobData, nil)
 
 	// submit blob
 	rsubmit := client.SubmitBatch(batch)
 	assert.Equal(t, da.StatusSuccess, rsubmit.Code)
-
 	retriever := client.(da.BatchRetriever)
+
+	// check availability
+	ravail := client.CheckBatchAvailability(rsubmit.SubmitMetaData.DAPath)
+	assert.Equal(t, da.StatusSuccess, ravail.Code)
 
 	// validate retrieval
 	rretrieve := retriever.RetrieveBatches(rsubmit.SubmitMetaData.DAPath)
@@ -178,11 +179,27 @@ func TestKaspaAvailCheck(t *testing.T) {
 			mockClient, client := setDAandMock(t)
 			retriever := client.(da.BatchRetriever)
 
-			metadata := kaspa.SubmitMetaData{
-				TxHash: []string{"txhash"},
+			// generate batch
+			block := testutil.GetRandomBlock(1, 1)
+			batch := &types.Batch{
+				Blocks: []*types.Block{block},
 			}
 
-			mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(nil, tc.err)
+			// generate blob data from batch
+			blobData, err := batch.MarshalBinary()
+			require.NoError(t, err)
+
+			// calculate blobhash
+			h := sha256.New()
+			h.Write(blobData)
+			blobHash := h.Sum(nil)
+
+			metadata := kaspa.SubmitMetaData{
+				TxHash:   []string{"txhash"},
+				BlobHash: hex.EncodeToString(blobHash),
+			}
+
+			mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(blobData, tc.err)
 
 			// validate avail check
 			rValidAvail := retriever.CheckBatchAvailability(metadata.ToPath())
