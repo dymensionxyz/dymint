@@ -56,7 +56,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 		name  string
 		batch *types.Batch
 	}{
-		/*{
+		{
 			name:  "small batch: 1KB",
 			batch: testutil.GenerateBatchWithBlocks(1, proposerKey),
 		},
@@ -67,7 +67,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 		{
 			name:  "big batch: 88KB",
 			batch: testutil.GenerateBatchWithBlocks(150, proposerKey),
-		},*/
+		},
 		{
 			name:  "huge batch: 362KB",
 			batch: testutil.GenerateBatchWithBlocks(600, proposerKey),

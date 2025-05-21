@@ -13,8 +13,8 @@ const (
 	defaultRetryDelay    = 5 * time.Second
 	defaultRetryAttempts = uint(10)
 	MaxBlobSizeBytes     = 500000
-	defaultTxRate        = uint(1)
-	defaultRequestRate   = uint(10)
+	defaultTxRate        = uint(10000)
+	defaultRequestRate   = uint(10000)
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -36,9 +36,6 @@ type Config struct {
 	RequestTxRate  *uint                `json:"req_rate,omitempty"`        // rate limit for querying transactions
 }
 
-var txRate = uint(100)
-var reqRate = uint(100)
-
 var TestConfig = Config{
 	Timeout:    5 * time.Second,
 	KeyPathEnv: "SOLANA_KEYPATH",
@@ -46,8 +43,6 @@ var TestConfig = Config{
 	//Endpoint:       "https://api.devnet.solana.com/",
 	Endpoint:       "http://barcelona:8899",
 	ProgramAddress: "3ZjisFKx4KGHg3yRnq6FX7izAnt6gzyKiVfJz66Tdyqc",
-	SubmitTxRate:   &txRate,
-	RequestTxRate:  &reqRate,
 }
 
 // CreateConfig, generates config from da_config field received in DA client Init()

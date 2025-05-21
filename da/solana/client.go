@@ -15,7 +15,6 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/gagliardetto/solana-go/rpc"
-	"github.com/gagliardetto/solana-go/rpc/jsonrpc"
 )
 
 const maxTxData = 1037 // 1232 max tx size - 195 bytes (64 signature + 3 header + 96 accounts + 32 blockhash)
@@ -53,10 +52,8 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 			"x-api-key": apiKey,
 		})
 	} else {
-		//jsonTxRpcClient = rpc.NewWithLimiter(config.Endpoint, rate.Every(time.Second), int(*config.SubmitTxRate))
-		//jsonReqRpcClient = rpc.NewWithLimiter(config.Endpoint, rate.Every(time.Second), int(*config.SubmitTxRate))
-		jsonTxRpcClient = jsonrpc.NewClient(config.Endpoint)
-		jsonReqRpcClient = jsonrpc.NewClient(config.Endpoint)
+		jsonTxRpcClient = rpc.NewWithLimiter(config.Endpoint, rate.Every(time.Second), int(*config.SubmitTxRate))
+		jsonReqRpcClient = rpc.NewWithLimiter(config.Endpoint, rate.Every(time.Second), int(*config.RequestTxRate))
 	}
 
 	txRpcClient := rpc.NewWithCustomRPCClient(jsonTxRpcClient)
@@ -208,7 +205,7 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
 		c.ctx,
 		txSig,
 		&rpc.GetTransactionOpts{
-			Commitment: rpc.CommitmentFinalized,
+			Commitment: rpc.CommitmentConfirmed,
 		},
 	)
 	if err != nil {
