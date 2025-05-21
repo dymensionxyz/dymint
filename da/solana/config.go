@@ -13,8 +13,8 @@ const (
 	defaultRetryDelay    = 5 * time.Second
 	defaultRetryAttempts = uint(10)
 	MaxBlobSizeBytes     = 500000
-	defaultTxRate        = uint(10000)
-	defaultRequestRate   = uint(10000)
+	defaultTxRate        = 10000
+	defaultRequestRate   = 10000
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -32,15 +32,15 @@ type Config struct {
 	Backoff        uretry.BackoffConfig `json:"backoff,omitempty"`         // backoff function used before retrying after all retries failed when submitting
 	Endpoint       string               `json:"endpoint,omitempty"`        // rpc endpoint
 	ProgramAddress string               `json:"program_address,omitempty"` // address of the Solana program used to write/read data
-	SubmitTxRate   *uint                `json:"tx_rate,omitempty"`         // rate limit to send transactions
-	RequestTxRate  *uint                `json:"req_rate,omitempty"`        // rate limit for querying transactions
+	SubmitTxRate   *int                 `json:"tx_rate,omitempty"`         // rate limit to send transactions
+	RequestTxRate  *int                 `json:"req_rate,omitempty"`        // rate limit for querying transactions
 }
 
 var TestConfig = Config{
 	Timeout:    5 * time.Second,
 	KeyPathEnv: "SOLANA_KEYPATH",
 	ApiKeyEnv:  "API_KEY",
-	//Endpoint:       "https://api.devnet.solana.com/",
+	// Endpoint:       "https://api.devnet.solana.com/",
 	Endpoint:       "http://barcelona:8899",
 	ProgramAddress: "3ZjisFKx4KGHg3yRnq6FX7izAnt6gzyKiVfJz66Tdyqc",
 }
@@ -55,23 +55,36 @@ func CreateConfig(bz []byte) (c Config, err error) {
 		return c, fmt.Errorf("json unmarshal: %w", err)
 	}
 
+	if c.SubmitTxRate != nil && *c.SubmitTxRate <= 0 {
+		return c, errors.New("rate must be positive")
+	}
+
+	if c.RequestTxRate != nil && *c.RequestTxRate <= 0 {
+		return c, errors.New("rate must be positive")
+	}
+
 	if c.RetryDelay == 0 {
 		c.RetryDelay = defaultRetryDelay
 	}
+
 	if c.Backoff == (uretry.BackoffConfig{}) {
 		c.Backoff = defaultSubmitBackoff
 	}
+
 	if c.RetryAttempts == nil {
 		attempts := defaultRetryAttempts
 		c.RetryAttempts = &attempts
 	}
+
 	if c.SubmitTxRate == nil {
 		rate := defaultTxRate
 		c.SubmitTxRate = &rate
 	}
+
 	if c.RequestTxRate == nil {
 		rate := defaultRequestRate
 		c.RequestTxRate = &rate
 	}
+
 	return c, nil
 }

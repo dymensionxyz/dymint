@@ -39,21 +39,20 @@ type Client struct {
 }
 
 func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
-
 	var jsonTxRpcClient rpc.JSONRPCClient
 	var jsonReqRpcClient rpc.JSONRPCClient
 
 	if os.Getenv(config.ApiKeyEnv) != "" {
 		apiKey := os.Getenv(config.ApiKeyEnv)
-		jsonTxRpcClient = rpc.NewWithLimiterWithCustomHeaders(config.Endpoint, rate.Every(time.Second), int(*config.SubmitTxRate), map[string]string{
+		jsonTxRpcClient = rpc.NewWithLimiterWithCustomHeaders(config.Endpoint, rate.Every(time.Second), *config.SubmitTxRate, map[string]string{
 			"x-api-key": apiKey,
 		})
-		jsonReqRpcClient = rpc.NewWithLimiterWithCustomHeaders(config.Endpoint, rate.Every(time.Second), int(*config.RequestTxRate), map[string]string{
+		jsonReqRpcClient = rpc.NewWithLimiterWithCustomHeaders(config.Endpoint, rate.Every(time.Second), *config.RequestTxRate, map[string]string{
 			"x-api-key": apiKey,
 		})
 	} else {
-		jsonTxRpcClient = rpc.NewWithLimiter(config.Endpoint, rate.Every(time.Second), int(*config.SubmitTxRate))
-		jsonReqRpcClient = rpc.NewWithLimiter(config.Endpoint, rate.Every(time.Second), int(*config.RequestTxRate))
+		jsonTxRpcClient = rpc.NewWithLimiter(config.Endpoint, rate.Every(time.Second), *config.SubmitTxRate)
+		jsonReqRpcClient = rpc.NewWithLimiter(config.Endpoint, rate.Every(time.Second), *config.RequestTxRate)
 	}
 
 	txRpcClient := rpc.NewWithCustomRPCClient(jsonTxRpcClient)
@@ -171,7 +170,6 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 			recentBlockhash.Value.Blockhash,
 			solana.TransactionPayer(c.pkey.PublicKey()),
 		)
-
 		if err != nil {
 			return nil, err
 		}
