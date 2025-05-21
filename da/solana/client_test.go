@@ -1,6 +1,8 @@
 package solana_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"testing"
 
@@ -34,10 +36,19 @@ func TestSolanaSubmitRetrieve(t *testing.T) {
 		Blocks: []*types.Block{block},
 	}
 
-	// mock txhash, commitment and proof
+	blob, err := batch.MarshalBinary()
+	require.NoError(t, err)
+
+	// mock txhash
 	txHash := []string{"txHash"}
-	blobHash := "blobHash"
-	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, blobHash, nil)
+
+	// blobhash
+	h := sha256.New()
+	h.Write(blob)
+	blobHash := h.Sum(nil)
+	blobHashString := hex.EncodeToString(blobHash)
+
+	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, blobHashString, nil)
 
 	// generate blob data from batch
 	blobData, err := batch.MarshalBinary()
@@ -85,13 +96,28 @@ func TestAvailCheck(t *testing.T) {
 			mockClient, client := setDAandMock(t)
 			retriever := client.(da.BatchRetriever)
 
+			// generate batch
+			block := testutil.GetRandomBlock(1, 1)
+			batch := &types.Batch{
+				Blocks: []*types.Block{block},
+			}
+
+			blob, err := batch.MarshalBinary()
+			require.NoError(t, err)
+
+			// blobhash
+			h := sha256.New()
+			h.Write(blob)
+			blobHash := h.Sum(nil)
+			blobHashString := hex.EncodeToString(blobHash)
+
 			metadata := solana.SubmitMetaData{
 				TxHash:   []string{"txHash"},
-				BlobHash: "blobHash",
+				BlobHash: blobHashString,
 			}
 
 			if tc.err == nil {
-				mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(nil, nil)
+				mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(blob, nil)
 			} else {
 				mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(nil, da.ErrBlobNotFound)
 			}

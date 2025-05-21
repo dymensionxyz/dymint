@@ -370,7 +370,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("Blob not found: %v", err),
-				Error:   err,
+				Error:   da.ErrBlobNotFound,
 			},
 		}
 	}
