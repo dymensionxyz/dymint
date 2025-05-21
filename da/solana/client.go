@@ -2,6 +2,7 @@ package solana
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -48,7 +49,7 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 		log.Fatalf("Failed to load keypair: %v", err)
 	}
 
-	programID := solana.MustPublicKeyFromBase58("3ZjisFKx4KGHg3yRnq6FX7izAnt6gzyKiVfJz66Tdyqc")
+	programID := solana.MustPublicKeyFromBase58(config.ProgramAddress)
 
 	client := &Client{
 		ctx:       ctx,
@@ -67,7 +68,12 @@ func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
 		return nil, "", err
 	}
 
-	return txHash, "blobhash", nil
+	h := sha256.New()
+	h.Write(blob)
+	blobHash := h.Sum(nil)
+	blobHashString := hex.EncodeToString(blobHash)
+
+	return txHash, blobHashString, nil
 }
 
 func (c *Client) GetBlob(txHash []string) ([]byte, error) {
