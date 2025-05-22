@@ -37,11 +37,12 @@ type Config struct {
 }
 
 var TestConfig = Config{
-	Timeout:        5 * time.Second,
-	KeyPathEnv:     "SOLANA_KEYPATH",
-	ApiKeyEnv:      "API_KEY",
-	Endpoint:       "https://api.devnet.solana.com/",
-	ProgramAddress: "3ZjisFKx4KGHg3yRnq6FX7izAnt6gzyKiVfJz66Tdyqc",
+	Timeout:    5 * time.Second,
+	KeyPathEnv: "SOLANA_KEYPATH",
+	ApiKeyEnv:  "API_KEY",
+	Endpoint:   "https://api.devnet.solana.com/",
+	// ProgramAddress: "3ZjisFKx4KGHg3yRnq6FX7izAnt6gzyKiVfJz66Tdyqc",
+	ProgramAddress: "5cfjxBnFMoqdbZXTMHaoXfQm7obMpYMnkT681sRd95Qo",
 }
 
 // CreateConfig, generates config from da_config field received in DA client Init()

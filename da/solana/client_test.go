@@ -41,7 +41,7 @@ func TestSolanaSubmitRetrieve(t *testing.T) {
 	require.NoError(t, err)
 
 	// mock txhash
-	txHash := []string{"txHash"}
+	txHash := "txHash"
 
 	// blobhash
 	h := sha256.New()
@@ -113,7 +113,7 @@ func TestAvailCheck(t *testing.T) {
 			blobHashString := hex.EncodeToString(blobHash)
 
 			metadata := solana.SubmitMetaData{
-				TxHash:   []string{"txHash"},
+				TxHash:   "txHash",
 				BlobHash: blobHashString,
 			}
 

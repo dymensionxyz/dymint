@@ -10,17 +10,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/decred/base58"
 	"github.com/gagliardetto/solana-go"
 	"golang.org/x/time/rate"
 
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
-const maxTxData = 1037 // 1232 max tx size - 195 bytes (64 signature + 3 header + 96 accounts + 32 blockhash)
+const maxTxData = 900 // 1232 max tx size - 195 bytes (64 signature + 3 header + 96 accounts + 32 blockhash + 44 tx string)
 
 type SolanaClient interface {
-	SubmitBlob(blob []byte) ([]string, string, error)
-	GetBlob(txHash []string) ([]byte, error)
+	SubmitBlob(blob []byte) (string, string, error)
+	GetBlob(txHash string) ([]byte, error)
 	GetAccountAddress() string
 	GetBalance() (uint64, error)
 }
@@ -76,11 +77,11 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 }
 
 // SubmitBlob slices the blob in small pieces and sends each piece to the Solana program (specified in config) as input data. It returns the list of transactions plus the blob hash used to compare with the original one on retrieval.
-func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
+func (c *Client) SubmitBlob(blob []byte) (string, string, error) {
 	// generate the transactions with blob data and sends them to Solana
-	txHashes, err := c.generateAndSubmitBlobTxs(blob)
+	txHash, err := c.generateAndSubmitBlobTxs(blob)
 	if err != nil {
-		return nil, "", err
+		return "", "", err
 	}
 
 	// calculates the blob hash
@@ -89,19 +90,28 @@ func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
 	blobHash := h.Sum(nil)
 	blobHashString := hex.EncodeToString(blobHash)
 
-	return txHashes, blobHashString, nil
+	return txHash, blobHashString, nil
 }
 
 // GetBlob gets the input data from each transaction included in the txHash, from the Solana transaction logs, and aggregates them to regenerate the blob.
-func (c *Client) GetBlob(txHashes []string) ([]byte, error) {
+func (c *Client) GetBlob(txHash string) ([]byte, error) {
 	var hexResult strings.Builder
-	for _, txHash := range txHashes {
-		result, err := c.getDataFromTxLogs(txHash)
+	var data []string
+	for {
+		result, tx, err := c.getDataFromTxLogs(txHash)
 		if err != nil {
 			return nil, err
 		}
-		hexResult.WriteString(result)
+		data = append(data, result)
+		if tx == "" {
+			break
+		}
+		txHash = tx
 	}
+	for i := len(data) - 1; i >= 0; i-- {
+		hexResult.WriteString(data[i])
+	}
+
 	blob, err := hex.DecodeString(hexResult.String())
 	if err != nil {
 		return nil, err
@@ -129,7 +139,7 @@ func (c *Client) GetBalance() (uint64, error) {
 }
 
 // generateAndSubmitBlobTxs splits the blob, based on maximum data that can be included in a transaction (maxTxData), and creates and sends every piece in a single transaction.
-func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
+func (c *Client) generateAndSubmitBlobTxs(blob []byte) (string, error) {
 	blobHex := []byte(hex.EncodeToString(blob))
 
 	// this calculates the number of txs necessary and creates them (based on available size for the payload), chunking the blob and including a part of it into each tx sequentially
@@ -149,13 +159,21 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 		if endChunkIndex > len(blobHex) {
 			endChunkIndex = len(blobHex)
 		}
-		payload := blobHex[startChunkIndex:endChunkIndex]
+		data := blobHex[startChunkIndex:endChunkIndex]
 
 		// gets the recent block hash that needs to be included in the transaction
 		recentBlockhash, err := c.requestTxRpcClient.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
+		var txSigBytes []byte
+		if i > 0 {
+			txSigBytes = []byte(txHashes[i-1])
+		} else {
+			txSigBytes = []byte(base58.Encode([]byte{}))
+		}
+		payload := append([]byte{byte(len(txSigBytes))}, txSigBytes...)
+		payload = append(payload, data...)
 
 		// it creates the instruction with the payload (blob chunck) as input data
 		instruction := solana.NewInstruction(
@@ -171,7 +189,7 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 			solana.TransactionPayer(c.pkey.PublicKey()),
 		)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 
 		// sign the transaction
@@ -184,21 +202,21 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 			},
 		)
 		if err != nil {
-			return nil, fmt.Errorf("unable to sign transaction. err: %w", err)
+			return "", fmt.Errorf("unable to sign transaction. err: %w", err)
 		}
 
 		// sends the transaction to rpc node (without waiting for confirmation to make it faster -rate will be controlled by rate limiter if used-). Confirmation will be validated in CheckAvailability().
 		sig, err := c.submitTxRpcClient.SendTransaction(c.ctx, tx)
 		if err != nil {
-			return nil, fmt.Errorf("unable to send and confirm transaction. err: %w", err)
+			return "", fmt.Errorf("unable to send and confirm transaction. err: %w", err)
 		}
 		txHashes = append(txHashes, sig.String())
 	}
 
-	return txHashes, nil
+	return txHashes[len(txHashes)-1], nil
 }
 
-func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
+func (c *Client) getDataFromTxLogs(txHash string) (string, string, error) {
 	txSig := solana.MustSignatureFromBase58(txHash)
 
 	out, err := c.requestTxRpcClient.GetTransaction(
@@ -209,19 +227,25 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
 		},
 	)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	// Check if logs are present
 	if out == nil || out.Meta == nil || len(out.Meta.LogMessages) == 0 {
-		return "", fmt.Errorf("No logs found for this transaction.")
-	}
-	result, found := strings.CutPrefix(out.Meta.LogMessages[1], "Program log: ")
-	if !found {
-		return "", fmt.Errorf("unable to cut program log string")
+		return "", "", fmt.Errorf("No logs found for this transaction.")
 	}
 
-	return result, nil
+	hash, found := strings.CutPrefix(out.Meta.LogMessages[1], "Program log: Tx: ")
+	if !found {
+		return "", "", fmt.Errorf("next tx not found in transaction logs")
+	}
+
+	data, found := strings.CutPrefix(out.Meta.LogMessages[2], "Program log: Data: ")
+	if !found {
+		return "", "", fmt.Errorf("data not found in transaction logs")
+	}
+
+	return data, hash, nil
 }
 
 func SetRpcClient(endpoint string, apiKeyEnv string, maxRate *int) *RPCClient {

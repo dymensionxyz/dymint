@@ -23,7 +23,7 @@ import (
 func (d *SubmitMetaData) ToPath() string {
 	path := []string{}
 
-	path = append(path, d.TxHash...)
+	path = append(path, d.TxHash)
 	path = append(path, d.BlobHash)
 	for i, part := range path {
 		path[i] = strings.Trim(part, da.PathSeparator)
@@ -39,13 +39,10 @@ func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	}
 
 	submitData := &SubmitMetaData{
-		TxHash:   []string{},
+		TxHash:   pathParts[0],
 		BlobHash: pathParts[len(pathParts)-1],
 	}
 
-	for i := 0; i < len(pathParts)-1; i++ {
-		submitData.TxHash = append(submitData.TxHash, pathParts[i])
-	}
 	return submitData, nil
 }
 
@@ -68,7 +65,7 @@ type DataAvailabilityLayerClient struct {
 
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
 type SubmitMetaData struct {
-	TxHash   []string
+	TxHash   string
 	BlobHash string
 }
 
@@ -180,7 +177,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 		case <-c.ctx.Done():
 			return da.ResultSubmitBatch{}
 		default:
-			var txHash []string
+			var txHash string
 			var blobHash string
 			err := retry.Do(
 				func() error {
