@@ -34,6 +34,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
 
+	config.Endpoint = "http://barcelona:8899"
 	// Create new Solana client
 	client := &solana.DataAvailabilityLayerClient{}
 	err = client.Init(configBytes, nil, nil, log.NewTMLogger(log.NewSyncWriter(os.Stdout)))
@@ -46,7 +47,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	// Ensure that the client has enough SOL tokens to submit batches
 	balance, err := client.GetSignerBalance()
 	require.NoError(t, err)
-	assert.Greater(t, balance.Amount.BigInt().Cmp(big.NewInt(5000)), 0, "at least balance of 5000 lamport required to send a tx")
+	assert.Greater(t, balance.Amount.BigInt().Cmp(big.NewInt(5000000)), 0, "at least enough balance required to send txs (5000 lamport per tx)")
 
 	// Proposer key for generating test batches
 	proposerKey, _, err := crypto.GenerateEd25519Key(nil)

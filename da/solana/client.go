@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
-	"math/big"
 	"os"
 	"strings"
 	"time"
@@ -23,7 +22,6 @@ type SolanaClient interface {
 	SubmitBlob(blob []byte) ([]string, string, error)
 	GetBlob(txHash []string) ([]byte, error)
 	GetAccountAddress() string
-	GetSignerBalance() (*big.Int, error)
 	GetBalance() (uint64, error)
 }
 
@@ -38,26 +36,20 @@ type Client struct {
 	programId          *solana.PublicKey
 }
 
+// struct used for testability
+type RPCClient struct {
+	*rpc.Client
+	Origin string
+}
+
+// NewClient creates the new client that is used to communicate with Solana chain
 func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
-	var jsonTxRpcClient rpc.JSONRPCClient
-	var jsonReqRpcClient rpc.JSONRPCClient
 
-	if os.Getenv(config.ApiKeyEnv) != "" {
-		apiKey := os.Getenv(config.ApiKeyEnv)
-		jsonTxRpcClient = rpc.NewWithLimiterWithCustomHeaders(config.Endpoint, rate.Every(time.Second), *config.SubmitTxRate, map[string]string{
-			"x-api-key": apiKey,
-		})
-		jsonReqRpcClient = rpc.NewWithLimiterWithCustomHeaders(config.Endpoint, rate.Every(time.Second), *config.RequestTxRate, map[string]string{
-			"x-api-key": apiKey,
-		})
-	} else {
-		jsonTxRpcClient = rpc.NewWithLimiter(config.Endpoint, rate.Every(time.Second), *config.SubmitTxRate)
-		jsonReqRpcClient = rpc.NewWithLimiter(config.Endpoint, rate.Every(time.Second), *config.RequestTxRate)
-	}
+	// create two rpc clients, one for sending transactions and one for queries. done this way to allow different rate limits.
+	txRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.SubmitTxRate)
+	reqRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.RequestTxRate)
 
-	txRpcClient := rpc.NewWithCustomRPCClient(jsonTxRpcClient)
-	reqRpcClient := rpc.NewWithCustomRPCClient(jsonReqRpcClient)
-
+	// keypath is used to get solana private key
 	keyPath := os.Getenv(config.KeyPathEnv)
 	if keyPath == "" {
 		return nil, fmt.Errorf("keyPath environment variable %s is not set or empty", config.KeyPathEnv)
@@ -69,12 +61,13 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 		log.Fatalf("Failed to load keypair: %v", err)
 	}
 
+	// programId is created from config address
 	programID := solana.MustPublicKeyFromBase58(config.ProgramAddress)
 
 	client := &Client{
 		ctx:                ctx,
-		submitTxRpcClient:  txRpcClient,
-		requestTxRpcClient: reqRpcClient,
+		submitTxRpcClient:  txRpcClient.Client,
+		requestTxRpcClient: reqRpcClient.Client,
 		cfg:                config,
 		pkey:               &sender,
 		programId:          &programID,
@@ -83,24 +76,29 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 	return client, nil
 }
 
+// SubmitBlob slices the blob in small pieces and sends each piece to the Solana program (specified in config) as input data. It returns the list of transactions plus the blob hash used to compare with the original one on retrieval.
 func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
-	txHash, err := c.generateAndSubmitBlobTxs(blob)
+
+	// generate the transactions with blob data and sends them to Solana
+	txHashes, err := c.generateAndSubmitBlobTxs(blob)
 	if err != nil {
 		return nil, "", err
 	}
 
+	// calculates the blob hash
 	h := sha256.New()
 	h.Write(blob)
 	blobHash := h.Sum(nil)
 	blobHashString := hex.EncodeToString(blobHash)
 
-	return txHash, blobHashString, nil
+	return txHashes, blobHashString, nil
 }
 
-func (c *Client) GetBlob(txHash []string) ([]byte, error) {
+// GetBlob gets the input data from each transaction included in the txHash, from the Solana transaction logs, and aggregates them to regenerate the blob.
+func (c *Client) GetBlob(txHashes []string) ([]byte, error) {
 	var hexResult strings.Builder
-	for _, hash := range txHash {
-		result, err := c.getDataFromTxLogs(hash)
+	for _, txHash := range txHashes {
+		result, err := c.getDataFromTxLogs(txHash)
 		if err != nil {
 			return nil, err
 		}
@@ -113,14 +111,12 @@ func (c *Client) GetBlob(txHash []string) ([]byte, error) {
 	return blob, nil
 }
 
-func (c *Client) GetSignerBalance() (*big.Int, error) {
-	return big.NewInt(0), nil
-}
-
+// GetAccountAddress returns the Solana address derived from the private key
 func (c *Client) GetAccountAddress() string {
-	return ""
+	return c.pkey.PublicKey().String()
 }
 
+// GetBalance returns the address balance in lamports
 func (c *Client) GetBalance() (uint64, error) {
 	resp, err := c.requestTxRpcClient.GetBalance(
 		c.ctx,
@@ -134,18 +130,22 @@ func (c *Client) GetBalance() (uint64, error) {
 	return resp.Value, nil
 }
 
+// generateAndSubmitBlobTxs splits the blob, based on maximum data that can be included in a transaction (maxTxData), and creates and sends every piece in a single transaction.
 func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 	blobHex := []byte(hex.EncodeToString(blob))
 
 	// this calculates the number of txs necessary and creates them (based on available size for the payload), chunking the blob and including a part of it into each tx sequentially
 	splitCount := len(blobHex) / maxTxData
 
+	// adds another if the split is not exact
 	if len(blobHex)%maxTxData > 0 {
 		splitCount++
 	}
-	var txHash []string
+	var txHashes []string
+
 	for i := range splitCount {
 
+		// calculate start end byte for the payload
 		startChunkIndex := i * maxTxData
 		endChunkIndex := startChunkIndex + maxTxData
 		if endChunkIndex > len(blobHex) {
@@ -153,18 +153,20 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 		}
 		payload := blobHex[startChunkIndex:endChunkIndex]
 
-		// Build transaction
+		// gets the recent block hash that needs to be included in the transaction
 		recentBlockhash, err := c.requestTxRpcClient.GetLatestBlockhash(context.Background(), rpc.CommitmentFinalized)
 		if err != nil {
 			return nil, err
 		}
 
+		// it creates the instruction with the payload (blob chunck) as input data
 		instruction := solana.NewInstruction(
 			*c.programId,
 			[]*solana.AccountMeta{},
 			payload,
 		)
 
+		// it creates the transaction with the previously created instruction (in Solana one transaction can include multiple instructions)
 		tx, err := solana.NewTransaction(
 			[]solana.Instruction{instruction},
 			recentBlockhash.Value.Blockhash,
@@ -174,6 +176,7 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 			return nil, err
 		}
 
+		// sign the transaction
 		_, err = tx.Sign(
 			func(key solana.PublicKey) *solana.PrivateKey {
 				if c.pkey.PublicKey().Equals(key) {
@@ -186,14 +189,15 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) ([]string, error) {
 			return nil, fmt.Errorf("unable to sign transaction. err: %w", err)
 		}
 
+		// sends the transaction to rpc node (without waiting for confirmation to make it faster -rate will be controlled by rate limiter if used-). Confirmation will be validated in CheckAvailability().
 		sig, err := c.submitTxRpcClient.SendTransaction(c.ctx, tx)
 		if err != nil {
 			return nil, fmt.Errorf("unable to send and confirm transaction. err: %w", err)
 		}
-		txHash = append(txHash, sig.String())
+		txHashes = append(txHashes, sig.String())
 	}
 
-	return txHash, nil
+	return txHashes, nil
 }
 
 func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
@@ -220,4 +224,30 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
 	}
 
 	return result, nil
+}
+
+func SetRpcClient(endpoint string, apiKeyEnv string, maxRate *int) *RPCClient {
+
+	if os.Getenv(apiKeyEnv) != "" && maxRate != nil {
+		apiKey := os.Getenv(apiKeyEnv)
+		jsonRpcClient := rpc.NewWithLimiterWithCustomHeaders(endpoint, rate.Every(time.Second), *maxRate, map[string]string{
+			"x-api-key": apiKey,
+		})
+		return &RPCClient{rpc.NewWithCustomRPCClient(jsonRpcClient), "limiter+apikey"}
+	}
+
+	if os.Getenv(apiKeyEnv) != "" {
+		apiKey := os.Getenv(apiKeyEnv)
+		return &RPCClient{rpc.NewWithHeaders(endpoint, map[string]string{
+			"x-api-key": apiKey,
+		}), "apikey"}
+	}
+
+	if maxRate != nil {
+		jsonRpcClient := rpc.NewWithLimiter(endpoint, rate.Every(time.Second), *maxRate)
+		return &RPCClient{rpc.NewWithCustomRPCClient(jsonRpcClient), "limiter"}
+	}
+
+	return &RPCClient{rpc.New(endpoint), "default"}
+
 }

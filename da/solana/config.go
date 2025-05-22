@@ -13,8 +13,8 @@ const (
 	defaultRetryDelay    = 5 * time.Second
 	defaultRetryAttempts = uint(10)
 	MaxBlobSizeBytes     = 500000
-	defaultTxRate        = 10000
-	defaultRequestRate   = 10000
+	defaultTxRate        = 1
+	defaultRequestRate   = 100
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -37,11 +37,10 @@ type Config struct {
 }
 
 var TestConfig = Config{
-	Timeout:    5 * time.Second,
-	KeyPathEnv: "SOLANA_KEYPATH",
-	ApiKeyEnv:  "API_KEY",
-	// Endpoint:       "https://api.devnet.solana.com/",
-	Endpoint:       "http://barcelona:8899",
+	Timeout:        5 * time.Second,
+	KeyPathEnv:     "SOLANA_KEYPATH",
+	ApiKeyEnv:      "API_KEY",
+	Endpoint:       "https://api.devnet.solana.com/",
 	ProgramAddress: "3ZjisFKx4KGHg3yRnq6FX7izAnt6gzyKiVfJz66Tdyqc",
 }
 
@@ -74,16 +73,6 @@ func CreateConfig(bz []byte) (c Config, err error) {
 	if c.RetryAttempts == nil {
 		attempts := defaultRetryAttempts
 		c.RetryAttempts = &attempts
-	}
-
-	if c.SubmitTxRate == nil {
-		rate := defaultTxRate
-		c.SubmitTxRate = &rate
-	}
-
-	if c.RequestTxRate == nil {
-		rate := defaultRequestRate
-		c.RequestTxRate = &rate
 	}
 
 	return c, nil
