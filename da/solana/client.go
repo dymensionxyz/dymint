@@ -17,7 +17,7 @@ import (
 	"github.com/gagliardetto/solana-go/rpc"
 )
 
-const maxTxData = 900 // 1232 max tx size - 195 bytes (64 signature + 3 header + 96 accounts + 32 blockhash + 44 tx string)
+const maxTxData = 973 // 1232 max tx size - 195 bytes (64 signature + 3 header + 96 accounts + 32 blockhash + 64 tx string)
 
 type SolanaClient interface {
 	SubmitBlob(blob []byte) (string, string, error)

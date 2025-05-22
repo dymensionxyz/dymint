@@ -17,7 +17,7 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	t.Skip("Skipping Solana client tests")
+	//t.Skip("Skipping Solana client tests")
 
 	// Set up test environment
 	keyPathEnv := "SOLANA_KEYPATH"
