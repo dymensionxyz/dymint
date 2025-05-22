@@ -44,7 +44,6 @@ type RPCClient struct {
 
 // NewClient creates the new client that is used to communicate with Solana chain
 func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
-
 	// create two rpc clients, one for sending transactions and one for queries. done this way to allow different rate limits.
 	txRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.SubmitTxRate)
 	reqRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.RequestTxRate)
@@ -78,7 +77,6 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 
 // SubmitBlob slices the blob in small pieces and sends each piece to the Solana program (specified in config) as input data. It returns the list of transactions plus the blob hash used to compare with the original one on retrieval.
 func (c *Client) SubmitBlob(blob []byte) ([]string, string, error) {
-
 	// generate the transactions with blob data and sends them to Solana
 	txHashes, err := c.generateAndSubmitBlobTxs(blob)
 	if err != nil {
@@ -227,7 +225,6 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, error) {
 }
 
 func SetRpcClient(endpoint string, apiKeyEnv string, maxRate *int) *RPCClient {
-
 	if os.Getenv(apiKeyEnv) != "" && maxRate != nil {
 		apiKey := os.Getenv(apiKeyEnv)
 		jsonRpcClient := rpc.NewWithLimiterWithCustomHeaders(endpoint, rate.Every(time.Second), *maxRate, map[string]string{
@@ -249,5 +246,4 @@ func SetRpcClient(endpoint string, apiKeyEnv string, maxRate *int) *RPCClient {
 	}
 
 	return &RPCClient{rpc.New(endpoint), "default"}
-
 }
