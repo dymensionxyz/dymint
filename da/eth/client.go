@@ -1,4 +1,4 @@
-package bnb
+package eth
 
 import (
 	"bytes"
@@ -19,7 +19,7 @@ import (
 	"github.com/dymensionxyz/go-ethereum/rpc"
 )
 
-type BNBClient interface {
+type EthClient interface {
 	SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error)
 	GetBlob(txHash string) ([]byte, error)
 	GetAccountAddress() string
@@ -31,7 +31,7 @@ type Client struct {
 	ethclient *ethclient.Client
 	rpcClient *rpc.Client
 	ctx       context.Context
-	cfg       *BNBConfig
+	cfg       *EthConfig
 	account   *Account
 }
 
@@ -85,9 +85,9 @@ func (c Client) ValidateInclusion(txHash string, txCommitment []byte, txProof []
 	return da.ErrBlobNotFound
 }
 
-var _ BNBClient = &Client{}
+var _ EthClient = &Client{}
 
-func NewClient(ctx context.Context, config *BNBConfig) (BNBClient, error) {
+func NewClient(ctx context.Context, config *EthConfig) (EthClient, error) {
 	rpcClient, err := rpc.DialContext(ctx, config.Endpoint)
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
 		return common.Hash{}, nil, nil, err
 	}*/
 
-	gasLimit := uint64(21000) // Adjust as needed
+	gasLimit := uint64(210000) // Adjust as needed
 
 	// create blob tx with blob and fee params previously obtained
 	//blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
