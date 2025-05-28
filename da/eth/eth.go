@@ -10,6 +10,7 @@ import (
 	"cosmossdk.io/math"
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/ethutils"
 	"github.com/dymensionxyz/dymint/da/stub"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
@@ -365,7 +366,7 @@ func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
-	return MaxBlobDataSize
+	return ethutils.MaxBlobDataSize
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {

@@ -1,4 +1,4 @@
-package eth
+package ethutils
 
 import (
 	"crypto/sha256"

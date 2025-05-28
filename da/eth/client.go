@@ -13,6 +13,8 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/ethutils"
+
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/go-ethereum/consensus/misc/eip4844"
@@ -69,7 +71,7 @@ func (c Client) ValidateInclusion(slot string, txCommitment []byte, txProof []by
 	}
 
 	// validate blob with da path commitment and proof
-	err = VerifyBlobProof((*Blob)(blob), commitment, proof)
+	err = ethutils.VerifyBlobProof((*ethutils.Blob)(blob), commitment, proof)
 	if err != nil {
 		return errors.Join(da.ErrBlobNotFound, err)
 	}
@@ -193,7 +195,7 @@ func (c Client) GetBlob(txhash string, slot string, txCommitment []byte) ([]byte
 	if err != nil {
 		return nil, err
 	}
-	b := (Blob)(*blob)
+	b := (ethutils.Blob)(*blob)
 	data, err := b.ToData()
 	if err != nil {
 		return nil, err

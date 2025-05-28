@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/dymensionxyz/dymint/da/ethutils"
 	"github.com/dymensionxyz/go-ethereum/common"
 	"github.com/dymensionxyz/go-ethereum/core/types"
 	"github.com/dymensionxyz/go-ethereum/crypto"
@@ -82,7 +83,7 @@ type BlobSidecarTest struct {
 }
 
 func createBlobTx(key *ecdsa.PrivateKey, chainId, gasLimit uint64, gasTipCap *big.Int, gasFeeCap *big.Int, blobFeeCap *big.Int, blobData []byte, toAddr common.Address, nonce uint64) (*types.Transaction, error) {
-	var b Blob
+	var b ethutils.Blob
 	err := b.FromData(blobData)
 	if err != nil {
 		return nil, err

@@ -8,6 +8,7 @@ import (
 	"math/big"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/ethutils"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/go-ethereum/consensus/misc/eip4844"
@@ -74,7 +75,7 @@ func (c Client) ValidateInclusion(txHash string, txCommitment []byte, txProof []
 			}
 
 			// validate blob with da path commitment and proof
-			err = VerifyBlobProof((*Blob)(blobSidecar.Sidecar.Blobs[i]), commitment, proof)
+			err = ethutils.VerifyBlobProof((*ethutils.Blob)(blobSidecar.Sidecar.Blobs[i]), commitment, proof)
 			if err != nil {
 				return errors.Join(da.ErrBlobNotFound, err)
 			}
@@ -190,7 +191,7 @@ func (c Client) GetBlob(txhash string) ([]byte, error) {
 
 	var data []byte
 	for _, blob := range blobSidecar.Sidecar.Blobs {
-		b := (Blob)(*blob)
+		b := (ethutils.Blob)(*blob)
 		data, err = b.ToData()
 		if err == nil {
 			break
