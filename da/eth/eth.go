@@ -2,7 +2,6 @@ package eth
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -25,14 +24,6 @@ const (
 	defaultBatchRetryAttempts = 10
 	ArchivePoolAddress        = "0x0000000000000000000000000000000000000000" // the data settling address
 )
-
-type EthConfig struct {
-	Timeout    time.Duration `json:"timeout,omitempty"`
-	Endpoint   string        `json:"endpoint"`
-	PrivateKey string        `json:"private_key_hex"`
-	ChainId    uint64        `json:"chain_id"`
-	ApiUrl     string        `json:"api_url"`
-}
 
 // ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
@@ -118,17 +109,16 @@ func WithBatchRetryAttempts(attempts uint) da.Option {
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 
-	if len(config) > 0 {
-		err := json.Unmarshal(config, &c.config)
-		if err != nil {
-			return err
-		}
-	}
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 
-	// Set defaults
+	ethconfig, err := createConfig(config)
+	if err != nil {
+		return fmt.Errorf("create config: %w", err)
+	}
+	c.config = ethconfig
+
 	c.pubsubServer = pubsubServer
 
-	// TODO: Make configurable
 	c.txInclusionTimeout = defaultTxInclusionTimeout
 	c.batchRetryDelay = defaultBatchRetryDelay
 	c.batchRetryAttempts = defaultBatchRetryAttempts

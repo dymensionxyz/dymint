@@ -2,11 +2,9 @@ package eth
 
 import (
 	"crypto/ecdsa"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/dymensionxyz/dymint/da/ethutils"
 	"github.com/dymensionxyz/go-ethereum/common"
@@ -19,30 +17,6 @@ import (
 type Account struct {
 	Key  *ecdsa.PrivateKey
 	addr common.Address
-}
-
-type BigInt struct {
-	*big.Int
-}
-
-func (i *BigInt) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-
-	// Remove quotes and "0x" prefix if present
-	s = strings.Trim(s, "\"")
-	s = strings.TrimPrefix(s, "0x")
-
-	// Parse the hexadecimal string
-	n, ok := new(big.Int).SetString(s, 16)
-	if !ok {
-		return fmt.Errorf("invalid hex number: %s", s)
-	}
-
-	i.Int = n
-	return nil
 }
 
 // BlobSidecarResponse represents the structure of the Beacon node blob response
@@ -71,10 +45,10 @@ type ExecutionPayload struct {
 
 // BlobSidecarResponse represents the structure of the Beacon node blob response
 type BlobSidecarResponse struct {
-	Data []BlobSidecarTest `json:"data"`
+	Data []BlobSidecar `json:"data"`
 }
 
-type BlobSidecarTest struct {
+type BlobSidecar struct {
 	BlockRoot  string              `json:"block_root"`
 	Index      string              `json:"index"`
 	Blob       *kzg4844.Blob       `json:"blob"` // Base64-encoded blob data

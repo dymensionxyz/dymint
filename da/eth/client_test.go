@@ -39,14 +39,14 @@ func TestEthSubmitRetrieve(t *testing.T) {
 	txHash := common.BytesToHash([]byte("txhash"))
 	commitment := []byte("commitment")
 	proof := []byte("proof")
-
-	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, commitment, proof, nil)
+	slot := "1"
+	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, commitment, proof, slot, nil)
 
 	// generate blob data from batch
 	blobData, err := batch.MarshalBinary()
 	require.NoError(t, err)
 
-	mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(blobData, nil)
+	mockClient.On("GetBlob", mock.Anything, mock.Anything, mock.Anything).Return(blobData, nil)
 
 	// submit blob
 	rsubmit := client.SubmitBatch(batch)
@@ -92,9 +92,10 @@ func TestAvailCheck(t *testing.T) {
 				TxHash:     "txhash",
 				Proof:      []byte("proof"),
 				Commitment: []byte("commitment"),
+				Slot:       "1",
 			}
 
-			mockClient.On("ValidateInclusion", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.err)
+			mockClient.On("ValidateInclusion", mock.Anything, mock.Anything, mock.Anything).Return(tc.err)
 
 			// validate avail check
 			rValidAvail := retriever.CheckBatchAvailability(metadata.ToPath())
@@ -121,10 +122,9 @@ func setDAandMock(t *testing.T) (*mocks.MockEthClient, da.DataAvailabilityLayerC
 	dalc := registry.GetClient("eth")
 
 	config := eth.EthConfig{
-		Timeout:    5000000000,
-		Endpoint:   "http://localhost:8545/rpc",
-		ChainId:    1,
-		PrivateKey: "459c954ea1366473e0edfa4cf55b8028fa6405e44959cfcaa1771890dc527275",
+		Timeout:  5000000000,
+		Endpoint: "http://localhost:8545/rpc",
+		ChainId:  1,
 	}
 
 	conf, err := json.Marshal(config)

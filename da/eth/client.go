@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/avast/retry-go/v4"
@@ -26,6 +27,8 @@ import (
 	"github.com/dymensionxyz/go-ethereum/core/types"
 	"github.com/dymensionxyz/go-ethereum/rpc"
 )
+
+const beaconBlockUrl = "/eth/v2/beacon/blocks/"
 
 type EthClient interface {
 	SubmitBlob(blob []byte) (common.Hash, []byte, []byte, string, error)
@@ -47,7 +50,6 @@ type Client struct {
 
 // ValidateInclusion validates that there is a blob included in the tx and corresponds to the commitment and proof included in da path.
 func (c Client) ValidateInclusion(slot string, txCommitment []byte, txProof []byte) error {
-
 	blob, err := c.getKzg4844Blob(slot, txCommitment)
 	if err != nil {
 		return err
@@ -55,9 +57,6 @@ func (c Client) ValidateInclusion(slot string, txCommitment []byte, txProof []by
 
 	// convert received 0x format commitment to  kzg4844.Commitment
 	var commitment kzg4844.Commitment
-	fmt.Println(len(txCommitment))
-	fmt.Println(string(txCommitment[0]))
-	fmt.Println(txCommitment[len(txCommitment)-1])
 	err = commitment.UnmarshalJSON([]byte(fmt.Sprintf("%q", txCommitment)))
 	if err != nil {
 		return errors.Join(da.ErrBlobNotFound, err)
@@ -76,7 +75,6 @@ func (c Client) ValidateInclusion(slot string, txCommitment []byte, txProof []by
 		return errors.Join(da.ErrBlobNotFound, err)
 	}
 	return nil
-
 }
 
 var _ EthClient = &Client{}
@@ -87,7 +85,12 @@ func NewClient(ctx context.Context, config *EthConfig) (EthClient, error) {
 		return nil, err
 	}
 
-	account, err := fromHexKey(config.PrivateKey)
+	priKeyHex := os.Getenv(config.PrivateKeyEnv)
+	if priKeyHex == "" {
+		return nil, fmt.Errorf("private key environment %s is not set or empty", config.PrivateKeyEnv)
+	}
+
+	account, err := fromHexKey(priKeyHex)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +151,7 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, string, er
 	gasLimit := uint64(21000) // Adjust as needed
 
 	// create blob tx with blob and fee params previously obtained
-	//blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
+	// blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gasLimit, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	if err != nil {
 		return common.Hash{}, nil, nil, "", err
@@ -190,7 +193,6 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, string, er
 
 // GetBlock retrieves a block BNB Near chain by tx hash
 func (c Client) GetBlob(txhash string, slot string, txCommitment []byte) ([]byte, error) {
-
 	blob, err := c.getKzg4844Blob(slot, txCommitment)
 	if err != nil {
 		return nil, err
@@ -267,7 +269,6 @@ func (c Client) waitForTxReceipt(txHash common.Hash) (*types.Receipt, error) {
 
 // getSlot
 func (c *Client) getSlot(blockId uint64) (string, error) {
-
 	blockIdHead, slotHead, err := c.retrieveSlot("head")
 	if err != nil {
 		return "", err
@@ -294,7 +295,7 @@ func (c *Client) getSlot(blockId uint64) (string, error) {
 
 // retrieveSlot
 func (c *Client) retrieveSlot(slot string) (uint64, uint64, error) {
-	url := fmt.Sprintf(c.apiURL + "/eth/v2/beacon/blocks/" + slot)
+	url := c.apiURL + beaconBlockUrl + slot
 
 	resp, err := c.httpClient.Get(url)
 	if err != nil {
@@ -327,7 +328,7 @@ func (c *Client) retrieveSlot(slot string) (uint64, uint64, error) {
 }
 
 // retrieveBlobTx gets Tx, that includes blob parts, using  Kaspa REST-API server (https://api.kaspa.org/docs)
-func (c *Client) retrieveBlob(slot string) ([]BlobSidecarTest, error) {
+func (c *Client) retrieveBlob(slot string) ([]BlobSidecar, error) {
 	url := fmt.Sprintf(c.apiURL+"/eth/v1/beacon/blob_sidecars/%s", slot)
 
 	resp, err := c.httpClient.Get(url)
@@ -403,10 +404,10 @@ func calculateNextBaseFee(parent *types.Header) *big.Int {
 		return baseFee
 	}
 
-	delta := gasUsed - targetGas
-	change := new(big.Int).Mul(baseFee, big.NewInt(int64(delta)))
-	change.Div(change, big.NewInt(int64(targetGas)))
-	change.Div(change, big.NewInt(int64(baseFeeMaxChangeDenominator)))
+	delta := int64(gasUsed - targetGas) //nolint:gosec // disable G115
+	change := new(big.Int).Mul(baseFee, big.NewInt(delta))
+	change.Div(change, big.NewInt(int64(targetGas)))                   //nolint:gosec // disable G115
+	change.Div(change, big.NewInt(int64(baseFeeMaxChangeDenominator))) //nolint:gosec // disable G115
 
 	nextBaseFee := new(big.Int)
 	if gasUsed > targetGas {

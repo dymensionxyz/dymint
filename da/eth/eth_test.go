@@ -15,15 +15,10 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	//t.Skip("Skipping Eth client tests")
+	t.Skip("Skipping Eth client tests")
 
 	// Create test config. By default, tests use BNB devnet.
-	config := eth.EthConfig{
-		Endpoint:   "https://ethereum-sepolia-rpc.publicnode.com",
-		PrivateKey: "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234",
-		Timeout:    500000000000,
-		ChainId:    11155111,
-	}
+	config := eth.TestConfig
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
 
@@ -93,16 +88,10 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 }
 
 func TestDataAvailabilityLayerClientRetrieval(t *testing.T) {
-	//t.Skip("Skipping Eth client tests")
+	t.Skip("Skipping Eth client tests")
 
 	// Create test config. By default, tests use Sepo devnet.
-	config := eth.EthConfig{
-		Endpoint:   "https://ethereum-sepolia-rpc.publicnode.com",
-		PrivateKey: "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234",
-		Timeout:    500000000000,
-		ChainId:    11155111,
-		ApiUrl:     "https://ethereum-sepolia-beacon-api.publicnode.com",
-	}
+	config := eth.TestConfig
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
 
