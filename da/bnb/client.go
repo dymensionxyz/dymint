@@ -10,6 +10,7 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/ethutils"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/dymensionxyz/go-ethereum"
 
 	"github.com/dymensionxyz/go-ethereum/consensus/misc/eip4844"
 	"github.com/dymensionxyz/go-ethereum/crypto/kzg4844"
@@ -130,7 +131,7 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
 	gasFeeCap := calcGasFeeCap(baseFee, gasTipCap)
 
 	// estimate gas using rpc
-	/*cCtx, cancel = context.WithTimeout(c.ctx, c.cfg.Timeout)
+	cCtx, cancel = context.WithTimeout(c.ctx, c.cfg.Timeout)
 	defer cancel()
 	to := common.HexToAddress(ArchivePoolAddress)
 	msg := ethereum.CallMsg{
@@ -144,13 +145,10 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
 	gas, err := c.ethclient.EstimateGas(cCtx, msg)
 	if err != nil {
 		return common.Hash{}, nil, nil, err
-	}*/
-
-	gasLimit := uint64(21000) // Adjust as needed
+	}
 
 	// create blob tx with blob and fee params previously obtained
-	//blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
-	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gasLimit, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
+	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	if err != nil {
 		return common.Hash{}, nil, nil, err
 	}
