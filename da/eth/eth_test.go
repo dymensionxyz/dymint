@@ -91,3 +91,38 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 		})
 	}
 }
+
+func TestDataAvailabilityLayerClientRetrieval(t *testing.T) {
+	//t.Skip("Skipping BNB client tests")
+
+	// Create test config. By default, tests use BNB devnet.
+	config := eth.EthConfig{
+		Endpoint:   "https://ethereum-sepolia-rpc.publicnode.com",
+		PrivateKey: "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234",
+		Timeout:    500000000000,
+		ChainId:    11155111,
+		ApiUrl:     "https://ethereum-sepolia-beacon-api.publicnode.com",
+	}
+	configBytes, err := json.Marshal(config)
+	require.NoError(t, err)
+
+	// Create new Ethereum client
+	client := &eth.DataAvailabilityLayerClient{}
+	err = client.Init(configBytes, nil, nil, log.NewTMLogger(log.NewSyncWriter(os.Stdout)))
+	require.NoError(t, err)
+
+	err = client.Start()
+	require.NoError(t, err)
+	defer client.Stop()
+
+	meta := &eth.SubmitMetaData{
+		TxHash:     "txhash",
+		Commitment: []byte("commitment"),
+		Proof:      []byte("proof"),
+		BlockId:    8412136,
+	}
+	result := client.RetrieveBatches(meta.ToPath())
+	require.NoError(t, result.Error)
+	require.Equal(t, da.StatusSuccess, result.Code)
+
+}

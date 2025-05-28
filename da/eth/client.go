@@ -3,10 +3,14 @@ package eth
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"net/http"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
@@ -16,29 +20,32 @@ import (
 	"github.com/dymensionxyz/go-ethereum/ethclient"
 
 	"github.com/dymensionxyz/go-ethereum/common"
+	"github.com/dymensionxyz/go-ethereum/core/types"
 	"github.com/dymensionxyz/go-ethereum/rpc"
 )
 
 type EthClient interface {
-	SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error)
-	GetBlob(txHash string) ([]byte, error)
+	SubmitBlob(blob []byte) (common.Hash, []byte, []byte, uint64, error)
+	GetBlob(txHash string, slot uint64) ([]byte, error)
 	GetAccountAddress() string
 	GetSignerBalance() (*big.Int, error)
 	ValidateInclusion(txHash string, commitment []byte, proof []byte) error
 }
 
 type Client struct {
-	ethclient *ethclient.Client
-	rpcClient *rpc.Client
-	ctx       context.Context
-	cfg       *EthConfig
-	account   *Account
+	ethclient  *ethclient.Client
+	rpcClient  *rpc.Client
+	httpClient *http.Client
+	ctx        context.Context
+	cfg        *EthConfig
+	account    *Account
+	apiURL     string
 }
 
 // ValidateInclusion validates that there is a blob included in the tx and corresponds to the commitment and proof included in da path.
 func (c Client) ValidateInclusion(txHash string, txCommitment []byte, txProof []byte) error {
 	// if blobsidecar not retrieved it may mean rpc error, therefore not considered da.ErrBlobNotFound
-	blobSidecar, err := c.blobSidecarByTxHash(c.ctx, txHash)
+	blobSidecar, err := c.blobSidecarByTxHash(c.ctx, txHash, 0)
 	if err != nil {
 		return err
 	}
@@ -98,31 +105,37 @@ func NewClient(ctx context.Context, config *EthConfig) (EthClient, error) {
 		return nil, err
 	}
 
+	httpClient := &http.Client{
+		Timeout: config.Timeout,
+	}
+
 	client := Client{
-		ethclient: ethclient.NewClient(rpcClient),
-		rpcClient: rpcClient,
-		ctx:       ctx,
-		cfg:       config,
-		account:   account,
+		ethclient:  ethclient.NewClient(rpcClient),
+		rpcClient:  rpcClient,
+		httpClient: httpClient,
+		ctx:        ctx,
+		cfg:        config,
+		account:    account,
+		apiURL:     config.ApiUrl,
 	}
 
 	return client, nil
 }
 
 // SubmitBlob sends blob data to BNB chain
-func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
+func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, uint64, error) {
 	// get nonce for the submitter account
 	cCtx, cancel := context.WithTimeout(c.ctx, c.cfg.Timeout)
 	defer cancel()
 	nonce, err := c.ethclient.PendingNonceAt(cCtx, c.account.addr)
 	if err != nil {
-		return common.Hash{}, nil, nil, err
+		return common.Hash{}, nil, nil, 0, err
 	}
 
 	// get base and tip fee from chain
 	gasTipCap, baseFee, blobBaseFee, err := c.suggestGasPriceCaps(c.ctx)
 	if err != nil {
-		return common.Hash{}, nil, nil, err
+		return common.Hash{}, nil, nil, 0, err
 	}
 
 	// computes the recommended gas fee with base and tip obtained
@@ -145,13 +158,13 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
 		return common.Hash{}, nil, nil, err
 	}*/
 
-	gasLimit := uint64(210000) // Adjust as needed
+	gasLimit := uint64(21000) // Adjust as needed
 
 	// create blob tx with blob and fee params previously obtained
 	//blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gasLimit, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	if err != nil {
-		return common.Hash{}, nil, nil, err
+		return common.Hash{}, nil, nil, 0, err
 	}
 
 	// send blob tx to BNB chain
@@ -159,27 +172,43 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
 	defer cancel()
 	err = c.ethclient.SendTransaction(cCtx, blobTx)
 	if err != nil {
-		return common.Hash{}, nil, nil, err
+		return common.Hash{}, nil, nil, 0, err
 	}
 	txhash := blobTx.Hash()
+
+	receipt, err := c.waitForTxReceipt(txhash)
+	if err != nil {
+		return common.Hash{}, nil, nil, 0, err
+	}
 
 	// parse blob commitment generated to 0x format
 	commitment, err := blobTx.BlobTxSidecar().Commitments[0].MarshalText()
 	if err != nil {
-		return common.Hash{}, nil, nil, err
+		return common.Hash{}, nil, nil, 0, err
 	}
 
 	// parse blob proof generated to 0x format
 	proof, err := blobTx.BlobTxSidecar().Proofs[0].MarshalText()
 	if err != nil {
-		return common.Hash{}, nil, nil, err
+		return common.Hash{}, nil, nil, 0, err
 	}
-	return txhash, commitment, proof, nil
+
+	return txhash, commitment, proof, receipt.BlockNumber.Uint64(), nil
 }
 
 // GetBlock retrieves a block BNB Near chain by tx hash
-func (c Client) GetBlob(txhash string) ([]byte, error) {
-	blobSidecar, err := c.blobSidecarByTxHash(c.ctx, txhash)
+func (c Client) GetBlob(txhash string, blockId uint64) ([]byte, error) {
+	/*blobSidecar, err := c.blobSidecarByTxHash(c.ctx, txhash, slot)
+	if err != nil {
+		return nil, err
+	}*/
+
+	slot, err := c.getSlot(blockId)
+	if err != nil {
+		return nil, err
+	}
+
+	blobSidecar, err := c.retrieveBlob(slot)
 	if err != nil {
 		return nil, err
 	}
@@ -189,12 +218,8 @@ func (c Client) GetBlob(txhash string) ([]byte, error) {
 	}
 
 	var data []byte
-	for _, blob := range blobSidecar.Sidecar.Blobs {
-		b := (Blob)(*blob)
-		data, err = b.ToData()
-		if err == nil {
-			break
-		}
+	for _, blobsidecar := range blobSidecar {
+		data = []byte(blobsidecar.Blob)
 	}
 	if data == nil {
 		return nil, fmt.Errorf("Error recovering data from blob")
@@ -207,8 +232,43 @@ func (c Client) GetAccountAddress() string {
 	return c.account.addr.String()
 }
 
+func (c Client) waitForTxReceipt(txHash common.Hash) (*types.Receipt, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, c.cfg.Timeout)
+	defer cancel()
+	var receipt *types.Receipt
+	err := retry.Do(
+		func() error {
+			var err error
+			receipt, err = c.ethclient.TransactionReceipt(ctx, txHash)
+			if err != nil {
+				// Mark network/temporary errors as retryable
+				return fmt.Errorf("get receipt failed: %w", err)
+			}
+			if receipt == nil {
+				// Receipt not found yet - this is retryable
+				return fmt.Errorf("receipt not found")
+			}
+			fmt.Println(receipt.BlockHash)
+			if receipt.BlockNumber == nil || receipt.BlockNumber.Cmp(big.NewInt(0)) == 0 {
+				return fmt.Errorf("no block number in receipt")
+			}
+			return nil
+		},
+		retry.Context(ctx),
+		retry.Attempts(5), //nolint:gosec // RetryAttempts should be always positive
+		retry.Delay(0),
+		retry.DelayType(retry.FixedDelay), // Force fixed delay between attempts
+		retry.LastErrorOnly(true),         // Only log the last error
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get receipt: %w", err)
+	}
+
+	return receipt, nil
+}
+
 // blobSidecarByTxHash return a sidecar of a given blob transaction
-func (c Client) blobSidecarByTxHash(ctx context.Context, hash string) (*BlobSidecarTx, error) {
+func (c Client) blobSidecarByTxHash(ctx context.Context, hash string, slot int) (*BlobSidecarTx, error) {
 	var sidecar *BlobSidecarTx
 	cCtx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
 	defer cancel()
@@ -221,6 +281,58 @@ func (c Client) blobSidecarByTxHash(ctx context.Context, hash string) (*BlobSide
 	}
 
 	return sidecar, nil
+}
+
+// retrieveBlobTx gets Tx, that includes blob parts, using  Kaspa REST-API server (https://api.kaspa.org/docs)
+func (c *Client) getSlot(blockId uint64) (string, error) {
+	url := fmt.Sprintf(c.apiURL + "/eth/v2/beacon/blocks/head")
+
+	resp, err := c.httpClient.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("post failed: %w", err)
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			return
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return "", fmt.Errorf("unexpected status: %s, body: %s", resp.Status, body)
+	}
+
+	var bnResp BeaconChainResponse
+	if err := json.NewDecoder(resp.Body).Decode(&bnResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+	return bnResp.Data.Message.Body.ExecutionPayload.BlockNumber, nil
+}
+
+// retrieveBlobTx gets Tx, that includes blob parts, using  Kaspa REST-API server (https://api.kaspa.org/docs)
+func (c *Client) retrieveBlob(slot string) ([]BlobSidecarTest, error) {
+	url := fmt.Sprintf(c.apiURL+"/eth/v1/beacon/blob_sidecars/%s", slot)
+
+	resp, err := c.httpClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("post failed: %w", err)
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			return
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status: %s, body: %s", resp.Status, body)
+	}
+
+	var blobResp BlobSidecarResponse
+	if err := json.NewDecoder(resp.Body).Decode(&blobResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+	return blobResp.Data, nil
 }
 
 // GetSignerBalance returns account balance
@@ -248,12 +360,47 @@ func (c Client) suggestGasPriceCaps(ctx context.Context) (*big.Int, *big.Int, *b
 		return nil, nil, nil, fmt.Errorf("failed to fetch the suggested base fee: %w", err)
 	}
 
-	// basefee of BSC block is 0
-	baseFee := big.NewInt(0)
+	nextBaseFee := calculateNextBaseFee(head)
 
 	var blobFee *big.Int
 	if head.ExcessBlobGas != nil {
 		blobFee = eip4844.CalcBlobFee(*head.ExcessBlobGas)
 	}
-	return tip, baseFee, blobFee, nil
+	return tip, nextBaseFee, blobFee, nil
+}
+
+func calculateNextBaseFee(parent *types.Header) *big.Int {
+	elasticityMultiplier := uint64(2)
+	baseFeeMaxChangeDenominator := uint64(8)
+
+	if parent.BaseFee == nil {
+		return nil // Pre-EIP-1559 block
+	}
+
+	gasUsed := parent.GasUsed
+	gasLimit := parent.GasLimit
+	targetGas := gasLimit / elasticityMultiplier
+	baseFee := new(big.Int).Set(parent.BaseFee)
+
+	if gasUsed == targetGas {
+		return baseFee
+	}
+
+	delta := gasUsed - targetGas
+	change := new(big.Int).Mul(baseFee, big.NewInt(int64(delta)))
+	change.Div(change, big.NewInt(int64(targetGas)))
+	change.Div(change, big.NewInt(int64(baseFeeMaxChangeDenominator)))
+
+	nextBaseFee := new(big.Int)
+	if gasUsed > targetGas {
+		nextBaseFee.Add(baseFee, change)
+	} else {
+		nextBaseFee.Sub(baseFee, change)
+	}
+
+	if nextBaseFee.Cmp(big.NewInt(0)) < 0 {
+		nextBaseFee = big.NewInt(0)
+	}
+
+	return nextBaseFee
 }

@@ -68,9 +68,9 @@ func (_c *MockEthClient_GetAccountAddress_Call) RunAndReturn(run func() string) 
 	return _c
 }
 
-// GetBlob provides a mock function with given fields: txHash
-func (_m *MockEthClient) GetBlob(txHash string) ([]byte, error) {
-	ret := _m.Called(txHash)
+// GetBlob provides a mock function with given fields: txHash, slot
+func (_m *MockEthClient) GetBlob(txHash string, slot uint64) ([]byte, error) {
+	ret := _m.Called(txHash, slot)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetBlob")
@@ -78,19 +78,19 @@ func (_m *MockEthClient) GetBlob(txHash string) ([]byte, error) {
 
 	var r0 []byte
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) ([]byte, error)); ok {
-		return rf(txHash)
+	if rf, ok := ret.Get(0).(func(string, uint64) ([]byte, error)); ok {
+		return rf(txHash, slot)
 	}
-	if rf, ok := ret.Get(0).(func(string) []byte); ok {
-		r0 = rf(txHash)
+	if rf, ok := ret.Get(0).(func(string, uint64) []byte); ok {
+		r0 = rf(txHash, slot)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]byte)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(txHash)
+	if rf, ok := ret.Get(1).(func(string, uint64) error); ok {
+		r1 = rf(txHash, slot)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -105,13 +105,14 @@ type MockEthClient_GetBlob_Call struct {
 
 // GetBlob is a helper method to define mock.On call
 //   - txHash string
-func (_e *MockEthClient_Expecter) GetBlob(txHash interface{}) *MockEthClient_GetBlob_Call {
-	return &MockEthClient_GetBlob_Call{Call: _e.mock.On("GetBlob", txHash)}
+//   - slot uint64
+func (_e *MockEthClient_Expecter) GetBlob(txHash interface{}, slot interface{}) *MockEthClient_GetBlob_Call {
+	return &MockEthClient_GetBlob_Call{Call: _e.mock.On("GetBlob", txHash, slot)}
 }
 
-func (_c *MockEthClient_GetBlob_Call) Run(run func(txHash string)) *MockEthClient_GetBlob_Call {
+func (_c *MockEthClient_GetBlob_Call) Run(run func(txHash string, slot uint64)) *MockEthClient_GetBlob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(string), args[1].(uint64))
 	})
 	return _c
 }
@@ -121,7 +122,7 @@ func (_c *MockEthClient_GetBlob_Call) Return(_a0 []byte, _a1 error) *MockEthClie
 	return _c
 }
 
-func (_c *MockEthClient_GetBlob_Call) RunAndReturn(run func(string) ([]byte, error)) *MockEthClient_GetBlob_Call {
+func (_c *MockEthClient_GetBlob_Call) RunAndReturn(run func(string, uint64) ([]byte, error)) *MockEthClient_GetBlob_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -184,7 +185,7 @@ func (_c *MockEthClient_GetSignerBalance_Call) RunAndReturn(run func() (*big.Int
 }
 
 // SubmitBlob provides a mock function with given fields: blob
-func (_m *MockEthClient) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
+func (_m *MockEthClient) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, uint64, error) {
 	ret := _m.Called(blob)
 
 	if len(ret) == 0 {
@@ -194,8 +195,9 @@ func (_m *MockEthClient) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, e
 	var r0 common.Hash
 	var r1 []byte
 	var r2 []byte
-	var r3 error
-	if rf, ok := ret.Get(0).(func([]byte) (common.Hash, []byte, []byte, error)); ok {
+	var r3 uint64
+	var r4 error
+	if rf, ok := ret.Get(0).(func([]byte) (common.Hash, []byte, []byte, uint64, error)); ok {
 		return rf(blob)
 	}
 	if rf, ok := ret.Get(0).(func([]byte) common.Hash); ok {
@@ -222,13 +224,19 @@ func (_m *MockEthClient) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, e
 		}
 	}
 
-	if rf, ok := ret.Get(3).(func([]byte) error); ok {
+	if rf, ok := ret.Get(3).(func([]byte) uint64); ok {
 		r3 = rf(blob)
 	} else {
-		r3 = ret.Error(3)
+		r3 = ret.Get(3).(uint64)
 	}
 
-	return r0, r1, r2, r3
+	if rf, ok := ret.Get(4).(func([]byte) error); ok {
+		r4 = rf(blob)
+	} else {
+		r4 = ret.Error(4)
+	}
+
+	return r0, r1, r2, r3, r4
 }
 
 // MockEthClient_SubmitBlob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubmitBlob'
@@ -249,12 +257,12 @@ func (_c *MockEthClient_SubmitBlob_Call) Run(run func(blob []byte)) *MockEthClie
 	return _c
 }
 
-func (_c *MockEthClient_SubmitBlob_Call) Return(_a0 common.Hash, _a1 []byte, _a2 []byte, _a3 error) *MockEthClient_SubmitBlob_Call {
-	_c.Call.Return(_a0, _a1, _a2, _a3)
+func (_c *MockEthClient_SubmitBlob_Call) Return(_a0 common.Hash, _a1 []byte, _a2 []byte, _a3 uint64, _a4 error) *MockEthClient_SubmitBlob_Call {
+	_c.Call.Return(_a0, _a1, _a2, _a3, _a4)
 	return _c
 }
 
-func (_c *MockEthClient_SubmitBlob_Call) RunAndReturn(run func([]byte) (common.Hash, []byte, []byte, error)) *MockEthClient_SubmitBlob_Call {
+func (_c *MockEthClient_SubmitBlob_Call) RunAndReturn(run func([]byte) (common.Hash, []byte, []byte, uint64, error)) *MockEthClient_SubmitBlob_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -30,6 +30,7 @@ type EthConfig struct {
 	Endpoint   string        `json:"endpoint"`
 	PrivateKey string        `json:"private_key_hex"`
 	ChainId    uint64        `json:"chain_id"`
+	ApiUrl     string        `json:"api_url"`
 }
 
 // ToPath converts a SubmitMetaData to a path.
@@ -80,6 +81,7 @@ type SubmitMetaData struct {
 	TxHash     string
 	Commitment []byte
 	Proof      []byte
+	BlockId    uint64
 }
 
 // WithRPCClient sets rpc client.
@@ -165,7 +167,7 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 
 // GetClientType returns client type.
 func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
-	return da.BNB
+	return da.Ethereum
 }
 
 // SubmitBatch submits batch to DataAvailabilityLayerClient instance.
@@ -196,10 +198,11 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			var txHash common.Hash
 			var commitment []byte
 			var proof []byte
+			var blockId uint64
 			err := retry.Do(
 				func() error {
 					var err error
-					txHash, commitment, proof, err = c.client.SubmitBlob(dataBlob)
+					txHash, commitment, proof, blockId, err = c.client.SubmitBlob(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
@@ -234,6 +237,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				TxHash:     txHash.String(),
 				Commitment: commitment,
 				Proof:      proof,
+				BlockId:    blockId,
 			}
 
 			c.logger.Debug("Successfully submitted batch.")
@@ -244,7 +248,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				},
 				SubmitMetaData: &da.DASubmitMetaData{
 					DAPath: submitMetadata.ToPath(),
-					Client: da.BNB,
+					Client: da.Ethereum,
 				},
 			}
 		}
@@ -259,7 +263,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
 	}
 
-	blob, err := c.client.GetBlob(daMetaData.TxHash)
+	blob, err := c.client.GetBlob(daMetaData.TxHash, daMetaData.BlockId)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{

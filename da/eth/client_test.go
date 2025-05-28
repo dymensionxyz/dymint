@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/bnb"
+	"github.com/dymensionxyz/dymint/da/eth"
 	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
@@ -23,7 +23,7 @@ import (
 	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/eth"
 )
 
-// TestBNB validates the SubmitBatch and RetrieveBatches method
+// TestEth validates the SubmitBatch and RetrieveBatches method
 func TestEthSubmitRetrieve(t *testing.T) {
 
 	// init mock
@@ -88,7 +88,7 @@ func TestAvailCheck(t *testing.T) {
 			mockClient, client := setDAandMock(t)
 			retriever := client.(da.BatchRetriever)
 
-			metadata := bnb.SubmitMetaData{
+			metadata := eth.SubmitMetaData{
 				TxHash:     "txhash",
 				Proof:      []byte("proof"),
 				Commitment: []byte("commitment"),
@@ -105,7 +105,7 @@ func TestAvailCheck(t *testing.T) {
 	}
 
 }
-func setDAandMock(t *testing.T) (*mocks.MockBNBClient, da.DataAvailabilityLayerClient) {
+func setDAandMock(t *testing.T) (*mocks.MockEthClient, da.DataAvailabilityLayerClient) {
 	var err error
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
@@ -120,7 +120,7 @@ func setDAandMock(t *testing.T) (*mocks.MockBNBClient, da.DataAvailabilityLayerC
 	// init avail DA with mock RPC client
 	dalc := registry.GetClient("eth")
 
-	config := bnb.BNBConfig{
+	config := eth.EthConfig{
 		Timeout:    5000000000,
 		Endpoint:   "http://localhost:8545/rpc",
 		ChainId:    1,
@@ -130,9 +130,9 @@ func setDAandMock(t *testing.T) (*mocks.MockBNBClient, da.DataAvailabilityLayerC
 	conf, err := json.Marshal(config)
 	require.NoError(err)
 
-	mockRPCClient := mocks.NewMockBNBClient(t)
+	mockRPCClient := mocks.NewMockEthClient(t)
 	options := []da.Option{
-		bnb.WithRPCClient(mockRPCClient),
+		eth.WithRPCClient(mockRPCClient),
 	}
 
 	err = dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger(), options...)

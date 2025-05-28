@@ -44,6 +44,42 @@ func (i *BigInt) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// BlobSidecarResponse represents the structure of the Beacon node blob response
+type BeaconChainResponse struct {
+	Data BeaconChainData `json:"data"`
+}
+
+// BlobSidecarResponse represents the structure of the Beacon node blob response
+type BeaconChainData struct {
+	Message BeaconChainMessage `json:"message"`
+}
+
+// BlobSidecarResponse represents the structure of the Beacon node blob response
+type BeaconChainMessage struct {
+	Slot string          `json:"slot"`
+	Body BeaconChainBody `json:"body"`
+}
+
+type BeaconChainBody struct {
+	ExecutionPayload ExecutionPayload `json:"execution_payload"`
+}
+
+type ExecutionPayload struct {
+	BlockNumber string `json:"block_number"`
+}
+
+// BlobSidecarResponse represents the structure of the Beacon node blob response
+type BlobSidecarResponse struct {
+	Data []BlobSidecarTest `json:"data"`
+}
+
+type BlobSidecarTest struct {
+	BlockRoot string `json:"block_root"`
+	Index     string `json:"index"`
+	Blob      string `json:"blob"` // Base64-encoded blob data
+	// Add more fields as needed
+}
+
 type BlobSidecar struct {
 	Blobs       []*kzg4844.Blob       `json:"blobs,omitempty"`
 	Commitments []*kzg4844.Commitment `json:"commitments,omitempty"`
