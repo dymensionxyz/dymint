@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"strconv"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
@@ -25,8 +26,8 @@ import (
 )
 
 type EthClient interface {
-	SubmitBlob(blob []byte) (common.Hash, []byte, []byte, uint64, error)
-	GetBlob(txHash string, slot uint64) ([]byte, error)
+	SubmitBlob(blob []byte) (common.Hash, []byte, []byte, string, error)
+	GetBlob(txHash string, slot string, txCommitment []byte) ([]byte, error)
 	GetAccountAddress() string
 	GetSignerBalance() (*big.Int, error)
 	ValidateInclusion(txHash string, commitment []byte, proof []byte) error
@@ -123,19 +124,19 @@ func NewClient(ctx context.Context, config *EthConfig) (EthClient, error) {
 }
 
 // SubmitBlob sends blob data to BNB chain
-func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, uint64, error) {
+func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, string, error) {
 	// get nonce for the submitter account
 	cCtx, cancel := context.WithTimeout(c.ctx, c.cfg.Timeout)
 	defer cancel()
 	nonce, err := c.ethclient.PendingNonceAt(cCtx, c.account.addr)
 	if err != nil {
-		return common.Hash{}, nil, nil, 0, err
+		return common.Hash{}, nil, nil, "", err
 	}
 
 	// get base and tip fee from chain
 	gasTipCap, baseFee, blobBaseFee, err := c.suggestGasPriceCaps(c.ctx)
 	if err != nil {
-		return common.Hash{}, nil, nil, 0, err
+		return common.Hash{}, nil, nil, "", err
 	}
 
 	// computes the recommended gas fee with base and tip obtained
@@ -164,7 +165,7 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, uint64, er
 	//blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gasLimit, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	if err != nil {
-		return common.Hash{}, nil, nil, 0, err
+		return common.Hash{}, nil, nil, "", err
 	}
 
 	// send blob tx to BNB chain
@@ -172,41 +173,41 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, uint64, er
 	defer cancel()
 	err = c.ethclient.SendTransaction(cCtx, blobTx)
 	if err != nil {
-		return common.Hash{}, nil, nil, 0, err
+		return common.Hash{}, nil, nil, "", err
 	}
 	txhash := blobTx.Hash()
 
 	receipt, err := c.waitForTxReceipt(txhash)
 	if err != nil {
-		return common.Hash{}, nil, nil, 0, err
+		return common.Hash{}, nil, nil, "", err
 	}
 
 	// parse blob commitment generated to 0x format
 	commitment, err := blobTx.BlobTxSidecar().Commitments[0].MarshalText()
 	if err != nil {
-		return common.Hash{}, nil, nil, 0, err
+		return common.Hash{}, nil, nil, "", err
 	}
 
 	// parse blob proof generated to 0x format
 	proof, err := blobTx.BlobTxSidecar().Proofs[0].MarshalText()
 	if err != nil {
-		return common.Hash{}, nil, nil, 0, err
+		return common.Hash{}, nil, nil, "", err
 	}
 
-	return txhash, commitment, proof, receipt.BlockNumber.Uint64(), nil
+	slot, err := c.getSlot(receipt.BlockNumber.Uint64())
+	if err != nil {
+		return common.Hash{}, nil, nil, "", err
+	}
+
+	return txhash, commitment, proof, slot, nil
 }
 
 // GetBlock retrieves a block BNB Near chain by tx hash
-func (c Client) GetBlob(txhash string, blockId uint64) ([]byte, error) {
+func (c Client) GetBlob(txhash string, slot string, txCommitment []byte) ([]byte, error) {
 	/*blobSidecar, err := c.blobSidecarByTxHash(c.ctx, txhash, slot)
 	if err != nil {
 		return nil, err
 	}*/
-
-	slot, err := c.getSlot(blockId)
-	if err != nil {
-		return nil, err
-	}
 
 	blobSidecar, err := c.retrieveBlob(slot)
 	if err != nil {
@@ -219,7 +220,18 @@ func (c Client) GetBlob(txhash string, blockId uint64) ([]byte, error) {
 
 	var data []byte
 	for _, blobsidecar := range blobSidecar {
-		data = []byte(blobsidecar.Blob)
+		comm, err := blobsidecar.Commitment.MarshalText()
+		if err != nil {
+			continue
+		}
+		if !bytes.Equal(comm, txCommitment) {
+			continue
+		}
+		b := (Blob)(*blobsidecar.Blob)
+		data, err = b.ToData()
+		if err == nil {
+			break
+		}
 	}
 	if data == nil {
 		return nil, fmt.Errorf("Error recovering data from blob")
@@ -283,13 +295,40 @@ func (c Client) blobSidecarByTxHash(ctx context.Context, hash string, slot int) 
 	return sidecar, nil
 }
 
-// retrieveBlobTx gets Tx, that includes blob parts, using  Kaspa REST-API server (https://api.kaspa.org/docs)
+// getSlot
 func (c *Client) getSlot(blockId uint64) (string, error) {
-	url := fmt.Sprintf(c.apiURL + "/eth/v2/beacon/blocks/head")
+
+	blockIdHead, slotHead, err := c.retrieveSlot("head")
+	if err != nil {
+		return "", err
+	}
+
+	blockDifference := blockIdHead - blockId
+	slotTarget := slotHead - blockDifference
+
+	for {
+		block, slot, err := c.retrieveSlot(strconv.FormatUint(slotTarget, 10))
+		if err != nil {
+			return "", err
+		}
+		if block < blockId {
+			return "", fmt.Errorf("this should not happen")
+		}
+		if block == blockId {
+			return strconv.FormatUint(slot, 10), nil
+		}
+		blockDifference := block - blockId
+		slotTarget = slotTarget - blockDifference
+	}
+}
+
+// retrieveSlot
+func (c *Client) retrieveSlot(slot string) (uint64, uint64, error) {
+	url := fmt.Sprintf(c.apiURL + "/eth/v2/beacon/blocks/" + slot)
 
 	resp, err := c.httpClient.Get(url)
 	if err != nil {
-		return "", fmt.Errorf("post failed: %w", err)
+		return uint64(0), uint64(0), fmt.Errorf("post failed: %w", err)
 	}
 	defer func() {
 		if cerr := resp.Body.Close(); cerr != nil {
@@ -299,14 +338,22 @@ func (c *Client) getSlot(blockId uint64) (string, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)
-		return "", fmt.Errorf("unexpected status: %s, body: %s", resp.Status, body)
+		return uint64(0), uint64(0), fmt.Errorf("unexpected status: %s, body: %s", resp.Status, body)
 	}
 
 	var bnResp BeaconChainResponse
 	if err := json.NewDecoder(resp.Body).Decode(&bnResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+		return uint64(0), uint64(0), fmt.Errorf("failed to decode response: %w", err)
 	}
-	return bnResp.Data.Message.Body.ExecutionPayload.BlockNumber, nil
+	blockId, err := strconv.ParseUint(bnResp.Data.Message.Body.ExecutionPayload.BlockNumber, 10, 64)
+	if err != nil {
+		return uint64(0), uint64(0), err
+	}
+	currentSlot, err := strconv.ParseUint(bnResp.Data.Message.Slot, 10, 64)
+	if err != nil {
+		return uint64(0), uint64(0), err
+	}
+	return blockId, currentSlot, nil
 }
 
 // retrieveBlobTx gets Tx, that includes blob parts, using  Kaspa REST-API server (https://api.kaspa.org/docs)

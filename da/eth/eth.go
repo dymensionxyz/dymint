@@ -39,6 +39,7 @@ func (d *SubmitMetaData) ToPath() string {
 		d.TxHash,
 		string(d.Commitment),
 		string(d.Proof),
+		d.Slot,
 	}
 	for i, part := range path {
 		path[i] = strings.Trim(part, da.PathSeparator)
@@ -49,11 +50,11 @@ func (d *SubmitMetaData) ToPath() string {
 // FromPath parses a path to a SubmitMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(da.PathSeparator[0]) })
-	if len(pathParts) != 3 {
+	if len(pathParts) != 4 {
 		return nil, fmt.Errorf("invalid DA path")
 	}
 
-	submitData := &SubmitMetaData{TxHash: pathParts[0], Commitment: []byte(pathParts[1]), Proof: []byte(pathParts[2])}
+	submitData := &SubmitMetaData{TxHash: pathParts[0], Commitment: []byte(pathParts[1]), Proof: []byte(pathParts[2]), Slot: pathParts[3]}
 	return submitData, nil
 }
 
@@ -81,7 +82,7 @@ type SubmitMetaData struct {
 	TxHash     string
 	Commitment []byte
 	Proof      []byte
-	BlockId    uint64
+	Slot       string
 }
 
 // WithRPCClient sets rpc client.
@@ -198,11 +199,11 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			var txHash common.Hash
 			var commitment []byte
 			var proof []byte
-			var blockId uint64
+			var slot string
 			err := retry.Do(
 				func() error {
 					var err error
-					txHash, commitment, proof, blockId, err = c.client.SubmitBlob(dataBlob)
+					txHash, commitment, proof, slot, err = c.client.SubmitBlob(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
@@ -237,7 +238,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				TxHash:     txHash.String(),
 				Commitment: commitment,
 				Proof:      proof,
-				BlockId:    blockId,
+				Slot:       slot,
 			}
 
 			c.logger.Debug("Successfully submitted batch.")
@@ -263,7 +264,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
 	}
 
-	blob, err := c.client.GetBlob(daMetaData.TxHash, daMetaData.BlockId)
+	blob, err := c.client.GetBlob(daMetaData.TxHash, daMetaData.Slot, daMetaData.Commitment)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{

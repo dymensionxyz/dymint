@@ -116,10 +116,10 @@ func TestDataAvailabilityLayerClientRetrieval(t *testing.T) {
 	defer client.Stop()
 
 	meta := &eth.SubmitMetaData{
-		TxHash:     "txhash",
-		Commitment: []byte("commitment"),
-		Proof:      []byte("proof"),
-		BlockId:    8412136,
+		TxHash:     "0x52a300e63b761fd7c24f21ea35d4ec3efbd197d983a0f2a628aaa7e98db02ee5",
+		Commitment: []byte("0x9779eecd4626de77fda70a3cc30e2417e973eee5a9d26c9788a3a0f83f53cfe7c51f84bc71ffb8d9872a3e0093e4ab25"),
+		Proof:      []byte("0xb1cec0984b065b25ee955b60927712bbc9915026ee072f198991203499458f3a6b7f3f0562fb95149e1a4647eec31cb6"),
+		Slot:       "7723828",
 	}
 	result := client.RetrieveBatches(meta.ToPath())
 	require.NoError(t, result.Error)

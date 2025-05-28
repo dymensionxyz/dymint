@@ -1,6 +1,7 @@
 package eth
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,8 @@ import (
 	"github.com/dymensionxyz/go-ethereum/crypto"
 	"github.com/dymensionxyz/go-ethereum/crypto/kzg4844"
 	"github.com/holiman/uint256"
+
+	"github.com/prysmaticlabs/prysm/v5/encoding/ssz"
 )
 
 type Account struct {
@@ -74,10 +77,11 @@ type BlobSidecarResponse struct {
 }
 
 type BlobSidecarTest struct {
-	BlockRoot string `json:"block_root"`
-	Index     string `json:"index"`
-	Blob      string `json:"blob"` // Base64-encoded blob data
-	// Add more fields as needed
+	BlockRoot  string              `json:"block_root"`
+	Index      string              `json:"index"`
+	Blob       *kzg4844.Blob       `json:"blob"` // Base64-encoded blob data
+	Commitment *kzg4844.Commitment `json:"kzg_commitment,omitempty"`
+	Proof      *kzg4844.Proof      `json:"kzg_proof,omitempty"`
 }
 
 type BlobSidecar struct {
@@ -178,4 +182,30 @@ func finishBlobTx(message *types.BlobTx, tip, fee, blobFee *big.Int) error {
 		return fmt.Errorf("BlobFeeCap overflow")
 	}
 	return nil
+}
+
+func VerifyKZGCommitmentInclusion(
+	ctx context.Context,
+	beaconBlock *blocks.SignedBeaconBlock,
+	blobSidecar *blocks.BlobSidecar,
+) error {
+	// Get beacon block body root
+	bodyRoot, err := beaconBlock.Block().Body().HashTreeRoot()
+	if err != nil {
+		return err
+	}
+
+	// Calculate generalized index for KZG commitment position
+	generalizedIndex := ssz.GeneralizedIndexForKZGCommitment(
+		beaconBlock.Block().Slot(),
+		blobSidecar.Index,
+	)
+
+	// Verify Merkle proof
+	return signing.VerifyMerkleProof(
+		bodyRoot[:],
+		blobSidecar.KZGCommitment[:],
+		blobSidecar.KZGCommitmentInclusionProof,
+		generalizedIndex,
+	)
 }
