@@ -44,53 +44,37 @@ type Client struct {
 }
 
 // ValidateInclusion validates that there is a blob included in the tx and corresponds to the commitment and proof included in da path.
-func (c Client) ValidateInclusion(txHash string, txCommitment []byte, txProof []byte) error {
-	// if blobsidecar not retrieved it may mean rpc error, therefore not considered da.ErrBlobNotFound
-	blobSidecar, err := c.blobSidecarByTxHash(c.ctx, txHash, 0)
+func (c Client) ValidateInclusion(slot string, txCommitment []byte, txProof []byte) error {
+
+	blob, err := c.getKzg4844Blob(slot, txCommitment)
 	if err != nil {
 		return err
 	}
 
-	// if there is no sidecar attached to tx it means the blob is not posted
-	if blobSidecar == nil {
-		return da.ErrBlobNotFound
+	// convert received 0x format commitment to  kzg4844.Commitment
+	var commitment kzg4844.Commitment
+	fmt.Println(len(txCommitment))
+	fmt.Println(string(txCommitment[0]))
+	fmt.Println(txCommitment[len(txCommitment)-1])
+	err = commitment.UnmarshalJSON([]byte(fmt.Sprintf("%q", txCommitment)))
+	if err != nil {
+		return errors.Join(da.ErrBlobNotFound, err)
 	}
 
-	for i, sidecarCommitment := range blobSidecar.Sidecar.Commitments {
-
-		// if unable to unmarshall received commitment continue to next
-		comm, err := sidecarCommitment.MarshalText()
-		if err != nil {
-			continue
-		}
-
-		// we pick the blob that matches with commitment in da path
-		if bytes.Equal(comm, txCommitment) {
-
-			// convert received 0x format proof to kzg4844.Proof
-			var proof kzg4844.Proof
-			err := proof.UnmarshalJSON(txProof)
-			if err != nil {
-				return errors.Join(da.ErrBlobNotFound, err)
-			}
-
-			// convert received 0x format commitment to  kzg4844.Commitment
-			var commitment kzg4844.Commitment
-			err = commitment.UnmarshalJSON(txCommitment)
-			if err != nil {
-				return errors.Join(da.ErrBlobNotFound, err)
-			}
-
-			// validate blob with da path commitment and proof
-			err = VerifyBlobProof((*Blob)(blobSidecar.Sidecar.Blobs[i]), commitment, proof)
-			if err != nil {
-				return errors.Join(da.ErrBlobNotFound, err)
-			}
-			return nil
-		}
+	// convert received 0x format proof to kzg4844.Proof
+	var proof kzg4844.Proof
+	err = proof.UnmarshalJSON([]byte(fmt.Sprintf("%q", txProof)))
+	if err != nil {
+		return errors.Join(da.ErrBlobNotFound, err)
 	}
 
-	return da.ErrBlobNotFound
+	// validate blob with da path commitment and proof
+	err = VerifyBlobProof((*Blob)(blob), commitment, proof)
+	if err != nil {
+		return errors.Join(da.ErrBlobNotFound, err)
+	}
+	return nil
+
 }
 
 var _ EthClient = &Client{}
@@ -204,39 +188,39 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, string, er
 
 // GetBlock retrieves a block BNB Near chain by tx hash
 func (c Client) GetBlob(txhash string, slot string, txCommitment []byte) ([]byte, error) {
-	/*blobSidecar, err := c.blobSidecarByTxHash(c.ctx, txhash, slot)
+
+	blob, err := c.getKzg4844Blob(slot, txCommitment)
 	if err != nil {
 		return nil, err
-	}*/
+	}
+	b := (Blob)(*blob)
+	data, err := b.ToData()
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
 
-	blobSidecar, err := c.retrieveBlob(slot)
+func (c Client) getKzg4844Blob(slot string, txCommitment []byte) (*kzg4844.Blob, error) {
+	blobSidecars, err := c.retrieveBlob(slot)
 	if err != nil {
 		return nil, err
 	}
 
-	if blobSidecar == nil {
+	if blobSidecars == nil {
 		return nil, gerrc.ErrNotFound
 	}
 
-	var data []byte
-	for _, blobsidecar := range blobSidecar {
-		comm, err := blobsidecar.Commitment.MarshalText()
+	for _, blobSidecar := range blobSidecars {
+		comm, err := blobSidecar.Commitment.MarshalText()
 		if err != nil {
 			continue
 		}
-		if !bytes.Equal(comm, txCommitment) {
-			continue
-		}
-		b := (Blob)(*blobsidecar.Blob)
-		data, err = b.ToData()
-		if err == nil {
-			break
+		if bytes.Equal(comm, txCommitment) {
+			return blobSidecar.Blob, nil
 		}
 	}
-	if data == nil {
-		return nil, fmt.Errorf("Error recovering data from blob")
-	}
-	return data, err
+	return nil, errors.Join(da.ErrBlobNotFound, fmt.Errorf("Unable to get blob. No commitment match"))
 }
 
 // GetAccountAddress returns configured account address
@@ -277,22 +261,6 @@ func (c Client) waitForTxReceipt(txHash common.Hash) (*types.Receipt, error) {
 	}
 
 	return receipt, nil
-}
-
-// blobSidecarByTxHash return a sidecar of a given blob transaction
-func (c Client) blobSidecarByTxHash(ctx context.Context, hash string, slot int) (*BlobSidecarTx, error) {
-	var sidecar *BlobSidecarTx
-	cCtx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
-	defer cancel()
-	err := c.rpcClient.CallContext(cCtx, &sidecar, "eth_getBlobSidecarByTxHash", hash)
-	if err != nil {
-		return nil, err
-	}
-	if sidecar == nil {
-		return nil, gerrc.ErrNotFound
-	}
-
-	return sidecar, nil
 }
 
 // getSlot
@@ -362,7 +330,7 @@ func (c *Client) retrieveBlob(slot string) ([]BlobSidecarTest, error) {
 
 	resp, err := c.httpClient.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("post failed: %w", err)
+		return nil, fmt.Errorf("beacon chain http get failed: %w", err)
 	}
 	defer func() {
 		if cerr := resp.Body.Close(); cerr != nil {
@@ -372,7 +340,7 @@ func (c *Client) retrieveBlob(slot string) ([]BlobSidecarTest, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)
-		return nil, fmt.Errorf("unexpected status: %s, body: %s", resp.Status, body)
+		return nil, fmt.Errorf("unexpected http status: %s, body: %s", resp.Status, body)
 	}
 
 	var blobResp BlobSidecarResponse

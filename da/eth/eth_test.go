@@ -15,7 +15,7 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	//t.Skip("Skipping BNB client tests")
+	//t.Skip("Skipping Eth client tests")
 
 	// Create test config. By default, tests use BNB devnet.
 	config := eth.EthConfig{
@@ -93,9 +93,9 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 }
 
 func TestDataAvailabilityLayerClientRetrieval(t *testing.T) {
-	//t.Skip("Skipping BNB client tests")
+	//t.Skip("Skipping Eth client tests")
 
-	// Create test config. By default, tests use BNB devnet.
+	// Create test config. By default, tests use Sepo devnet.
 	config := eth.EthConfig{
 		Endpoint:   "https://ethereum-sepolia-rpc.publicnode.com",
 		PrivateKey: "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234",
@@ -121,8 +121,12 @@ func TestDataAvailabilityLayerClientRetrieval(t *testing.T) {
 		Proof:      []byte("0xb1cec0984b065b25ee955b60927712bbc9915026ee072f198991203499458f3a6b7f3f0562fb95149e1a4647eec31cb6"),
 		Slot:       "7723828",
 	}
-	result := client.RetrieveBatches(meta.ToPath())
+
+	result := client.CheckBatchAvailability(meta.ToPath())
 	require.NoError(t, result.Error)
-	require.Equal(t, da.StatusSuccess, result.Code)
+
+	rresult := client.RetrieveBatches(meta.ToPath())
+	require.NoError(t, rresult.Error)
+	require.Equal(t, da.StatusSuccess, rresult.Code)
 
 }

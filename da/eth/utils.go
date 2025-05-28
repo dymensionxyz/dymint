@@ -1,7 +1,6 @@
 package eth
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
@@ -14,8 +13,6 @@ import (
 	"github.com/dymensionxyz/go-ethereum/crypto"
 	"github.com/dymensionxyz/go-ethereum/crypto/kzg4844"
 	"github.com/holiman/uint256"
-
-	"github.com/prysmaticlabs/prysm/v5/encoding/ssz"
 )
 
 type Account struct {
@@ -82,20 +79,6 @@ type BlobSidecarTest struct {
 	Blob       *kzg4844.Blob       `json:"blob"` // Base64-encoded blob data
 	Commitment *kzg4844.Commitment `json:"kzg_commitment,omitempty"`
 	Proof      *kzg4844.Proof      `json:"kzg_proof,omitempty"`
-}
-
-type BlobSidecar struct {
-	Blobs       []*kzg4844.Blob       `json:"blobs,omitempty"`
-	Commitments []*kzg4844.Commitment `json:"commitments,omitempty"`
-	Proofs      []*kzg4844.Proof      `json:"proofs,omitempty"`
-}
-
-type BlobSidecarTx struct {
-	Sidecar     *BlobSidecar `json:"blobSidecar,omitempty"`
-	BlockNumber *BigInt      `json:"blockNumber,omitempty"`
-	BlockHash   *string      `json:"blockHash,omitempty"`
-	TxIndex     string       `json:"txIndex,omitempty"`
-	TxHash      *common.Hash `json:"txHash"`
 }
 
 func createBlobTx(key *ecdsa.PrivateKey, chainId, gasLimit uint64, gasTipCap *big.Int, gasFeeCap *big.Int, blobFeeCap *big.Int, blobData []byte, toAddr common.Address, nonce uint64) (*types.Transaction, error) {
@@ -182,30 +165,4 @@ func finishBlobTx(message *types.BlobTx, tip, fee, blobFee *big.Int) error {
 		return fmt.Errorf("BlobFeeCap overflow")
 	}
 	return nil
-}
-
-func VerifyKZGCommitmentInclusion(
-	ctx context.Context,
-	beaconBlock *blocks.SignedBeaconBlock,
-	blobSidecar *blocks.BlobSidecar,
-) error {
-	// Get beacon block body root
-	bodyRoot, err := beaconBlock.Block().Body().HashTreeRoot()
-	if err != nil {
-		return err
-	}
-
-	// Calculate generalized index for KZG commitment position
-	generalizedIndex := ssz.GeneralizedIndexForKZGCommitment(
-		beaconBlock.Block().Slot(),
-		blobSidecar.Index,
-	)
-
-	// Verify Merkle proof
-	return signing.VerifyMerkleProof(
-		bodyRoot[:],
-		blobSidecar.KZGCommitment[:],
-		blobSidecar.KZGCommitmentInclusionProof,
-		generalizedIndex,
-	)
 }
