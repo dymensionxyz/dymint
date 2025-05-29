@@ -212,11 +212,11 @@ func (c Client) waitForTxReceipt(txHash common.Hash) (*types.Receipt, error) {
 			receipt, err = c.ethclient.TransactionReceipt(ctx, txHash)
 			if err != nil {
 				// Mark network/temporary errors as retryable
-				return fmt.Errorf("get receipt failed: %w", err)
+				return fmt.Errorf("get receipt failed: txHash:%s err:%w", txHash.String(), err)
 			}
 			if receipt == nil {
 				// Receipt not found yet - this is retryable
-				return fmt.Errorf("receipt not found")
+				return fmt.Errorf("receipt not found. txHash:%s", txHash.String())
 			}
 			if receipt.BlockNumber == nil || receipt.BlockNumber.Cmp(big.NewInt(0)) == 0 {
 				return fmt.Errorf("no block number in receipt")

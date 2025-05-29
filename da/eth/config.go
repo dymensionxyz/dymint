@@ -13,6 +13,8 @@ const (
 	defaultRpcRetryDelay    = 3 * time.Second
 	defaultRpcRetryAttempts = 5
 	defaultGasLimit         = uint64(21000) // set to 21k because its the necessary gas when no calldata or smart contract call (as is the case with simple blob EIP-4844 tx)
+	defaultPrivateKeyEnv    = "ETH_PRIVATE_KEY"
+	defaultTimeout          = 500000000000
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -48,6 +50,14 @@ func createConfig(bz []byte) (c EthConfig, err error) {
 	err = json.Unmarshal(bz, &c)
 	if err != nil {
 		return c, fmt.Errorf("json unmarshal: %w", err)
+	}
+
+	if c.PrivateKeyEnv == "" {
+		c.PrivateKeyEnv = defaultPrivateKeyEnv
+	}
+
+	if c.Timeout == 0 {
+		c.Timeout = defaultTimeout
 	}
 
 	if c.RetryDelay == 0 {
