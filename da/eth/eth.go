@@ -200,7 +200,6 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 						if errors.Is(err, ethutils.ErrBlobInputTooLarge) {
 							err = retry.Unrecoverable(err)
 						}
-
 						return err
 					}
 					return nil

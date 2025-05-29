@@ -4,7 +4,10 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"math/big"
+	"net/http"
 
 	"github.com/dymensionxyz/dymint/da/ethutils"
 	"github.com/dymensionxyz/go-ethereum/common"
@@ -102,7 +105,7 @@ func createBlobTx(key *ecdsa.PrivateKey, chainId, gasLimit uint64, gasTipCap *bi
 		BlobHashes: sidecar.BlobHashes(),
 	}
 
-	if err := finishBlobTx(blobtx, gasTipCap, gasFeeCap, blobFeeCap); err != nil {
+	if err := ethutils.FinishBlobTx(blobtx, gasTipCap, gasFeeCap, blobFeeCap); err != nil {
 		return nil, fmt.Errorf("failed to create blob transaction: %w", err)
 	}
 
@@ -126,28 +129,55 @@ func fromHexKey(hexkey string) (*Account, error) {
 	return &Account{key, addr}, nil
 }
 
-// calcGasFeeCap deterministically computes the recommended gas fee cap given
-// the base fee and gasTipCap. The resulting gasFeeCap is equal to:
-//
-//	gasTipCap + 2*baseFee.
-func calcGasFeeCap(baseFee, gasTipCap *big.Int) *big.Int {
-	return new(big.Int).Add(
-		gasTipCap,
-		new(big.Int).Mul(baseFee, big.NewInt(2)),
-	)
+// calculateNextBaseFee estimates base fee for EIP-1559
+func calculateNextBaseFee(parent *types.Header) *big.Int {
+	elasticityMultiplier := uint64(2)
+	baseFeeMaxChangeDenominator := uint64(8)
+
+	if parent.BaseFee == nil {
+		return nil // Pre-EIP-1559 block
+	}
+
+	gasUsed := parent.GasUsed
+	gasLimit := parent.GasLimit
+	targetGas := gasLimit / elasticityMultiplier
+	baseFee := new(big.Int).Set(parent.BaseFee)
+
+	if gasUsed == targetGas {
+		return baseFee
+	}
+
+	delta := int64(gasUsed - targetGas) //nolint:gosec // disable G115
+	change := new(big.Int).Mul(baseFee, big.NewInt(delta))
+	change.Div(change, big.NewInt(int64(targetGas)))                   //nolint:gosec // disable G115
+	change.Div(change, big.NewInt(int64(baseFeeMaxChangeDenominator))) //nolint:gosec // disable G115
+
+	nextBaseFee := new(big.Int)
+	if gasUsed > targetGas {
+		nextBaseFee.Add(baseFee, change)
+	} else {
+		nextBaseFee.Sub(baseFee, change)
+	}
+
+	if nextBaseFee.Cmp(big.NewInt(0)) < 0 {
+		nextBaseFee = big.NewInt(0)
+	}
+
+	return nextBaseFee
 }
 
-// finishBlobTx finishes creating a blob tx message by safely converting bigints to uint256
-func finishBlobTx(message *types.BlobTx, tip, fee, blobFee *big.Int) error {
-	var o bool
-	if message.GasTipCap, o = uint256.FromBig(tip); o {
-		return fmt.Errorf("GasTipCap overflow")
+// httpGet retrieves data from http client
+func httpGet(url string, httpClient *http.Client) (io.ReadCloser, error) {
+
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("post failed: %w", err)
 	}
-	if message.GasFeeCap, o = uint256.FromBig(fee); o {
-		return fmt.Errorf("GasFeeCap overflow")
+	defer resp.Body.Close() // nolint:errcheck
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status: %s, body: %s", resp.Status, body)
 	}
-	if message.BlobFeeCap, o = uint256.FromBig(blobFee); o {
-		return fmt.Errorf("BlobFeeCap overflow")
-	}
-	return nil
+	return resp.Body, nil
 }

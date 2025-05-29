@@ -128,7 +128,7 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
 	}
 
 	// computes the recommended gas fee with base and tip obtained
-	gasFeeCap := calcGasFeeCap(baseFee, gasTipCap)
+	gasFeeCap := ethutils.CalcGasFeeCap(baseFee, gasTipCap)
 
 	// estimate gas using rpc
 	cCtx, cancel = context.WithTimeout(c.ctx, c.cfg.Timeout)
