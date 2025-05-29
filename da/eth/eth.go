@@ -14,7 +14,6 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/metrics"
-	"github.com/dymensionxyz/go-ethereum/common"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -28,7 +27,6 @@ const (
 // ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
 	path := []string{
-		d.TxHash,
 		string(d.Commitment),
 		string(d.Proof),
 		d.Slot,
@@ -42,11 +40,11 @@ func (d *SubmitMetaData) ToPath() string {
 // FromPath parses a path to a SubmitMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(da.PathSeparator[0]) })
-	if len(pathParts) != 4 {
+	if len(pathParts) != 3 {
 		return nil, fmt.Errorf("invalid DA path")
 	}
 
-	submitData := &SubmitMetaData{TxHash: pathParts[0], Commitment: []byte(pathParts[1]), Proof: []byte(pathParts[2]), Slot: pathParts[3]}
+	submitData := &SubmitMetaData{Commitment: []byte(pathParts[0]), Proof: []byte(pathParts[1]), Slot: pathParts[2]}
 	return submitData, nil
 }
 
@@ -70,8 +68,6 @@ type DataAvailabilityLayerClient struct {
 
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
 type SubmitMetaData struct {
-	// Height is the height of the block in the da layer
-	TxHash     string
 	Commitment []byte
 	Proof      []byte
 	Slot       string
@@ -134,7 +130,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
-	c.logger.Info("Starting BNB Smart Chain Data Availability Layer Client.")
+	c.logger.Info("Starting Ethereum Data Availability Layer Client.")
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// other client has already been set
 	if c.client != nil {
@@ -152,7 +148,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
-	c.logger.Info("Stopping BNB Smart Chain Data Availability Layer Client.")
+	c.logger.Info("Stopping Ethereum Data Availability Layer Client.")
 	c.cancel()
 	return nil
 }
@@ -187,14 +183,13 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 		case <-c.ctx.Done():
 			return da.ResultSubmitBatch{}
 		default:
-			var txHash common.Hash
 			var commitment []byte
 			var proof []byte
 			var slot string
 			err := retry.Do(
 				func() error {
 					var err error
-					txHash, commitment, proof, slot, err = c.client.SubmitBlob(dataBlob)
+					commitment, proof, slot, err = c.client.SubmitBlob(dataBlob)
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
@@ -226,7 +221,6 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			}
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 			submitMetadata := &SubmitMetaData{
-				TxHash:     txHash.String(),
 				Commitment: commitment,
 				Proof:      proof,
 				Slot:       slot,
@@ -255,7 +249,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
 	}
 
-	blob, err := c.client.GetBlob(daMetaData.TxHash, daMetaData.Slot, daMetaData.Commitment)
+	blob, err := c.client.GetBlob(daMetaData.Slot, daMetaData.Commitment)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -314,7 +308,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 	}
 }
 
-// CheckBatchAvailability checks if a batch is available on BNB by verifying the transaction and commitment exists onchain
+// CheckBatchAvailability checks if a batch is available on Ethereum by verifying the transaction and commitment exists onchain
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.ResultCheckBatch {
 	// Parse the DA path to get the transaction hash
 	daMetaData := &SubmitMetaData{}
@@ -337,7 +331,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 		retry.Delay(c.batchRetryDelay),
 	)
 	if err != nil {
-		c.logger.Error("CheckBatchAvailability", "hash", daMetaData.TxHash, "error", err)
+		c.logger.Error("CheckBatchAvailability", "slot", daMetaData.Slot, "commitment", daMetaData.Commitment, "error", err)
 	}
 	return result
 }
@@ -350,7 +344,7 @@ func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	}
 	return da.Balance{
 		Amount: math.NewIntFromBigInt(balance),
-		Denom:  "BNB",
+		Denom:  "ETH",
 	}, nil
 }
 

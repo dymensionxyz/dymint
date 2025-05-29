@@ -11,12 +11,22 @@ import (
 	"github.com/dymensionxyz/go-ethereum/core/types"
 	"github.com/dymensionxyz/go-ethereum/crypto"
 	"github.com/dymensionxyz/go-ethereum/crypto/kzg4844"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/holiman/uint256"
 )
 
 type Account struct {
 	Key  *ecdsa.PrivateKey
 	addr common.Address
+}
+
+type estimateGasParams struct {
+	From         common.Address   `json:"from"`
+	To           *common.Address  `json:"to"`
+	Data         hexutil.Bytes    `json:"data"`
+	MaxFeePerGas *hexutil.Big     `json:"maxFeePerGas"`
+	AccessList   types.AccessList `json:"accessList"`
+	BlobHashes   []common.Hash    `json:"blobVersionedHashes,omitempty"`
 }
 
 // BlobSidecarResponse represents the structure of the Beacon node blob response

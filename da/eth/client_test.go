@@ -23,7 +23,7 @@ import (
 	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/eth"
 )
 
-// TestEth validates the SubmitBatch and RetrieveBatches method
+// TestEthSubmitRetrieve validates the SubmitBatch and RetrieveBatches method using mock client
 func TestEthSubmitRetrieve(t *testing.T) {
 
 	// init mock
@@ -61,6 +61,7 @@ func TestEthSubmitRetrieve(t *testing.T) {
 
 }
 
+// TestAvailCheck tests CheckAvailability function using mock client
 func TestAvailCheck(t *testing.T) {
 
 	testCases := []struct {

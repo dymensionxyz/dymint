@@ -15,10 +15,16 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	t.Skip("Skipping Eth client tests")
+	//t.Skip("Skipping Eth client tests")
+
+	// Set up test environment
+	priKeyEnv := "ETH_PRIVATE_KEY"
+	err := os.Setenv(priKeyEnv, "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234")
+	require.NoError(t, err)
 
 	// Create test config. By default, tests use BNB devnet.
 	config := eth.TestConfig
+
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
 
@@ -90,6 +96,11 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 func TestDataAvailabilityLayerClientRetrieval(t *testing.T) {
 	t.Skip("Skipping Eth client tests")
 
+	// Set up test environment
+	priKeyEnv := "ETH_PRIVATE_KEY"
+	err := os.Setenv(priKeyEnv, "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234")
+	require.NoError(t, err)
+
 	// Create test config. By default, tests use Sepo devnet.
 	config := eth.TestConfig
 	configBytes, err := json.Marshal(config)
@@ -105,7 +116,6 @@ func TestDataAvailabilityLayerClientRetrieval(t *testing.T) {
 	defer client.Stop()
 
 	meta := &eth.SubmitMetaData{
-		TxHash:     "0x52a300e63b761fd7c24f21ea35d4ec3efbd197d983a0f2a628aaa7e98db02ee5",
 		Commitment: []byte("0x9779eecd4626de77fda70a3cc30e2417e973eee5a9d26c9788a3a0f83f53cfe7c51f84bc71ffb8d9872a3e0093e4ab25"),
 		Proof:      []byte("0xb1cec0984b065b25ee955b60927712bbc9915026ee072f198991203499458f3a6b7f3f0562fb95149e1a4647eec31cb6"),
 		Slot:       "7723828",
