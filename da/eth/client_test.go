@@ -90,7 +90,6 @@ func TestAvailCheck(t *testing.T) {
 			retriever := client.(da.BatchRetriever)
 
 			metadata := eth.SubmitMetaData{
-				TxHash:     "txhash",
 				Proof:      []byte("proof"),
 				Commitment: []byte("commitment"),
 				Slot:       "1",

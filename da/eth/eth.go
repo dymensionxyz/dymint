@@ -2,6 +2,7 @@ package eth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -160,6 +161,7 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 
 // SubmitBatch submits batch to DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
+
 	blob, err := batch.MarshalBinary()
 	if err != nil {
 		return da.ResultSubmitBatch{
@@ -178,6 +180,8 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 // submitBatchLoop tries submitting the batch. In case we get a configuration error we would like to stop trying,
 // otherwise, for network error we keep trying indefinitely.
 func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.ResultSubmitBatch {
+	backoff := c.config.Backoff.Backoff()
+
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -193,6 +197,10 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
+						if errors.Is(err, ethutils.ErrBlobInputTooLarge) {
+							err = retry.Unrecoverable(err)
+						}
+
 						return err
 					}
 					return nil
@@ -206,7 +214,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			if err != nil {
 				err = fmt.Errorf("broadcast data blob: %w", err)
 
-				if !retry.IsRecoverable(err) {
+				if errors.Is(err, ethutils.ErrBlobInputTooLarge) {
 					return da.ResultSubmitBatch{
 						BaseResult: da.BaseResult{
 							Code:    da.StatusError,
@@ -219,12 +227,20 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				c.logger.Error(err.Error())
 				continue
 			}
-			metrics.RollappConsecutiveFailedDASubmission.Set(0)
+
 			submitMetadata := &SubmitMetaData{
 				Commitment: commitment,
 				Proof:      proof,
 				Slot:       slot,
 			}
+
+			availResult := c.checkBatchAvailability(submitMetadata)
+			if availResult.Error != nil {
+				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", availResult.Error)
+				backoff.Sleep()
+				continue
+			}
+			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 
 			c.logger.Debug("Successfully submitted batch.")
 			return da.ResultSubmitBatch{

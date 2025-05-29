@@ -116,7 +116,7 @@ func NewClient(ctx context.Context, config *EthConfig) (EthClient, error) {
 	return client, nil
 }
 
-// SubmitBlob sends blob data to BNB chain
+// SubmitBlob sends blob data to Ethereum
 func (c Client) SubmitBlob(blob []byte) ([]byte, []byte, string, error) {
 	// get nonce for the submitter account
 	cCtx, cancel := context.WithTimeout(c.ctx, c.cfg.Timeout)
@@ -136,13 +136,12 @@ func (c Client) SubmitBlob(blob []byte) ([]byte, []byte, string, error) {
 	gasFeeCap := calcGasFeeCap(baseFee, gasTipCap)
 
 	// create blob tx with blob and fee params previously obtained
-	// blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gasLimit, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
-	// send blob tx to BNB chain
+	// send blob tx to Ethereum
 	cCtx, cancel = context.WithTimeout(c.ctx, c.cfg.Timeout)
 	defer cancel()
 	err = c.ethclient.SendTransaction(cCtx, blobTx)
@@ -191,7 +190,7 @@ func (c Client) GetBlob(slot string, txCommitment []byte) ([]byte, error) {
 }
 
 func (c Client) getKzg4844Blob(slot string, txCommitment []byte) (*kzg4844.Blob, error) {
-	blobSidecars, err := c.retrieveBlob(slot)
+	blobSidecars, err := c.retrieveBlobSidecar(slot)
 	if err != nil {
 		return nil, err
 	}
@@ -251,9 +250,9 @@ func (c Client) waitForTxReceipt(txHash common.Hash) (*types.Receipt, error) {
 	return receipt, nil
 }
 
-// getSlot
+// getSlot returns the beacon chain slot id that corresponds to the execution layer block id
 func (c *Client) getSlot(blockId uint64) (string, error) {
-	blockIdHead, slotHead, err := c.retrieveSlot("head")
+	blockIdHead, slotHead, err := c.obtainSlotInfo("head")
 	if err != nil {
 		return "", err
 	}
@@ -262,7 +261,7 @@ func (c *Client) getSlot(blockId uint64) (string, error) {
 	slotTarget := slotHead - blockDifference
 
 	for {
-		block, slot, err := c.retrieveSlot(strconv.FormatUint(slotTarget, 10))
+		block, slot, err := c.obtainSlotInfo(strconv.FormatUint(slotTarget, 10))
 		if err != nil {
 			return "", err
 		}
@@ -277,8 +276,8 @@ func (c *Client) getSlot(blockId uint64) (string, error) {
 	}
 }
 
-// retrieveSlot
-func (c *Client) retrieveSlot(slot string) (uint64, uint64, error) {
+// obtainSlotInfo returns block and slot id for certain slot (slot accepts either slot id or head string)
+func (c *Client) obtainSlotInfo(slot string) (uint64, uint64, error) {
 	url := c.apiURL + beaconBlockUrl + slot
 
 	resp, err := c.httpClient.Get(url)
@@ -311,8 +310,8 @@ func (c *Client) retrieveSlot(slot string) (uint64, uint64, error) {
 	return blockId, currentSlot, nil
 }
 
-// retrieveBlobTx gets Tx, that includes blob parts, using  Kaspa REST-API server (https://api.kaspa.org/docs)
-func (c *Client) retrieveBlob(slot string) ([]BlobSidecar, error) {
+// retrieveBlobSidecar returns blobsiders included in a Ethereum beacon chain block
+func (c *Client) retrieveBlobSidecar(slot string) ([]BlobSidecar, error) {
 	url := fmt.Sprintf(c.apiURL+"/eth/v1/beacon/blob_sidecars/%s", slot)
 
 	resp, err := c.httpClient.Get(url)

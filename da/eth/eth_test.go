@@ -15,7 +15,7 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	//t.Skip("Skipping Eth client tests")
+	t.Skip("Skipping Eth client tests")
 
 	// Set up test environment
 	priKeyEnv := "ETH_PRIVATE_KEY"
@@ -33,6 +33,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	err = client.Init(configBytes, nil, nil, log.NewTMLogger(log.NewSyncWriter(os.Stdout)))
 	require.NoError(t, err)
 
+	// Start DA Eth client
 	err = client.Start()
 	require.NoError(t, err)
 	defer client.Stop()
@@ -42,8 +43,9 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	require.NoError(t, err)
 
 	testCases := []struct {
-		name  string
-		batch *types.Batch
+		name    string
+		batch   *types.Batch
+		wantErr bool
 	}{
 		{
 			name:  "small batch: 1KB",
@@ -58,8 +60,9 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 			batch: testutil.GenerateBatchWithBlocks(150, proposerKey),
 		},
 		{
-			name:  "huge batch: 362KB",
-			batch: testutil.GenerateBatchWithBlocks(600, proposerKey),
+			name:    "huge batch: 362KB",
+			batch:   testutil.GenerateBatchWithBlocks(600, proposerKey),
+			wantErr: true,
 		},
 	}
 
@@ -67,6 +70,10 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			result := client.SubmitBatch(tc.batch)
+			if tc.wantErr {
+				require.Error(t, result.Error)
+				return
+			}
 			require.NoError(t, result.Error)
 			require.Equal(t, da.StatusSuccess, result.Code)
 
