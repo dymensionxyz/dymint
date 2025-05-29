@@ -27,8 +27,10 @@ import (
 )
 
 const (
-	beaconBlockUrl = "%s/eth/v2/beacon/blocks/%s"
-	blobSidecarUrl = "%s/eth/v1/beacon/blob_sidecars/%s"
+	beaconBlockUrl            = "%s/eth/v2/beacon/blocks/%s"
+	blobSidecarUrl            = "%s/eth/v1/beacon/blob_sidecars/%s"
+	confirmationRetryAttempts = 20
+	confirmationRetryDelay    = 5 * time.Second
 )
 
 type EthClient interface {
@@ -222,8 +224,8 @@ func (c Client) waitForTxReceipt(txHash common.Hash) (*types.Receipt, error) {
 			return nil
 		},
 		retry.Context(ctx),
-		retry.Attempts(10), //nolint:gosec // RetryAttempts should be always positive
-		retry.Delay(1*time.Second),
+		retry.Attempts(confirmationRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
+		retry.Delay(confirmationRetryDelay),
 		retry.DelayType(retry.FixedDelay), // Force fixed delay between attempts
 		retry.LastErrorOnly(true),         // Only log the last error
 	)

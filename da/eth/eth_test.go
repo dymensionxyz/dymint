@@ -22,7 +22,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	err := os.Setenv(priKeyEnv, "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234")
 	require.NoError(t, err)
 
-	// Create test config. By default, tests use BNB devnet.
+	// Create test config. By default, tests use Ethereum sepolia network.
 	config := eth.TestConfig
 
 	configBytes, err := json.Marshal(config)
