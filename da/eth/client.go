@@ -62,7 +62,7 @@ func NewClient(ctx context.Context, config *EthConfig) (EthClient, error) {
 		return nil, fmt.Errorf("private key environment %s is not set or empty", config.PrivateKeyEnv)
 	}
 
-	account, err := fromHexKey(priKeyHex)
+	account, err := accountFromHexKey(priKeyHex)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func (c Client) SubmitBlob(blob []byte) ([]byte, []byte, string, error) {
 	return commitment, proof, slot, nil
 }
 
-// GetBlock retrieves a block Ethereum beacon chain by tx hash
+// GetBlock retrieves a block Ethereum beacon chain by slot and commitment
 func (c Client) GetBlob(slot string, txCommitment []byte) ([]byte, error) {
 	blob, err := c.getKzg4844Blob(slot, txCommitment)
 	if err != nil {
@@ -159,7 +159,7 @@ func (c Client) GetBlob(slot string, txCommitment []byte) ([]byte, error) {
 	return data, nil
 }
 
-// ValidateInclusion validates that there is a blob included in the beacon chain block and corresponds to the commitment and proof included in da path.
+// ValidateInclusion validates that there is a blob included in the beacon chain block that corresponds to the commitment and proof included in da path.
 func (c Client) ValidateInclusion(slot string, txCommitment []byte, txProof []byte) error {
 	blob, err := c.getKzg4844Blob(slot, txCommitment)
 	if err != nil {
@@ -168,14 +168,14 @@ func (c Client) ValidateInclusion(slot string, txCommitment []byte, txProof []by
 
 	// convert received hex format commitment to kzg4844.Commitment
 	var commitment kzg4844.Commitment
-	err = commitment.UnmarshalJSON([]byte(fmt.Sprintf("%q", txCommitment)))
+	err = commitment.UnmarshalJSON([]byte(fmt.Sprintf("%q", txCommitment))) // for some reason UnmarshalJSON() validates txCommitment include quotes in the string, so we add them
 	if err != nil {
 		return errors.Join(da.ErrBlobNotFound, err)
 	}
 
 	// convert received hex format proof to kzg4844.Proof
 	var proof kzg4844.Proof
-	err = proof.UnmarshalJSON([]byte(fmt.Sprintf("%q", txProof)))
+	err = proof.UnmarshalJSON([]byte(fmt.Sprintf("%q", txProof))) // for some reason UnmarshalJSON() validates txProof include quotes in the string, so we add them
 	if err != nil {
 		return errors.Join(da.ErrBlobNotFound, err)
 	}

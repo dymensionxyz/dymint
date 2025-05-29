@@ -14,7 +14,6 @@ import (
 	"github.com/dymensionxyz/go-ethereum/core/types"
 	"github.com/dymensionxyz/go-ethereum/crypto"
 	"github.com/dymensionxyz/go-ethereum/crypto/kzg4844"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/holiman/uint256"
 )
 
@@ -23,35 +22,28 @@ type Account struct {
 	addr common.Address
 }
 
-type estimateGasParams struct {
-	From         common.Address   `json:"from"`
-	To           *common.Address  `json:"to"`
-	Data         hexutil.Bytes    `json:"data"`
-	MaxFeePerGas *hexutil.Big     `json:"maxFeePerGas"`
-	AccessList   types.AccessList `json:"accessList"`
-	BlobHashes   []common.Hash    `json:"blobVersionedHashes,omitempty"`
-}
-
-// BlobSidecarResponse represents the structure of the Beacon node blob response
+// BeaconChainResponse represents the structure of the Beacon block query message
 type BeaconChainResponse struct {
 	Data BeaconChainData `json:"data"`
 }
 
-// BlobSidecarResponse represents the structure of the Beacon node blob response
+// BeaconChainData represents the structure of the Beacon block query message
 type BeaconChainData struct {
 	Message BeaconChainMessage `json:"message"`
 }
 
-// BlobSidecarResponse represents the structure of the Beacon node blob response
+// BeaconChainMessage represents the structure of the Beacon chain block
 type BeaconChainMessage struct {
 	Slot string          `json:"slot"`
 	Body BeaconChainBody `json:"body"`
 }
 
+// BeaconChainBody represents the necessary structure of the Beacon chain block to obtain the execution layer payload
 type BeaconChainBody struct {
 	ExecutionPayload ExecutionPayload `json:"execution_payload"`
 }
 
+// ExecutionPayload includes the block number of the execution layer
 type ExecutionPayload struct {
 	BlockNumber string `json:"block_number"`
 }
@@ -61,6 +53,7 @@ type BlobSidecarResponse struct {
 	Data []BlobSidecar `json:"data"`
 }
 
+// BlobSidecar is the struct representing the blob information included in a beacon chain block
 type BlobSidecar struct {
 	BlockRoot  string              `json:"block_root"`
 	Index      string              `json:"index"`
@@ -69,6 +62,7 @@ type BlobSidecar struct {
 	Proof      *kzg4844.Proof      `json:"kzg_proof,omitempty"`
 }
 
+// createBlobTx generates EIP-4844 Ethereum transaction, including batch data in a blob
 func createBlobTx(key *ecdsa.PrivateKey, chainId, gasLimit uint64, gasTipCap *big.Int, gasFeeCap *big.Int, blobFeeCap *big.Int, blobData []byte, toAddr common.Address, nonce uint64) (*types.Transaction, error) {
 	var b ethutils.Blob
 	err := b.FromData(blobData)
@@ -114,7 +108,8 @@ func createBlobTx(key *ecdsa.PrivateKey, chainId, gasLimit uint64, gasTipCap *bi
 	return types.MustSignNewTx(key, signer, blobtx), nil
 }
 
-func fromHexKey(hexkey string) (*Account, error) {
+// accountFromHexKey returns Eth account from private key in hex format
+func accountFromHexKey(hexkey string) (*Account, error) {
 	key, err := crypto.HexToECDSA(hexkey)
 	if err != nil {
 		return &Account{}, err

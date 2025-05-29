@@ -369,7 +369,7 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
-	// Check if the transaction exists by trying to fetch it
+	// Check if the blob exists in the specified slot and matches the kzg commitment, and the commitment matches the blob data using the proof.
 	err := c.client.ValidateInclusion(daMetaData.Slot, daMetaData.Commitment, daMetaData.Proof)
 	if err != nil {
 		return da.ResultCheckBatch{
