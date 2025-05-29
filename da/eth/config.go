@@ -12,6 +12,7 @@ import (
 const (
 	defaultRpcRetryDelay    = 3 * time.Second
 	defaultRpcRetryAttempts = 5
+	defaultGasLimit         = uint64(21000) // set to 21k because its the necessary gas when no calldata or smart contract call (as is the case with simple blob EIP-4844 tx)
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -29,6 +30,7 @@ type EthConfig struct {
 	Backoff       uretry.BackoffConfig `json:"backoff,omitempty"`
 	RetryAttempts *int                 `json:"retry_attempts,omitempty"`
 	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`
+	GasLimit      *uint64              `json:"gas_limit"`
 }
 
 var TestConfig = EthConfig{
@@ -57,6 +59,10 @@ func createConfig(bz []byte) (c EthConfig, err error) {
 	if c.RetryAttempts == nil {
 		attempts := defaultRpcRetryAttempts
 		c.RetryAttempts = &attempts
+	}
+	if c.GasLimit == nil {
+		gasLimit := defaultGasLimit
+		c.GasLimit = &gasLimit
 	}
 	return c, nil
 }

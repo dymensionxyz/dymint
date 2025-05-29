@@ -31,7 +31,6 @@ import (
 
 const (
 	beaconBlockUrl = "/eth/v2/beacon/blocks/"
-	gasLimit       = uint64(21000) // set to 21k because its the necessary gas when no calldata or smart contract call (as is the case with simple blob EIP-4844 tx)
 )
 
 type EthClient interface {
@@ -136,7 +135,7 @@ func (c Client) SubmitBlob(blob []byte) ([]byte, []byte, string, error) {
 	gasFeeCap := calcGasFeeCap(baseFee, gasTipCap)
 
 	// create blob tx with blob and fee params previously obtained
-	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gasLimit, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
+	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, *c.cfg.GasLimit, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	if err != nil {
 		return nil, nil, "", err
 	}
