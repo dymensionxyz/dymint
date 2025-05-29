@@ -297,6 +297,7 @@ func (c *Client) obtainSlotInfo(slot string) (uint64, uint64, error) {
 	if err != nil {
 		return uint64(0), uint64(0), err
 	}
+	defer body.Close() // nolint:errcheck
 
 	var bnResp BeaconChainResponse
 	if err := json.NewDecoder(body).Decode(&bnResp); err != nil {
@@ -321,6 +322,8 @@ func (c *Client) retrieveBlobSidecar(slot string) ([]BlobSidecar, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get response: %w", err)
 	}
+	defer body.Close() // nolint:errcheck
+
 	var blobResp BlobSidecarResponse
 	if err := json.NewDecoder(body).Decode(&blobResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)

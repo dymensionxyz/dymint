@@ -10,7 +10,6 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/go-ethereum/common"
 
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -35,18 +34,18 @@ func TestEthSubmitRetrieve(t *testing.T) {
 		Blocks: []*types.Block{block},
 	}
 
-	// mock txhash, commitment and proof
-	txHash := common.BytesToHash([]byte("txhash"))
+	// mock commitment and proof
 	commitment := []byte("commitment")
 	proof := []byte("proof")
 	slot := "1"
-	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, commitment, proof, slot, nil)
+	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(commitment, proof, slot, nil)
+	mockClient.On("ValidateInclusion", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	// generate blob data from batch
 	blobData, err := batch.MarshalBinary()
 	require.NoError(t, err)
 
-	mockClient.On("GetBlob", mock.Anything, mock.Anything, mock.Anything).Return(blobData, nil)
+	mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(blobData, nil)
 
 	// submit blob
 	rsubmit := client.SubmitBatch(batch)
@@ -121,11 +120,7 @@ func setDAandMock(t *testing.T) (*mocks.MockEthClient, da.DataAvailabilityLayerC
 	// init avail DA with mock RPC client
 	dalc := registry.GetClient("eth")
 
-	config := eth.EthConfig{
-		Timeout:  5000000000,
-		Endpoint: "http://localhost:8545/rpc",
-		ChainId:  1,
-	}
+	config := eth.TestConfig
 
 	conf, err := json.Marshal(config)
 	require.NoError(err)

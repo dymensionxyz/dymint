@@ -167,7 +167,6 @@ func httpGet(url string, httpClient *http.Client) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("post failed: %w", err)
 	}
-	defer resp.Body.Close() // nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)

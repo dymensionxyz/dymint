@@ -15,7 +15,7 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	t.Skip("Skipping Eth client tests")
+	//t.Skip("Skipping Eth client tests")
 
 	// Set up test environment
 	priKeyEnv := "ETH_PRIVATE_KEY"
@@ -101,14 +101,14 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 }
 
 func TestDataAvailabilityLayerClientRetrieval(t *testing.T) {
-	t.Skip("Skipping Eth client tests")
+	//t.Skip("Skipping Eth client tests")
 
 	// Set up test environment
 	priKeyEnv := "ETH_PRIVATE_KEY"
 	err := os.Setenv(priKeyEnv, "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234")
 	require.NoError(t, err)
 
-	// Create test config. By default, tests use Sepo devnet.
+	// Create test config. By default, tests use Sepolia devnet.
 	config := eth.TestConfig
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
