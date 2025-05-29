@@ -161,7 +161,6 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 
 // SubmitBatch submits batch to DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
-
 	blob, err := batch.MarshalBinary()
 	if err != nil {
 		return da.ResultSubmitBatch{

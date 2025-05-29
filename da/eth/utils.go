@@ -163,7 +163,6 @@ func calculateNextBaseFee(parent *types.Header) *big.Int {
 
 // httpGet retrieves data from http client
 func httpGet(url string, httpClient *http.Client) (io.ReadCloser, error) {
-
 	resp, err := httpClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("post failed: %w", err)

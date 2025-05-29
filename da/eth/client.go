@@ -258,7 +258,6 @@ func (c Client) getKzg4844Blob(slot string, txCommitment []byte) (*kzg4844.Blob,
 
 // getSlot returns the beacon chain slot id that corresponds to the execution layer block id
 func (c *Client) getSlot(blockId uint64) (string, error) {
-
 	// to find the corresponding slot we start by getting the current head slot number
 	blockIdHead, slotHead, err := c.obtainSlotInfo("head")
 	if err != nil {
@@ -285,7 +284,7 @@ func (c *Client) getSlot(blockId uint64) (string, error) {
 			return strconv.FormatUint(slotTarget, 10), nil
 		}
 
-		//in case it does not match, we continue the search removing the block difference to slot target
+		// in case it does not match, we continue the search removing the block difference to slot target
 		blockDifference := block - blockId
 		slotTarget = slotTarget - blockDifference
 	}
@@ -319,7 +318,6 @@ func (c *Client) retrieveBlobSidecar(slot string) ([]BlobSidecar, error) {
 	url := fmt.Sprintf(blobSidecarUrl, c.apiURL, slot)
 
 	body, err := httpGet(url, c.httpClient)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to get response: %w", err)
 	}
@@ -333,7 +331,6 @@ func (c *Client) retrieveBlobSidecar(slot string) ([]BlobSidecar, error) {
 // suggestGasPriceCaps suggests what the new tip, base fee, and blob base fee should be based on
 // the current  chain conditions.
 func (c Client) suggestGasPriceCaps(ctx context.Context) (*big.Int, *big.Int, *big.Int, error) {
-
 	// suggested gas tip from chain
 	cCtx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
 	defer cancel()
@@ -352,10 +349,10 @@ func (c Client) suggestGasPriceCaps(ctx context.Context) (*big.Int, *big.Int, *b
 		return nil, nil, nil, fmt.Errorf("failed to fetch the suggested base fee: %w", err)
 	}
 
-	//eip-1559 base fee calculation
+	// eip-1559 base fee calculation
 	nextBaseFee := calculateNextBaseFee(head)
 
-	//eip-4844 blob base fee calculation
+	// eip-4844 blob base fee calculation
 	var blobFee *big.Int
 	if head.ExcessBlobGas != nil {
 		blobFee = eip4844.CalcBlobFee(*head.ExcessBlobGas)
