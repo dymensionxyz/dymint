@@ -15,7 +15,7 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	//t.Skip("Skipping Eth client tests")
+	t.Skip("Skipping Eth client tests")
 
 	// Set up test environment
 	priKeyEnv := "ETH_PRIVATE_KEY"
@@ -101,7 +101,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 }
 
 func TestDataAvailabilityLayerClientRetrieval(t *testing.T) {
-	//t.Skip("Skipping Eth client tests")
+	t.Skip("Skipping Eth client tests")
 
 	// Set up test environment
 	priKeyEnv := "ETH_PRIVATE_KEY"
