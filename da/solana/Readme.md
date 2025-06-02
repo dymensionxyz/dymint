@@ -16,8 +16,8 @@ da_config = ['{"endpoint":"http://barcelona:8899","keypath_env":"SOLANA_KEYPATH"
 
 where:
 
-- endpoint = RPC url address for Solana RPC. 
-- keypath_env = env variable name used to set the path where the solana private key is stored. 
+- endpoint = RPC url address for Solana RPC.
+- keypath_env = env variable name used to set the path where the solana private key is stored.
 - program_address: sequencer Solana address with funds.
 - timeout (nanoseconds): used to cancel retry when fail submissions or retrievals (optional).
 - apikey_env: env variable used to set the auth token required by RPC nodes, if necessary (optional).
