@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Access to a Kaspa node via grpc. Instructions on how to run Kaspa node https://github.com/kaspanet/rusty-kaspa/
+- Access to a Kaspa node via grpc. Instructions on how to run Kaspa node <https://github.com/kaspanet/rusty-kaspa/>
 - Access to an indexer (<https://github.com/supertypo/simply-kaspa-indexer>) archive node, supporting Kaspa API <https://api.kaspa.org/docs> (<https://github.com/kaspa-ng/kaspa-rest-server>).
 - A Kaspa account with funds.
 
