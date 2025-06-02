@@ -24,7 +24,6 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 
 // Config stores Solana client configuration parameters.
 type Config struct {
-	Timeout        time.Duration        `json:"timeout,omitempty"`         // Timeout used in http requests
 	KeyPathEnv     string               `json:"keypath_env,omitempty"`     // mnemonic used to generate key
 	ApiKeyEnv      string               `json:"apikey_env,omitempty"`      // apikey used for the rpc client
 	RetryAttempts  *uint                `json:"retry_attempts,omitempty"`  // num retries before failing when submitting or retrieving blobs
@@ -37,7 +36,6 @@ type Config struct {
 }
 
 var TestConfig = Config{
-	Timeout:    5 * time.Second,
 	KeyPathEnv: "SOLANA_KEYPATH",
 	ApiKeyEnv:  "API_KEY",
 	Endpoint:   "https://api.devnet.solana.com/",
