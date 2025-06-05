@@ -49,7 +49,6 @@ func testSubmitLoopInner(
 	ctx, cancel := context.WithTimeout(context.Background(), args.testDuration)
 	defer cancel()
 
-	fmt.Println("hola")
 	// returns a duration in [0.8,1.2] * d
 	approx := func(d time.Duration) time.Duration {
 		base := int(float64(d) * 0.8)
