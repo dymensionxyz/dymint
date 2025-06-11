@@ -18,7 +18,7 @@ func (_m *MockKaspaClient) EXPECT() *MockKaspaClient_Expecter {
 }
 
 // GetBalance provides a mock function with no fields
-func (_m *MockKaspaClient) GetBalance() uint64 {
+func (_m *MockKaspaClient) GetBalance() (uint64, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
@@ -26,13 +26,23 @@ func (_m *MockKaspaClient) GetBalance() uint64 {
 	}
 
 	var r0 uint64
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (uint64, error)); ok {
+		return rf()
+	}
 	if rf, ok := ret.Get(0).(func() uint64); ok {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(uint64)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockKaspaClient_GetBalance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBalance'
@@ -52,12 +62,12 @@ func (_c *MockKaspaClient_GetBalance_Call) Run(run func()) *MockKaspaClient_GetB
 	return _c
 }
 
-func (_c *MockKaspaClient_GetBalance_Call) Return(_a0 uint64) *MockKaspaClient_GetBalance_Call {
-	_c.Call.Return(_a0)
+func (_c *MockKaspaClient_GetBalance_Call) Return(_a0 uint64, _a1 error) *MockKaspaClient_GetBalance_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockKaspaClient_GetBalance_Call) RunAndReturn(run func() uint64) *MockKaspaClient_GetBalance_Call {
+func (_c *MockKaspaClient_GetBalance_Call) RunAndReturn(run func() (uint64, error)) *MockKaspaClient_GetBalance_Call {
 	_c.Call.Return(run)
 	return _c
 }

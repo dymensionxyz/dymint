@@ -27,7 +27,7 @@ const (
 
 type KaspaClient interface {
 	Stop() error
-	GetBalance() uint64
+	GetBalance() (uint64, error)
 	SubmitBlob(blob []byte) ([]string, string, error)
 	GetBlob(txHash []string) ([]byte, error)
 }
@@ -46,7 +46,6 @@ type Client struct {
 	address          util.Address
 	wAddress         *walletAddress
 	mnemonic         string
-	balance          uint64
 	publicKey        *bip32.ExtendedKey
 	txMassCalculator *txmass.Calculator
 }
@@ -106,7 +105,6 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		mnemonic:         mnemonic,
 		params:           params,
 		apiURL:           config.APIUrl,
-		balance:          uint64(0),
 		txMassCalculator: txmass.NewCalculator(1, 10, 1000),
 	}
 	return kaspaClient, nil
@@ -168,8 +166,24 @@ func (c *Client) GetBlob(txHash []string) ([]byte, error) {
 	return blob, nil
 }
 
-func (c *Client) GetBalance() uint64 {
-	return c.balance
+func (c *Client) GetBalance() (uint64, error) {
+	balance := uint64(0)
+	utxos, err := c.getUTXOs()
+	if err != nil {
+		return balance, err
+	}
+	dagInfo, err := c.rpcClient.GetBlockDAGInfo()
+	if err != nil {
+		return balance, err
+	}
+	for _, utxo := range utxos {
+		if !c.isUTXOSpendable(utxo, dagInfo.VirtualDAAScore) {
+			continue
+		}
+
+		balance += utxo.UTXOEntry.Amount()
+	}
+	return balance, nil
 }
 
 // retrieveBlobTx gets Tx, that includes blob parts, using  Kaspa REST-API server (https://api.kaspa.org/docs)

@@ -13,7 +13,7 @@ import (
 	"github.com/dymensionxyz/dymint/types/metrics"
 )
 
-const CheckBalancesInterval = 3 * time.Minute
+const CheckBalancesInterval = 10 * time.Second
 
 // MonitorBalances checks the balances of the node and updates the gauges for prometheus
 func (m *Manager) MonitorBalances(ctx context.Context) error {
