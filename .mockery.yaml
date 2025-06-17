@@ -32,6 +32,9 @@ packages:
   github.com/dymensionxyz/dymint/da/bnb:
     interfaces:
      BNBClient:
+  github.com/dymensionxyz/dymint/da/eth:
+    interfaces:
+     EthClient:
   github.com/dymensionxyz/dymint/da:
     interfaces:
      DataAvailabilityLayerClient:

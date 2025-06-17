@@ -40,6 +40,7 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.10.0
 	github.com/tendermint/tendermint v0.34.29
+	github.com/test-go/testify v1.1.4
 	github.com/vedhavyas/go-subkey/v2 v2.0.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.34.0
