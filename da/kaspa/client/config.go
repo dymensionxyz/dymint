@@ -39,7 +39,7 @@ var TestConfig = Config{
 	GrpcAddress: "localhost:16210",
 	Timeout:     5 * time.Second,
 	MnemonicEnv: "KASPA_MNEMONIC",
-	Network:     "testnet",
+	Network:     "kaspa-testnet-10",
 	Address:     "kaspatest:qzwyrgapjnhtjqkxdrmp7fpm3yddw296v2ajv9nmgmw5k3z0r38guevxyk7j0",
 }
 

@@ -23,6 +23,8 @@ const (
 	SingleSignerPurpose           = 44
 	CoinType                      = 111111
 	TRANSIENT_BYTE_TO_MASS_FACTOR = 4
+	Mainnet                       = "kaspa-mainnet"
+	Testnet                       = "kaspa-testnet-10"
 )
 
 type KaspaClient interface {
@@ -62,18 +64,18 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		rpcClient.SetTimeout(config.Timeout)
 	}
 
-	var params *dagconfig.Params
+	var prefix util.Bech32Prefix
 	switch config.Network {
-	case "testnet":
-		params = &dagconfig.TestnetParams
-	case "mainnet":
-		params = &dagconfig.MainnetParams
+	case Mainnet:
+		prefix = util.Bech32PrefixKaspa
+	case Testnet:
+		prefix = util.Bech32PrefixKaspaTest
 	default:
 		return nil, fmt.Errorf("Kaspa network not set to testnet or mainnet. Param: %s", config.Network)
 	}
 
 	seed := bip39.NewSeed(mnemonic, "")
-	version, err := versionFromParams(params)
+	version, err := versionFromNetworkName(config.Network)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +85,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		return nil, err
 	}
 
-	address, err := util.DecodeAddress(config.Address, params.Prefix)
+	address, err := util.DecodeAddress(config.Address, prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,6 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		publicKey:        pubKey,
 		address:          address,
 		mnemonic:         mnemonic,
-		params:           params,
 		apiURL:           config.APIUrl,
 		txMassCalculator: txmass.NewCalculator(1, 10, 1000),
 	}
@@ -212,15 +213,15 @@ func (c *Client) retrieveBlobTx(txHash string) (*Transaction, error) {
 }
 
 // returns version params depending on the network used (mainnet or testnet)
-func versionFromParams(params *dagconfig.Params) ([4]byte, error) {
-	switch params.Name {
-	case dagconfig.MainnetParams.Name:
+func versionFromNetworkName(name string) ([4]byte, error) {
+	switch name {
+	case Mainnet:
 		return bip32.KaspaMainnetPrivate, nil
-	case dagconfig.TestnetParams.Name:
+	case Testnet:
 		return bip32.KaspaTestnetPrivate, nil
 	}
 
-	return [4]byte{}, fmt.Errorf("kaspa network not valid %s", params.Name)
+	return [4]byte{}, fmt.Errorf("kaspa network not valid %s", name)
 }
 
 func defaultPath() string {
