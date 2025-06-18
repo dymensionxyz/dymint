@@ -205,7 +205,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				retry.Attempts(c.batchRetryAttempts),
 			)
 			if err != nil {
-				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
+				c.logger.Error("Check batch availability", err)
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
