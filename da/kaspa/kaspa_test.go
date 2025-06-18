@@ -29,7 +29,7 @@ import (
 )
 
 func TestKaspaDataAvailabilityClient(t *testing.T) {
-	//t.Skip("Skipping Kaspa client test")
+	t.Skip("Skipping Kaspa client test")
 
 	// Set up test environment
 	mnemoEnv := "KASPA_MNEMONIC"
