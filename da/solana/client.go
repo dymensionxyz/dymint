@@ -206,6 +206,7 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) (string, error) {
 		}
 
 		// sends the transaction to rpc node (without waiting for confirmation to make it faster -rate will be controlled by rate limiter if used-). Confirmation will be validated in CheckAvailability().
+		// TODO: add enhanced mechanism to avoid retransmitting the whole blob in case of failures https://github.com/dymensionxyz/dymint/issues/1436
 		sig, err := c.submitTxRpcClient.SendTransaction(c.ctx, tx)
 		if err != nil {
 			return "", fmt.Errorf("unable to send and confirm transaction. err: %w", err)
