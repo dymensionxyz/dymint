@@ -128,8 +128,12 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 		s.ConsensusParams.Block.MaxBytes = resp.EndBlock.ConsensusParamUpdates.Block.MaxBytes
 	}
 	if resp.EndBlock.RollappParamUpdates != nil {
-		s.RollappParams.Da = resp.EndBlock.RollappParamUpdates.Da
-		s.RollappParams.DrsVersion = resp.EndBlock.RollappParamUpdates.DrsVersion
+		if s.RollappParams.Da != resp.EndBlock.RollappParamUpdates.Da {
+			s.RollappParams.Da = resp.EndBlock.RollappParamUpdates.Da
+		}
+		if s.RollappParams.DrsVersion != resp.EndBlock.RollappParamUpdates.DrsVersion {
+			s.RollappParams.DrsVersion = resp.EndBlock.RollappParamUpdates.DrsVersion
+		}
 	}
 }
 
