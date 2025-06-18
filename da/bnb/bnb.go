@@ -270,7 +270,6 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		}
 	}
 
-	var batches []*types.Batch
 	batch := &types.Batch{}
 	err = batch.UnmarshalBinary(blob)
 	if err != nil {
@@ -284,37 +283,11 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		}
 	}
 
-	// Add the batch to the list
-	batches = append(batches, batch)
-	// Remove the bytes we just decoded.
-	size := batch.ToProto().Size()
-	if len(blob) < size {
-		c.logger.Error("Batch size does not match blob data length", "blob data length", len(blob), "batch size", size)
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Wrong size",
-				Error:   fmt.Errorf("wrong size"),
-			},
-		}
-	}
-
-	// if no batches, return error
-	if len(batches) == 0 {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Blob not found",
-				Error:   da.ErrBlobNotFound,
-			},
-		}
-	}
-
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
 			Code: da.StatusSuccess,
 		},
-		Batches: batches,
+		Batches: []*types.Batch{batch},
 	}
 }
 
