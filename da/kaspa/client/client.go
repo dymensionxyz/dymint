@@ -196,7 +196,6 @@ func (c *Client) GetBalance() (uint64, error) {
 
 // retrieveBlobTx gets Tx, that includes blob parts, using  Kaspa REST-API server (https://api.kaspa.org/docs)
 func (c *Client) retrieveBlobTx(txHash string) (*Transaction, error) {
-
 	if len(txHash) != TxHashLenght {
 		return nil, da.ErrBlobNotFound
 	}

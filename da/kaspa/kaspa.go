@@ -193,7 +193,6 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 
 			// TODO: differentiate between unrecoverable and recoverable errors.(https://github.com/dymensionxyz/dymint/issues/1416)
 			txHash, blobHash, err := c.client.SubmitBlob(dataBlob)
-
 			if err != nil {
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				c.logger.Error("submit blob", "err", fmt.Errorf("broadcast data blob: %w", err))
