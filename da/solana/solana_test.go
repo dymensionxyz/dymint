@@ -17,7 +17,7 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	t.Skip("Skipping Solana client tests")
+	//t.Skip("Skipping Solana client tests")
 
 	// Set up test environment
 	keyPathEnv := "SOLANA_KEYPATH"
@@ -54,10 +54,11 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	require.NoError(t, err)
 
 	testCases := []struct {
-		name  string
-		batch *types.Batch
+		name    string
+		batch   *types.Batch
+		daError error
 	}{
-		{
+		/*{
 			name:  "small batch: 1KB",
 			batch: testutil.GenerateBatchWithBlocks(1, proposerKey),
 		},
@@ -72,6 +73,11 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 		{
 			name:  "huge batch: 362KB",
 			batch: testutil.GenerateBatchWithBlocks(600, proposerKey),
+		},*/
+		{
+			name:    "not available batch",
+			batch:   testutil.GenerateBatchWithBlocks(1, proposerKey),
+			daError: da.ErrBlobNotFound,
 		},
 	}
 
@@ -82,16 +88,28 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 			require.NoError(t, result.Error)
 			require.Equal(t, da.StatusSuccess, result.Code)
 
-			// Check batch availability
-			checkResult := client.CheckBatchAvailability(result.SubmitMetaData.DAPath)
-			require.NoError(t, checkResult.Error)
-			require.Equal(t, da.StatusSuccess, checkResult.Code)
+			if tc.daError != nil {
+				result.SubmitMetaData.DAPath = "3ZuGNM1NMRA4JLYMq3eLtBXtcWVjm19fGXhptDUHHie8gBPWXXk5ZSXtN6aP8A4NH84gvz8CVuazTxqkFnVpRi4f|3297d423b9d44ce38a287acf3b43239f0234517811fd60c1e884cb3fba780a5f"
+			}
 
 			// Retrieve batch
 			retrieveResult := client.RetrieveBatches(result.SubmitMetaData.DAPath)
-			require.NoError(t, retrieveResult.Error)
-			require.Equal(t, da.StatusSuccess, retrieveResult.Code)
-			require.Len(t, retrieveResult.Batches, 1)
+			if tc.daError != nil {
+				assert.ErrorIs(t, retrieveResult.Error, da.ErrBlobNotFound)
+			} else {
+				require.NoError(t, retrieveResult.Error)
+				require.Equal(t, da.StatusSuccess, retrieveResult.Code)
+				require.Len(t, retrieveResult.Batches, 1)
+			}
+
+			// Check batch availability
+			checkResult := client.CheckBatchAvailability(result.SubmitMetaData.DAPath)
+			if tc.daError != nil {
+				assert.ErrorIs(t, checkResult.Error, da.ErrBlobNotFound)
+				return
+			}
+			require.NoError(t, checkResult.Error)
+			require.Equal(t, da.StatusSuccess, checkResult.Code)
 
 			// Compare submitted and retrieved batches
 			submittedData, err := tc.batch.MarshalBinary()
