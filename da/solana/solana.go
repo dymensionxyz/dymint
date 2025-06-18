@@ -177,29 +177,13 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 		case <-c.ctx.Done():
 			return da.ResultSubmitBatch{}
 		default:
-			var txHash string
-			var blobHash string
-			err := retry.Do(
-				func() error {
-					var err error
-					// TODO: differentiate between unrecoverable and recoverable errors.(https://github.com/dymensionxyz/dymint/issues/1416)
-					txHash, blobHash, err = c.client.SubmitBlob(dataBlob)
-					if err != nil {
-						metrics.RollappConsecutiveFailedDASubmission.Inc()
-						c.logger.Error("broadcasting batch", "error", err)
-						return err
-					}
-					return nil
-				},
-				retry.Context(c.ctx),
-				retry.LastErrorOnly(true),
-				retry.Delay(c.batchRetryDelay),
-				retry.DelayType(retry.FixedDelay),
-				retry.Attempts(c.batchRetryAttempts),
-			)
+
+			// TODO: differentiate between unrecoverable and recoverable errors.(https://github.com/dymensionxyz/dymint/issues/1416)
+			txHash, blobHash, err := c.client.SubmitBlob(dataBlob)
+
 			if err != nil {
-				err = fmt.Errorf("broadcast data blob: %w", err)
-				c.logger.Error(err.Error())
+				metrics.RollappConsecutiveFailedDASubmission.Inc()
+				c.logger.Error("broadcasting batch", "error", err)
 				continue
 			}
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
