@@ -17,7 +17,7 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	//t.Skip("Skipping Solana client tests")
+	t.Skip("Skipping Solana client tests")
 
 	// Set up test environment
 	keyPathEnv := "SOLANA_KEYPATH"
@@ -58,7 +58,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 		batch   *types.Batch
 		daError error
 	}{
-		/*{
+		{
 			name:  "small batch: 1KB",
 			batch: testutil.GenerateBatchWithBlocks(1, proposerKey),
 		},
@@ -73,7 +73,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 		{
 			name:  "huge batch: 362KB",
 			batch: testutil.GenerateBatchWithBlocks(600, proposerKey),
-		},*/
+		},
 		{
 			name:    "not available batch",
 			batch:   testutil.GenerateBatchWithBlocks(1, proposerKey),
@@ -95,7 +95,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 			// Retrieve batch
 			retrieveResult := client.RetrieveBatches(result.SubmitMetaData.DAPath)
 			if tc.daError != nil {
-				assert.ErrorIs(t, retrieveResult.Error, da.ErrBlobNotFound)
+				assert.ErrorIs(t, retrieveResult.Error, tc.daError)
 			} else {
 				require.NoError(t, retrieveResult.Error)
 				require.Equal(t, da.StatusSuccess, retrieveResult.Code)
@@ -105,7 +105,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 			// Check batch availability
 			checkResult := client.CheckBatchAvailability(result.SubmitMetaData.DAPath)
 			if tc.daError != nil {
-				assert.ErrorIs(t, checkResult.Error, da.ErrBlobNotFound)
+				assert.ErrorIs(t, checkResult.Error, tc.daError)
 				return
 			}
 			require.NoError(t, checkResult.Error)

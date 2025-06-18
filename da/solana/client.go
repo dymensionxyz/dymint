@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/decred/base58"
+	"github.com/dymensionxyz/dymint/da"
 	"github.com/gagliardetto/solana-go"
 	"golang.org/x/time/rate"
 
@@ -227,23 +229,27 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, string, error) {
 			Commitment: rpc.CommitmentConfirmed,
 		},
 	)
+	if err == fmt.Errorf("not found") {
+		return "", "", da.ErrBlobNotFound
+	}
+
 	if err != nil {
 		return "", "", err
 	}
 
 	// Check if logs are present
 	if out == nil || out.Meta == nil || len(out.Meta.LogMessages) == 0 {
-		return "", "", fmt.Errorf("No logs found for this transaction.")
+		return "", "", errors.Join(da.ErrBlobNotFound, fmt.Errorf("No logs found for this transaction."))
 	}
 
 	hash, found := strings.CutPrefix(out.Meta.LogMessages[1], "Program log: Tx: ")
 	if !found {
-		return "", "", fmt.Errorf("next tx not found in transaction logs")
+		return "", "", errors.Join(da.ErrBlobNotFound, fmt.Errorf("next tx not found in transaction logs"))
 	}
 
 	data, found := strings.CutPrefix(out.Meta.LogMessages[2], "Program log: Data: ")
 	if !found {
-		return "", "", fmt.Errorf("data not found in transaction logs")
+		return "", "", errors.Join(da.ErrBlobNotFound, fmt.Errorf("data not found in transaction logs"))
 	}
 
 	return data, hash, nil
