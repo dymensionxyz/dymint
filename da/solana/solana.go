@@ -184,6 +184,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			if err != nil {
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				c.logger.Error("broadcasting batch", "error", err)
+				backoff.Sleep()
 				continue
 			}
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
