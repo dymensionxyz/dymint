@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/dymensionxyz/dymint/da"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet/bip32"
 	"github.com/kaspanet/kaspad/domain/consensus/utils/constants"
@@ -25,6 +26,7 @@ const (
 	TRANSIENT_BYTE_TO_MASS_FACTOR = 4
 	Mainnet                       = "kaspa-mainnet"
 	Testnet                       = "kaspa-testnet-10"
+	TxHashLenght                  = 64
 )
 
 type KaspaClient interface {
@@ -38,6 +40,10 @@ type KaspaClient interface {
 type Transaction struct {
 	TransactionID string `json:"transaction_id"`
 	Payload       string `json:"payload"`
+}
+
+type FailedTxRetrieve struct {
+	Result string `json:"detail"`
 }
 
 type Client struct {
@@ -64,18 +70,18 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		rpcClient.SetTimeout(config.Timeout)
 	}
 
-	var prefix util.Bech32Prefix
+	var params *dagconfig.Params
 	switch config.Network {
-	case Mainnet:
-		prefix = util.Bech32PrefixKaspa
 	case Testnet:
-		prefix = util.Bech32PrefixKaspaTest
+		params = &dagconfig.TestnetParams
+	case Mainnet:
+		params = &dagconfig.MainnetParams
 	default:
 		return nil, fmt.Errorf("Kaspa network not set to testnet or mainnet. Param: %s", config.Network)
 	}
 
 	seed := bip39.NewSeed(mnemonic, "")
-	version, err := versionFromNetworkName(config.Network)
+	version, err := versionFromNetworkName(params.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +91,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		return nil, err
 	}
 
-	address, err := util.DecodeAddress(config.Address, prefix)
+	address, err := util.DecodeAddress(config.Address, params.Prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +110,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		httpClient:       httpClient,
 		publicKey:        pubKey,
 		address:          address,
+		params:           params,
 		mnemonic:         mnemonic,
 		apiURL:           config.APIUrl,
 		txMassCalculator: txmass.NewCalculator(1, 10, 1000),
@@ -189,6 +196,11 @@ func (c *Client) GetBalance() (uint64, error) {
 
 // retrieveBlobTx gets Tx, that includes blob parts, using  Kaspa REST-API server (https://api.kaspa.org/docs)
 func (c *Client) retrieveBlobTx(txHash string) (*Transaction, error) {
+
+	if len(txHash) != TxHashLenght {
+		return nil, da.ErrBlobNotFound
+	}
+
 	url := fmt.Sprintf(c.apiURL+"/transactions/%s", txHash)
 
 	resp, err := c.httpClient.Get(url)
@@ -202,6 +214,13 @@ func (c *Client) retrieveBlobTx(txHash string) (*Transaction, error) {
 	}()
 
 	if resp.StatusCode != 200 {
+		var tx FailedTxRetrieve
+		if err := json.NewDecoder(resp.Body).Decode(&tx); err != nil {
+			return nil, fmt.Errorf("Kaspa transaction decode failed: %w", err)
+		}
+		if tx.Result == "Transaction not found" {
+			return nil, da.ErrBlobNotFound
+		}
 		return nil, fmt.Errorf("Http response status code not OK: Status: %d", resp.StatusCode)
 	}
 

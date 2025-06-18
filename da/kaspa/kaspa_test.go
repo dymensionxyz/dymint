@@ -29,7 +29,7 @@ import (
 )
 
 func TestKaspaDataAvailabilityClient(t *testing.T) {
-	t.Skip("Skipping Kaspa client test")
+	//t.Skip("Skipping Kaspa client test")
 
 	// Set up test environment
 	mnemoEnv := "KASPA_MNEMONIC"
@@ -58,43 +58,59 @@ func TestKaspaDataAvailabilityClient(t *testing.T) {
 	testCases := []struct {
 		name    string
 		batch   *types.Batch
-		wantErr bool
+		daError error
 	}{
 		{
-			name:  "small batch: 1KB",
-			batch: testutil.GenerateBatchWithBlocks(1, proposerKey),
+			name:    "small batch: 1KB",
+			batch:   testutil.GenerateBatchWithBlocks(1, proposerKey),
+			daError: nil,
 		},
 		{
-			name:  "mid-size batch: 75KB",
-			batch: testutil.GenerateBatchWithBlocks(100, proposerKey),
+			name:    "mid-size batch: 75KB",
+			batch:   testutil.GenerateBatchWithBlocks(100, proposerKey),
+			daError: nil,
 		},
 		{
-			name:  "big-size batch: 320KB",
-			batch: testutil.GenerateBatchWithBlocks(500, proposerKey),
+			name:    "big-size batch: 320KB",
+			batch:   testutil.GenerateBatchWithBlocks(500, proposerKey),
+			daError: nil,
+		},
+		{
+			name:    "not available batch",
+			batch:   testutil.GenerateBatchWithBlocks(1, proposerKey),
+			daError: da.ErrBlobNotFound,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := client.SubmitBatch(tc.batch)
-			if tc.wantErr {
-				require.Error(t, result.Error)
-				return
-			}
+
 			require.NoError(t, result.Error)
 			require.Equal(t, da.StatusSuccess, result.Code)
 
-			// Check batch availability
-			checkResult := client.CheckBatchAvailability(result.SubmitMetaData.DAPath)
-			require.NoError(t, checkResult.Error)
-			require.Equal(t, da.StatusSuccess, checkResult.Code)
-
+			if tc.daError != nil {
+				result.SubmitMetaData.DAPath = "3329c48e787294f956d7ef8c815202683b7b6d93acebe3a2b267a4838ab4fae4|3297d423b9d44ce38a287acf3b43239f0234517811fd60c1e884cb3fba780a5f"
+			}
 			// Retrieve batch
 			retrieveResult := client.RetrieveBatches(result.SubmitMetaData.DAPath)
-			require.NoError(t, retrieveResult.Error)
-			require.Equal(t, da.StatusSuccess, retrieveResult.Code)
-			require.Len(t, retrieveResult.Batches, 1)
+			if tc.daError != nil {
+				assert.ErrorIs(t, retrieveResult.Error, da.ErrBlobNotFound)
+			} else {
+				require.NoError(t, retrieveResult.Error)
+				require.Equal(t, da.StatusSuccess, retrieveResult.Code)
+				require.Len(t, retrieveResult.Batches, 1)
+			}
 
+			// Check batch availability
+			checkResult := client.CheckBatchAvailability(result.SubmitMetaData.DAPath)
+			if tc.daError != nil {
+				assert.ErrorIs(t, checkResult.Error, da.ErrBlobNotFound)
+				return
+			}
+
+			require.NoError(t, checkResult.Error)
+			require.Equal(t, da.StatusSuccess, checkResult.Code)
 			// Compare submitted and retrieved batches
 			submittedData, err := tc.batch.MarshalBinary()
 			require.NoError(t, err)
