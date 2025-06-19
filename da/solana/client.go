@@ -116,7 +116,7 @@ func (c *Client) GetBlob(txHash string) ([]byte, error) {
 
 	blob, err := hex.DecodeString(hexResult.String())
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(da.ErrBlobNotParsed, fmt.Errorf("unable to decode hex payload"))
 	}
 	return blob, nil
 }
