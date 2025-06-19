@@ -1,4 +1,4 @@
-package kaspa
+package solana
 
 import (
 	"context"
@@ -6,14 +6,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"cosmossdk.io/math"
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/kaspa/client"
 	"github.com/dymensionxyz/dymint/da/stub"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
@@ -25,7 +23,7 @@ import (
 func (d *SubmitMetaData) ToPath() string {
 	path := []string{}
 
-	path = append(path, d.TxHash...)
+	path = append(path, d.TxHash)
 	path = append(path, d.BlobHash)
 	for i, part := range path {
 		path[i] = strings.Trim(part, da.PathSeparator)
@@ -41,13 +39,10 @@ func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	}
 
 	submitData := &SubmitMetaData{
-		TxHash:   []string{},
+		TxHash:   pathParts[0],
 		BlobHash: pathParts[len(pathParts)-1],
 	}
 
-	for i := 0; i < len(pathParts)-1; i++ {
-		submitData.TxHash = append(submitData.TxHash, pathParts[i])
-	}
 	return submitData, nil
 }
 
@@ -58,9 +53,9 @@ var (
 
 type DataAvailabilityLayerClient struct {
 	stub.Layer
-	client             client.KaspaClient
+	client             SolanaClient
 	pubsubServer       *pubsub.Server
-	config             client.Config
+	config             Config
 	logger             types.Logger
 	ctx                context.Context
 	cancel             context.CancelFunc
@@ -70,12 +65,12 @@ type DataAvailabilityLayerClient struct {
 
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
 type SubmitMetaData struct {
-	TxHash   []string
+	TxHash   string
 	BlobHash string
 }
 
-// WithKaspaClient sets kaspa client.
-func WithKaspaClient(client client.KaspaClient) da.Option {
+// WithSolanaClient sets kaspa client.
+func WithSolanaClient(client SolanaClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).client = client
 	}
@@ -100,7 +95,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	c.logger = logger
 
 	var err error
-	c.config, err = client.CreateConfig(config)
+	c.config, err = CreateConfig(config)
 	if err != nil {
 		return fmt.Errorf("create config: %w", err)
 	}
@@ -129,20 +124,15 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
-	c.logger.Info("Starting Kaspa Data Availability Layer Client.")
+	c.logger.Info("Starting Solana Data Availability Layer Client.")
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// other client has already been set
 	if c.client != nil {
-		c.logger.Info("Kaspa client already set.")
+		c.logger.Info("Solana client already set.")
 		return nil
 	}
 
-	mnemonic := os.Getenv(c.config.MnemonicEnv)
-	if mnemonic == "" {
-		return fmt.Errorf("mnemonic environment variable %s is not set or empty", c.config.MnemonicEnv)
-	}
-
-	client, err := client.NewClient(c.ctx, &c.config, mnemonic)
+	client, err := NewClient(c.ctx, &c.config)
 	if err != nil {
 		return fmt.Errorf("error while establishing connection to DA layer: %w", err)
 	}
@@ -152,17 +142,14 @@ func (c *DataAvailabilityLayerClient) Start() error {
 
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
-	c.logger.Info("Stopping Kaspa Data Availability Layer Client.")
-	err := c.client.Stop()
-	if err != nil {
-		c.logger.Error("Stopping Kaspa client", "err", err)
-	}
+	c.logger.Info("Stopping Solana Data Availability Layer Client.")
+
 	return nil
 }
 
 // GetClientType returns client type.
 func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
-	return da.Kaspa
+	return da.Solana
 }
 
 // SubmitBatch submits batch to DataAvailabilityLayerClient instance.
@@ -195,7 +182,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			txHash, blobHash, err := c.client.SubmitBlob(dataBlob)
 			if err != nil {
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
-				c.logger.Error("submit blob", "err", err)
+				c.logger.Error("broadcasting batch", "error", err)
 				backoff.Sleep()
 				continue
 			}
@@ -217,7 +204,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				retry.Attempts(c.batchRetryAttempts),
 			)
 			if err != nil {
-				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
+				c.logger.Error("Check batch availability", err)
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
@@ -231,7 +218,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				},
 				SubmitMetaData: &da.DASubmitMetaData{
 					DAPath: submitMetadata.ToPath(),
-					Client: da.Kaspa,
+					Client: da.Solana,
 				},
 			}
 		}
@@ -264,8 +251,8 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("Error unmarshaling batch: %s", err),
-				Error:   da.ErrBlobNotParsed,
+				Message: "Err Unmarshal",
+				Error:   err,
 			},
 		}
 	}
@@ -314,34 +301,25 @@ func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	}
 	return da.Balance{
 		Amount: math.NewIntFromUint64(balance),
-		Denom:  "Sompi",
+		Denom:  "lamport",
 	}, nil
 }
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
-	return client.MaxBlobSizeBytes
+	return MaxBlobSizeBytes
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
 	// Check if the transaction exists by trying to fetch it
 	blob, err := c.client.GetBlob(daMetaData.TxHash)
-	if err != nil {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: fmt.Sprintf("Blob not found: %v", err),
-				Error:   err,
-			},
-		}
-	}
 
 	// calculate blobhash
 	h := sha256.New()
 	h.Write(blob)
 	blobHash := h.Sum(nil)
 
-	if hex.EncodeToString(blobHash) != daMetaData.BlobHash {
+	if hex.EncodeToString(blobHash) != daMetaData.BlobHash || err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
