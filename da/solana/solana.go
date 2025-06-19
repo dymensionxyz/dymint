@@ -34,8 +34,8 @@ func (d *SubmitMetaData) ToPath() string {
 // FromPath parses a path to a SubmitMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(da.PathSeparator[0]) })
-	if len(pathParts) == 0 {
-		return nil, fmt.Errorf("invalid DA path")
+	if len(pathParts) < 2 {
+		return nil, fmt.Errorf("invalid DA path: expected at least 2 parts, got %d", len(pathParts))
 	}
 
 	submitData := &SubmitMetaData{
