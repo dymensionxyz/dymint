@@ -45,6 +45,7 @@ const (
 	Aptos       Client = "aptos"
 	BNB         Client = "bnb"
 	Walrus      Client = "walrus"
+	Solana      Client = "solana"
 	Kaspa       Client = "kaspa"
 )
 
