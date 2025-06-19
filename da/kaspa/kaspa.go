@@ -326,7 +326,6 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
 	// Check if the transaction exists by trying to fetch it
 	blob, err := c.client.GetBlob(daMetaData.TxHash)
-
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{

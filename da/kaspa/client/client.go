@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -245,8 +244,4 @@ func versionFromNetworkName(name string) ([4]byte, error) {
 
 func defaultPath() string {
 	return fmt.Sprintf("m/%d'/%d'/0'", SingleSignerPurpose, CoinType)
-}
-
-func decodeResponse(body io.Reader, tx any) error {
-	return json.NewDecoder(body).Decode(&tx)
 }
