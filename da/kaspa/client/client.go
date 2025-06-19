@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -215,7 +216,7 @@ func (c *Client) retrieveBlobTx(txHash string) (*Transaction, error) {
 	if resp.StatusCode != 200 {
 		var tx FailedTxRetrieve
 		if err := json.NewDecoder(resp.Body).Decode(&tx); err != nil {
-			return nil, fmt.Errorf("Kaspa transaction decode failed: %w", err)
+			return nil, fmt.Errorf("Kaspa API response decode failed: %w", err)
 		}
 		if tx.Result == "Transaction not found" {
 			return nil, da.ErrBlobNotFound
@@ -225,7 +226,7 @@ func (c *Client) retrieveBlobTx(txHash string) (*Transaction, error) {
 
 	var tx Transaction
 	if err := json.NewDecoder(resp.Body).Decode(&tx); err != nil {
-		return nil, fmt.Errorf("Kaspa transaction decode failed: %w", err)
+		return nil, fmt.Errorf("Kaspa API response decode failed: %w", err)
 	}
 	return &tx, nil
 }
@@ -244,4 +245,8 @@ func versionFromNetworkName(name string) ([4]byte, error) {
 
 func defaultPath() string {
 	return fmt.Sprintf("m/%d'/%d'/0'", SingleSignerPurpose, CoinType)
+}
+
+func decodeResponse(body io.Reader, tx any) error {
+	return json.NewDecoder(body).Decode(&tx)
 }

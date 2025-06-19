@@ -327,17 +327,27 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 	// Check if the transaction exists by trying to fetch it
 	blob, err := c.client.GetBlob(daMetaData.TxHash)
 
-	// calculate blobhash
-	h := sha256.New()
-	h.Write(blob)
-	blobHash := h.Sum(nil)
-
-	if hex.EncodeToString(blobHash) != daMetaData.BlobHash || err != nil {
+	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("Blob not found: %v", err),
 				Error:   err,
+			},
+		}
+	}
+
+	// calculate blobhash
+	h := sha256.New()
+	h.Write(blob)
+	blobHash := h.Sum(nil)
+
+	if hex.EncodeToString(blobHash) != daMetaData.BlobHash {
+		return da.ResultCheckBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: fmt.Sprintf("Blob not found: %v", err),
+				Error:   da.ErrBlobNotFound,
 			},
 		}
 	}

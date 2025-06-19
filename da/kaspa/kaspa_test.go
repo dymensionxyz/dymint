@@ -61,19 +61,16 @@ func TestKaspaDataAvailabilityClient(t *testing.T) {
 		daError error
 	}{
 		{
-			name:    "small batch: 1KB",
-			batch:   testutil.GenerateBatchWithBlocks(1, proposerKey),
-			daError: nil,
+			name:  "small batch: 1KB",
+			batch: testutil.GenerateBatchWithBlocks(1, proposerKey),
 		},
 		{
-			name:    "mid-size batch: 75KB",
-			batch:   testutil.GenerateBatchWithBlocks(100, proposerKey),
-			daError: nil,
+			name:  "mid-size batch: 75KB",
+			batch: testutil.GenerateBatchWithBlocks(100, proposerKey),
 		},
 		{
-			name:    "big-size batch: 320KB",
-			batch:   testutil.GenerateBatchWithBlocks(500, proposerKey),
-			daError: nil,
+			name:  "big-size batch: 320KB",
+			batch: testutil.GenerateBatchWithBlocks(500, proposerKey),
 		},
 		{
 			name:    "not available batch",
