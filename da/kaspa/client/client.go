@@ -26,7 +26,7 @@ const (
 	TRANSIENT_BYTE_TO_MASS_FACTOR = 4
 	Mainnet                       = "kaspa-mainnet"
 	Testnet                       = "kaspa-testnet-10"
-	TxHashLenght                  = 64
+	TxHashLength                  = 64
 )
 
 type KaspaClient interface {
@@ -196,7 +196,7 @@ func (c *Client) GetBalance() (uint64, error) {
 
 // retrieveBlobTx gets Tx, that includes blob parts, using  Kaspa REST-API server (https://api.kaspa.org/docs)
 func (c *Client) retrieveBlobTx(txHash string) (*Transaction, error) {
-	if len(txHash) != TxHashLenght {
+	if len(txHash) != TxHashLength {
 		return nil, da.ErrBlobNotFound
 	}
 
