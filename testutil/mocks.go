@@ -125,7 +125,7 @@ func (m *MockStore) NextHeight() uint64 {
 	return m.height + 1
 }
 
-// UpdateState updates the state of the mock store
+// SaveState saves the state of the mock store
 func (m *MockStore) SaveState(state *types.State, batch store.KVBatch) (store.KVBatch, error) {
 	if batch != nil && m.ShouldFailUpdateStateWithBatch || m.ShoudFailSaveState && batch == nil {
 		return nil, errors.New("failed to update state")
