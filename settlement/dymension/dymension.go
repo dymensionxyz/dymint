@@ -692,7 +692,7 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 
 	overridePubKeySeq := cosmosclient.OverridePubKey{
 		Name:   "hub_sequencer",
-		PubKey: "AtCwpYWi8yX1aCNilSgTNtlMoJ2a/XY33AvUL4vZBWCB",
+		PubKey: "AyiejrMdGo26teq0PABr7P3VHvLr2Quv7wGM1srIg6qB",
 		Type:   "ethsecp256k1",
 	}
 
