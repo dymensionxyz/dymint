@@ -15,7 +15,7 @@ require (
 	github.com/cosmos/ibc-go/v6 v6.2.1
 	github.com/dgraph-io/badger/v4 v4.3.0
 	github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20241121093220-e0d7ad456fbd
-	github.com/dymensionxyz/dymension-rdk v1.10.0-rc01.0.20250408075532-9f34ff12fa64
+	github.com/dymensionxyz/dymension-rdk v1.9.0-rc02
 	github.com/dymensionxyz/gerr-cosmos v1.0.0
 	github.com/dymensionxyz/go-ethereum v0.0.0-20250326232313-18b28aa27ff2
 	github.com/ethereum/go-ethereum v1.12.0
