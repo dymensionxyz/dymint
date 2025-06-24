@@ -644,15 +644,15 @@ func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 }
 
 func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
-	account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
-	if err != nil {
-		return nil, fmt.Errorf("get account: %w", err)
-	}
+	// account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("get account: %w", err)
+	// }
 
-	addr, err := account.Address(addressPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("derive address: %w", err)
-	}
+	// addr, err := account.Address(addressPrefix)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("derive address: %w", err)
+	// }
 
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
@@ -666,7 +666,7 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 	}
 
 	settlementBatch := &rollapptypes.MsgUpdateState{
-		Creator:         addr,
+		Creator:         "dym10dhjnv8r6l3a46j0zu8fhvfpy4vtkj60y5vt7l",
 		RollappId:       c.rollappId,
 		StartHeight:     batch.StartHeight(),
 		NumBlocks:       batch.NumBlocks(),
