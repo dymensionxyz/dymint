@@ -1,7 +1,9 @@
-package bnb
+package solana
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -10,36 +12,19 @@ import (
 	"cosmossdk.io/math"
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/ethutils"
 	"github.com/dymensionxyz/dymint/da/stub"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/metrics"
-	"github.com/dymensionxyz/go-ethereum/common"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-const (
-	defaultTxInclusionTimeout = 100 * time.Second
-	defaultBatchRetryDelay    = 10 * time.Second
-	defaultBatchRetryAttempts = 10
-	ArchivePoolAddress        = "0x0000000000000000000000000000000000000000" // the data settling address
-)
-
-type BNBConfig struct {
-	Timeout    time.Duration `json:"timeout,omitempty"`
-	Endpoint   string        `json:"endpoint"`
-	PrivateKey string        `json:"private_key_hex"`
-	ChainId    uint64        `json:"chain_id"`
-}
-
 // ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
-	path := []string{
-		d.TxHash,
-		string(d.Commitment),
-		string(d.Proof),
-	}
+	path := []string{}
+
+	path = append(path, d.TxHash)
+	path = append(path, d.BlobHash)
 	for i, part := range path {
 		path[i] = strings.Trim(part, da.PathSeparator)
 	}
@@ -49,11 +34,15 @@ func (d *SubmitMetaData) ToPath() string {
 // FromPath parses a path to a SubmitMetaData.
 func (d *SubmitMetaData) FromPath(path string) (*SubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(da.PathSeparator[0]) })
-	if len(pathParts) != 3 {
-		return nil, fmt.Errorf("invalid DA path")
+	if len(pathParts) < 2 {
+		return nil, fmt.Errorf("invalid DA path: expected at least 2 parts, got %d", len(pathParts))
 	}
 
-	submitData := &SubmitMetaData{TxHash: pathParts[0], Commitment: []byte(pathParts[1]), Proof: []byte(pathParts[2])}
+	submitData := &SubmitMetaData{
+		TxHash:   pathParts[0],
+		BlobHash: pathParts[len(pathParts)-1],
+	}
+
 	return submitData, nil
 }
 
@@ -64,36 +53,26 @@ var (
 
 type DataAvailabilityLayerClient struct {
 	stub.Layer
-	client             BNBClient
+	client             SolanaClient
 	pubsubServer       *pubsub.Server
-	config             BNBConfig
+	config             Config
 	logger             types.Logger
 	ctx                context.Context
 	cancel             context.CancelFunc
-	txInclusionTimeout time.Duration
 	batchRetryDelay    time.Duration
 	batchRetryAttempts uint
 }
 
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
 type SubmitMetaData struct {
-	// Height is the height of the block in the da layer
-	TxHash     string
-	Commitment []byte
-	Proof      []byte
+	TxHash   string
+	BlobHash string
 }
 
-// WithRPCClient sets rpc client.
-func WithRPCClient(client BNBClient) da.Option {
+// WithSolanaClient sets kaspa client.
+func WithSolanaClient(client SolanaClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).client = client
-	}
-}
-
-// WithTxInclusionTimeout is an option which sets the timeout for waiting for transaction inclusion.
-func WithTxInclusionTimeout(timeout time.Duration) da.Option {
-	return func(dalc da.DataAvailabilityLayerClient) {
-		dalc.(*DataAvailabilityLayerClient).txInclusionTimeout = timeout
 	}
 }
 
@@ -115,6 +94,12 @@ func WithBatchRetryAttempts(attempts uint) da.Option {
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 
+	var err error
+	c.config, err = CreateConfig(config)
+	if err != nil {
+		return fmt.Errorf("create config: %w", err)
+	}
+
 	if len(config) > 0 {
 		err := json.Unmarshal(config, &c.config)
 		if err != nil {
@@ -125,10 +110,8 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	// Set defaults
 	c.pubsubServer = pubsubServer
 
-	// TODO: Make configurable
-	c.txInclusionTimeout = defaultTxInclusionTimeout
-	c.batchRetryDelay = defaultBatchRetryDelay
-	c.batchRetryAttempts = defaultBatchRetryAttempts
+	c.batchRetryDelay = c.config.RetryDelay
+	c.batchRetryAttempts = *c.config.RetryAttempts
 
 	// Apply options
 	for _, apply := range options {
@@ -141,11 +124,11 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
-	c.logger.Info("Starting BNB Smart Chain Data Availability Layer Client.")
+	c.logger.Info("Starting Solana Data Availability Layer Client.")
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// other client has already been set
 	if c.client != nil {
-		c.logger.Info("Avail client already set.")
+		c.logger.Info("Solana client already set.")
 		return nil
 	}
 
@@ -159,14 +142,14 @@ func (c *DataAvailabilityLayerClient) Start() error {
 
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
-	c.logger.Info("Stopping BNB Smart Chain Data Availability Layer Client.")
-	c.cancel()
+	c.logger.Info("Stopping Solana Data Availability Layer Client.")
+
 	return nil
 }
 
 // GetClientType returns client type.
 func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
-	return da.BNB
+	return da.Solana
 }
 
 // SubmitBatch submits batch to DataAvailabilityLayerClient instance.
@@ -177,7 +160,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
-				Error:   err,
 			},
 		}
 	}
@@ -186,27 +168,34 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	return c.submitBatchLoop(blob)
 }
 
-// submitBatchLoop tries submitting the batch. In case we get a configuration error we would like to stop trying,
-// otherwise, for network error we keep trying indefinitely.
+// submitBatchLoop tries submitting the batch, keep trying indefinitely.
 func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.ResultSubmitBatch {
+	backoff := c.config.Backoff.Backoff()
+
 	for {
 		select {
 		case <-c.ctx.Done():
 			return da.ResultSubmitBatch{}
 		default:
-			var txHash common.Hash
-			var commitment []byte
-			var proof []byte
-			err := retry.Do(
+
+			// TODO: differentiate between unrecoverable and recoverable errors.(https://github.com/dymensionxyz/dymint/issues/1416)
+			txHash, blobHash, err := c.client.SubmitBlob(dataBlob)
+			if err != nil {
+				metrics.RollappConsecutiveFailedDASubmission.Inc()
+				c.logger.Error("broadcasting batch", "error", err)
+				backoff.Sleep()
+				continue
+			}
+			metrics.RollappConsecutiveFailedDASubmission.Set(0)
+			submitMetadata := &SubmitMetaData{
+				TxHash:   txHash,
+				BlobHash: blobHash,
+			}
+
+			err = retry.Do(
 				func() error {
-					var err error
-					txHash, commitment, proof, err = c.client.SubmitBlob(dataBlob)
-					if err != nil {
-						metrics.RollappConsecutiveFailedDASubmission.Inc()
-						c.logger.Error("broadcasting batch", "error", err)
-						return err
-					}
-					return nil
+					result := c.checkBatchAvailability(submitMetadata)
+					return result.Error
 				},
 				retry.Context(c.ctx),
 				retry.LastErrorOnly(true),
@@ -215,26 +204,10 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				retry.Attempts(c.batchRetryAttempts),
 			)
 			if err != nil {
-				err = fmt.Errorf("broadcast data blob: %w", err)
-
-				if !retry.IsRecoverable(err) {
-					return da.ResultSubmitBatch{
-						BaseResult: da.BaseResult{
-							Code:    da.StatusError,
-							Message: err.Error(),
-							Error:   err,
-						},
-					}
-				}
-
-				c.logger.Error(err.Error())
+				c.logger.Error("Check batch availability", err)
+				metrics.RollappConsecutiveFailedDASubmission.Inc()
+				backoff.Sleep()
 				continue
-			}
-			metrics.RollappConsecutiveFailedDASubmission.Set(0)
-			submitMetadata := &SubmitMetaData{
-				TxHash:     txHash.String(),
-				Commitment: commitment,
-				Proof:      proof,
 			}
 
 			c.logger.Debug("Successfully submitted batch.")
@@ -245,7 +218,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				},
 				SubmitMetaData: &da.DASubmitMetaData{
 					DAPath: submitMetadata.ToPath(),
-					Client: da.BNB,
+					Client: da.Solana,
 				},
 			}
 		}
@@ -320,32 +293,38 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 	return result
 }
 
-// GetSignerBalance returns the balance for a specific address
+// GetSignerBalance returns the balance for a specific address. //TODO: implement balance refresh func.(https://github.com/dymensionxyz/dymint/issues/1415)
 func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
-	balance, err := d.client.GetSignerBalance()
+	balance, err := d.client.GetBalance()
 	if err != nil {
 		return da.Balance{}, err
 	}
 	return da.Balance{
-		Amount: math.NewIntFromBigInt(balance),
-		Denom:  "BNB",
+		Amount: math.NewIntFromUint64(balance),
+		Denom:  "lamport",
 	}, nil
 }
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
-	return ethutils.MaxBlobDataSize
+	return MaxBlobSizeBytes
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
 	// Check if the transaction exists by trying to fetch it
-	err := c.client.ValidateInclusion(daMetaData.TxHash, daMetaData.Commitment, daMetaData.Proof)
-	if err != nil {
+	blob, err := c.client.GetBlob(daMetaData.TxHash)
+
+	// calculate blobhash
+	h := sha256.New()
+	h.Write(blob)
+	blobHash := h.Sum(nil)
+
+	if hex.EncodeToString(blobHash) != daMetaData.BlobHash || err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("Blob not found: %v", err),
-				Error:   err,
+				Error:   da.ErrBlobNotFound,
 			},
 		}
 	}

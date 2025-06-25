@@ -35,6 +35,12 @@ packages:
   github.com/dymensionxyz/dymint/da/eth:
     interfaces:
      EthClient:
+  github.com/dymensionxyz/dymint/da/solana:
+    interfaces:
+     SolanaClient:
+  github.com/dymensionxyz/dymint/da/kaspa/client:
+    interfaces:
+     KaspaClient:
   github.com/dymensionxyz/dymint/da:
     interfaces:
      DataAvailabilityLayerClient:

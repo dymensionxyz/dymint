@@ -195,6 +195,11 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 				continue
 			}
 
+			if len(resp.Batches) == 0 {
+				d.logger.Error("Retrieve batches", "error", "no batch returned")
+				backoff.Sleep()
+				continue
+			}
 			batches := make([]*types.Batch, len(resp.Batches))
 			for i, batch := range resp.Batches {
 				var b types.Batch

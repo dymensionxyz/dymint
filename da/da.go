@@ -46,6 +46,8 @@ const (
 	BNB         Client = "bnb"
 	Walrus      Client = "walrus"
 	Ethereum    Client = "eth"
+	Solana      Client = "solana"
+	Kaspa       Client = "kaspa"
 )
 
 // Option is a function that sets a parameter on the da layer.
