@@ -186,32 +186,12 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 		case <-c.ctx.Done():
 			return da.ResultSubmitBatch{}
 		default:
-			var commitment []byte
-			var proof []byte
-			var slot string
-			err := retry.Do(
-				func() error {
-					var err error
-					commitment, proof, slot, err = c.client.SubmitBlob(dataBlob)
-					if err != nil {
-						metrics.RollappConsecutiveFailedDASubmission.Inc()
-						c.logger.Error("broadcasting batch", "error", err)
-						if errors.Is(err, ethutils.ErrBlobInputTooLarge) {
-							err = retry.Unrecoverable(err)
-						}
-						return err
-					}
-					return nil
-				},
-				retry.Context(c.ctx),
-				retry.LastErrorOnly(true),
-				retry.Delay(c.batchRetryDelay),
-				retry.DelayType(retry.FixedDelay),
-				retry.Attempts(c.batchRetryAttempts),
-			)
-			if err != nil {
-				err = fmt.Errorf("broadcast data blob: %w", err)
 
+			commitment, proof, slot, err := c.client.SubmitBlob(dataBlob)
+			if err != nil {
+				metrics.RollappConsecutiveFailedDASubmission.Inc()
+				c.logger.Error("broadcasting batch", "error", err)
+				// non-recoverable error. exit loop.
 				if errors.Is(err, ethutils.ErrBlobInputTooLarge) {
 					return da.ResultSubmitBatch{
 						BaseResult: da.BaseResult{
@@ -221,8 +201,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 						},
 					}
 				}
-
-				c.logger.Error(err.Error())
+				backoff.Sleep()
 				continue
 			}
 
