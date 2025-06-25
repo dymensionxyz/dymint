@@ -8,6 +8,7 @@ import (
 	"math/big"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/ethutils"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/dymensionxyz/go-ethereum"
 
@@ -75,7 +76,7 @@ func (c Client) ValidateInclusion(txHash string, txCommitment []byte, txProof []
 			}
 
 			// validate blob with da path commitment and proof
-			err = VerifyBlobProof((*Blob)(blobSidecar.Sidecar.Blobs[i]), commitment, proof)
+			err = ethutils.VerifyBlobProof((*ethutils.Blob)(blobSidecar.Sidecar.Blobs[i]), commitment, proof)
 			if err != nil {
 				return errors.Join(da.ErrBlobNotFound, err)
 			}
@@ -127,7 +128,7 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
 	}
 
 	// computes the recommended gas fee with base and tip obtained
-	gasFeeCap := calcGasFeeCap(baseFee, gasTipCap)
+	gasFeeCap := ethutils.CalcGasFeeCap(baseFee, gasTipCap)
 
 	// estimate gas using rpc
 	cCtx, cancel = context.WithTimeout(c.ctx, c.cfg.Timeout)
@@ -188,7 +189,7 @@ func (c Client) GetBlob(txhash string) ([]byte, error) {
 
 	var data []byte
 	for _, blob := range blobSidecar.Sidecar.Blobs {
-		b := (Blob)(*blob)
+		b := (ethutils.Blob)(*blob)
 		data, err = b.ToData()
 		if err == nil {
 			break

@@ -45,6 +45,7 @@ const (
 	Aptos       Client = "aptos"
 	BNB         Client = "bnb"
 	Walrus      Client = "walrus"
+	Ethereum    Client = "eth"
 	Solana      Client = "solana"
 	Kaspa       Client = "kaspa"
 )
