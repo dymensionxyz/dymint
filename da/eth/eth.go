@@ -135,7 +135,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// other client has already been set
 	if c.client != nil {
-		c.logger.Info("Avail client already set.")
+		c.logger.Info("Ethereum DA client already set.")
 		return nil
 	}
 
