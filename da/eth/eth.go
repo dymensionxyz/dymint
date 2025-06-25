@@ -294,8 +294,8 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: "Err Unmarshal",
-				Error:   err,
+				Message: fmt.Sprintf("Error unmarshaling batch: %s", err),
+				Error:   da.ErrBlobNotParsed,
 			},
 		}
 	}
