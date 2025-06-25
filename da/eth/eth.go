@@ -232,12 +232,25 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				Slot:       slot,
 			}
 
-			availResult := c.checkBatchAvailability(submitMetadata)
-			if availResult.Error != nil {
-				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", availResult.Error)
+			err = retry.Do(
+				func() error {
+					availResult := c.checkBatchAvailability(submitMetadata)
+					return availResult.Error
+				},
+				retry.Context(c.ctx),
+				retry.LastErrorOnly(true),
+				retry.Delay(c.batchRetryDelay),
+				retry.DelayType(retry.FixedDelay),
+				retry.Attempts(c.batchRetryAttempts),
+			)
+
+			if err != nil {
+				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
+				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
 			}
+
 			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 
 			c.logger.Debug("Successfully submitted batch.")
@@ -274,7 +287,6 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		}
 	}
 
-	var batches []*types.Batch
 	batch := &types.Batch{}
 	err = batch.UnmarshalBinary(blob)
 	if err != nil {
@@ -288,37 +300,11 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 		}
 	}
 
-	// Add the batch to the list
-	batches = append(batches, batch)
-	// Remove the bytes we just decoded.
-	size := batch.ToProto().Size()
-	if len(blob) < size {
-		c.logger.Error("Batch size does not match blob data length", "blob data length", len(blob), "batch size", size)
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Wrong size",
-				Error:   fmt.Errorf("wrong size"),
-			},
-		}
-	}
-
-	// if no batches, return error
-	if len(batches) == 0 {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Blob not found",
-				Error:   da.ErrBlobNotFound,
-			},
-		}
-	}
-
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
 			Code: da.StatusSuccess,
 		},
-		Batches: batches,
+		Batches: []*types.Batch{batch},
 	}
 }
 

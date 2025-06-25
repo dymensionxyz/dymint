@@ -117,7 +117,7 @@ func setDAandMock(t *testing.T) (*mocks.MockEthClient, da.DataAvailabilityLayerC
 
 	require := require.New(t)
 
-	// init avail DA with mock RPC client
+	// init Eth DA with mock RPC client
 	dalc := registry.GetClient("eth")
 
 	config := eth.TestConfig
