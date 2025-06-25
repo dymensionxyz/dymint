@@ -1,4 +1,4 @@
-package bnb
+package ethutils
 
 import (
 	"crypto/sha256"

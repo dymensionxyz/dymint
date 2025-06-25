@@ -32,6 +32,6 @@ var (
 	// ErrDAMismatch is returned when the DA client used does not match the da client specified in the da path of the state update
 	ErrDAMismatch = gerrc.ErrInvalidArgument.Wrap("DA in config not matching DA path")
 
-	// ErrDANotAvailable is returend when da client has syncing or rpc issues
+	// ErrDANotAvailable is returned when da client has syncing or rpc issues
 	ErrDANotAvailable = errors.New("DA client not available")
 )
