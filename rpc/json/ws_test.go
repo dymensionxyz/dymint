@@ -116,6 +116,7 @@ func TestWebsocketCloseUnsubscribe(t *testing.T) {
 	srv := httptest.NewServer(handler)
 
 	conn, resp, err := websocket.DefaultDialer.Dial(strings.Replace(srv.URL, "http://", "ws://", 1)+"/websocket", nil)
+
 	require.NoError(err)
 	require.NotNil(resp)
 	require.NotNil(conn)
@@ -140,8 +141,15 @@ func TestWebsocketCloseUnsubscribe(t *testing.T) {
 	// disconnect websocket
 	err = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second))
 	assert.NoError(err)
+
+	// Wait for close to complete
+	<-time.After(100 * time.Millisecond)
+
 	// Validate we have one less client
 	assert.Eventually(func() bool {
 		return subscribed_clients == local.EventBus.NumClients()
 	}, 3*time.Second, 100*time.Millisecond)
+
+	conn.Close()
+	srv.Close()
 }
