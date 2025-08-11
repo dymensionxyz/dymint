@@ -25,11 +25,13 @@ where:
 - gas_prices: can be adjusted based on gas prices <https://celenium.io/gas>
 - namespace_id: Namespace used to identify RollApps within Celestia <https://celestiaorg.github.io/celestia-app/namespace.html>
 - auth_token: auth token issues by the light client. You can get it running the following command.
+
 ```shell
 celestia light auth admin --p2p.network <network>
 ```
 
 optional:
+
 - backoff: backoff function that models the waiting time after each failed batch submission to celestia with init delay, max delay and growth factor. e.g. "backoff":{"initial_delay":6000000000,"max_delay":6000000000,"growth_factor":2}
 - retry_attempts: number of retries in retrieval and availability check before returning error.
 - retry_delay (nanoseconds): waiting time between retrieval and availability check retries.
