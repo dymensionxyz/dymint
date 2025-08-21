@@ -12,7 +12,7 @@ require (
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/cosmos/ibc-go/v6 v6.2.1
 	github.com/dgraph-io/badger/v4 v4.3.0
-	github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20250821091746-41d88165fa1e
+	github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20250821095652-2443a6198c8c
 	github.com/dymensionxyz/dymension-rdk v1.8.1-rc02
 	github.com/dymensionxyz/gerr-cosmos v1.0.0
 	github.com/go-kit/kit v0.12.0
