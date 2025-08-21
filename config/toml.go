@@ -129,6 +129,9 @@ retry_attempts = "{{ .SettlementConfig.RetryAttempts }}"
 batch_acceptance_timeout = "{{ .SettlementConfig.BatchAcceptanceTimeout }}"
 batch_acceptance_attempts = "{{ .SettlementConfig.BatchAcceptanceAttempts }}"
 
+# verbose debug mode - enables debug logging of transaction bytes to file
+verbose_debug_file = "{{ .SettlementConfig.VerboseDebugFile }}"
+
 #keyring and key name to be used for sequencer 
 keyring_backend = "{{ .SettlementConfig.KeyringBackend }}"
 keyring_home_dir = "{{ .SettlementConfig.KeyringHomeDir }}"

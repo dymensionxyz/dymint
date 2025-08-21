@@ -19,6 +19,7 @@ type Config struct {
 	RetryMinDelay           time.Duration `mapstructure:"retry_min_delay"`
 	BatchAcceptanceTimeout  time.Duration `mapstructure:"batch_acceptance_timeout"`
 	BatchAcceptanceAttempts uint          `mapstructure:"batch_acceptance_attempts"`
+	VerboseDebugFile        string        `mapstructure:"verbose_debug_file"`
 	// For testing only. probably should be refactored
 	ProposerPubKey string `json:"proposer_pub_key"`
 	// Config used for sl shared grpc mock

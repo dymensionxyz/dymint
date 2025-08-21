@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -83,9 +84,11 @@ func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub
 	}
 
 	if c.cosmosClient == nil {
-		client, err := cosmosclient.New(
-			getCosmosClientOptions(&config)...,
-		)
+		clientOptions, err := getCosmosClientOptions(&config)
+		if err != nil {
+			return err
+		}
+		client, err := cosmosclient.New(clientOptions...)
 		if err != nil {
 			return err
 		}
@@ -672,7 +675,7 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 	return settlementBatch, nil
 }
 
-func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
+func getCosmosClientOptions(config *settlement.Config) ([]cosmosclient.Option, error) {
 	var (
 		gas           string
 		gasAdjustment float64 = 1.0
@@ -697,7 +700,15 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 			cosmosclient.WithHome(config.KeyringHomeDir),
 		)
 	}
-	return options
+	if config.VerboseDebugFile != "" {
+		file, err := os.OpenFile(config.VerboseDebugFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return nil, fmt.Errorf("open verbose debug file: %w", err)
+		}
+		options = append(options, cosmosclient.WithOutputFile(file))
+	}
+
+	return options, nil
 }
 
 // pollForBatchInclusion polls the hub for the inclusion of a batch with the given end height.
