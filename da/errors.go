@@ -2,6 +2,7 @@ package da
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
@@ -37,3 +38,16 @@ var (
 	// ErrDANotAvailable is returned when da client has syncing or rpc issues
 	ErrDANotAvailable = errors.New("DA client not available")
 )
+
+// ErrMaturityNotReached is returned when a transaction is not mature enough
+type ErrMaturityNotReached struct {
+	MissingConfirmations uint64
+}
+
+func (e ErrMaturityNotReached) Error() string {
+	return fmt.Sprintf("transaction not mature, missing %d confirmations", e.MissingConfirmations)
+}
+
+func (e ErrMaturityNotReached) Is(target error) bool {
+	return target == ErrBlobNotMature
+}

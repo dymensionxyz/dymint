@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -330,22 +331,40 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 	}
 
 	var result da.ResultCheckBatch
+	var currentDelay time.Duration = c.batchRetryDelay
+
 	err = retry.Do(
 		func() error {
 			result = c.checkBatchAvailability(daMetaData)
 			if result.Error == da.ErrBlobNotFound {
 				return retry.Unrecoverable(result.Error)
 			}
-			// Continue retrying if transaction is not mature
-			if result.Error == da.ErrBlobNotMature {
+
+			// Check if this is a maturity error with missing confirmations info
+			var maturityErr da.ErrMaturityNotReached
+			if errors.As(result.Error, &maturityErr) {
+				// Calculate dynamic delay based on missing confirmations. Kaspa has 10 blocks per second, so we estimate delay accordingly
+				currentDelay := time.Duration(float64(maturityErr.MissingConfirmations)*0.1) * time.Second
+
+				c.logger.Debug("Transaction not mature yet, retrying with dynamic delay",
+					"txHash", daMetaData.TxHash,
+					"missingConfirmations", maturityErr.MissingConfirmations,
+					"retryDelay", currentDelay)
+				return result.Error
+			}
+
+			// For backwards compatibility with old error
+			if errors.Is(result.Error, da.ErrBlobNotMature) {
 				c.logger.Debug("Transaction not mature yet in CheckBatchAvailability, retrying...", "txHash", daMetaData.TxHash)
 				return result.Error
 			}
 			return result.Error
 		},
 		retry.Attempts(c.batchRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
-		retry.DelayType(retry.FixedDelay),
-		retry.Delay(c.batchRetryDelay),
+		retry.DelayType(func(n uint, err error, config *retry.Config) time.Duration {
+			// Use dynamic delay for maturity errors
+			return currentDelay
+		}),
 	)
 	if err != nil {
 		c.logger.Error("CheckBatchAvailability", "hash", daMetaData.TxHash, "error", err)
@@ -374,13 +393,24 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 	// First check if transactions are mature enough
 	err := c.client.CheckTransactionMaturity(daMetaData.TxHash)
 	if err != nil {
-		// If transactions are not mature, return appropriate error
-		if err == da.ErrBlobNotMature {
+		// Check if this is a maturity error with missing confirmations info
+		var maturityErr da.ErrMaturityNotReached
+		if errors.As(err, &maturityErr) {
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: fmt.Sprintf("Transaction not mature enough, missing %d confirmations", maturityErr.MissingConfirmations),
+					Error:   err,
+				},
+			}
+		}
+		// For backwards compatibility, check for old error too
+		if errors.Is(err, da.ErrBlobNotMature) {
 			return da.ResultCheckBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusError,
 					Message: "Transaction not mature enough",
-					Error:   da.ErrBlobNotMature,
+					Error:   err,
 				},
 			}
 		}

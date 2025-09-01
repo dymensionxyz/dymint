@@ -39,12 +39,12 @@ type KaspaClient interface {
 
 // Transaction is a partial struct to extract payload and maturity info
 type Transaction struct {
-	TransactionID   string `json:"transaction_id"`
-	Payload         string `json:"payload"`
-	BlockTime       uint64 `json:"block_time,omitempty"`
-	AcceptingBlock  string `json:"accepting_block_hash,omitempty"`
-	IsCoinbase      bool   `json:"is_coinbase,omitempty"`
-	AcceptingHeight uint64 `json:"accepting_block_blue_score,omitempty"`
+	TransactionID           string `json:"transaction_id"`
+	Payload                 string `json:"payload"`
+	BlockTime               uint64 `json:"block_time,omitempty"`
+	AcceptingBlockHash      string `json:"accepting_block_hash,omitempty"`
+	IsCoinbase              bool   `json:"is_coinbase,omitempty"`
+	AcceptingBlockBlueScore uint64 `json:"accepting_block_blue_score,omitempty"`
 }
 
 type FailedTxRetrieve struct {
@@ -265,14 +265,14 @@ func (c *Client) CheckTransactionMaturity(txHash []string) error {
 			return err
 		}
 
-		// Check if transaction is coinbase and needs maturity check
-		if tx.IsCoinbase {
-			// Check if the transaction is mature enough
-			// Transaction needs to have at least BlockCoinbaseMaturity confirmations
-			if tx.AcceptingHeight+c.params.BlockCoinbaseMaturity >= dagInfo.VirtualDAAScore {
-				return da.ErrBlobNotMature
-			}
+		// Check if the transaction is mature enough
+		// Transaction needs to have at least BlockCoinbaseMaturity confirmations * 10 (equivalent to 10 bps after crescendo)
+		requiredScore := tx.AcceptingBlockBlueScore + c.params.BlockCoinbaseMaturity*10
+		if requiredScore >= dagInfo.VirtualDAAScore {
+			missingConfirmations := requiredScore - dagInfo.VirtualDAAScore
+			return da.ErrMaturityNotReached{MissingConfirmations: missingConfirmations}
 		}
+
 	}
 
 	return nil
