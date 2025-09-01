@@ -20,6 +20,8 @@ var (
 	ErrBlobNotFound = errors.New("blob not found")
 	// ErrBlobNotIncluded is returned when blob is not included.
 	ErrBlobNotIncluded = errors.New("blob not included")
+	// ErrBlobNotMature is returned when blob/transaction is not mature enough (for Kaspa).
+	ErrBlobNotMature = errors.New("blob not mature")
 	// ErrUnableToGetProofs is returned when proof is not available.
 	ErrUnableToGetProofs = errors.Join(ErrBlobNotIncluded, errors.New("unable to get availability proofs"))
 	// ErrProofNotMatching is returned when proof does not match.

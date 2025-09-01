@@ -208,6 +208,12 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			err = retry.Do(
 				func() error {
 					result := c.checkBatchAvailability(submitMetadata)
+					// If error is due to immaturity, we should retry
+					// For other errors, we may want to fail fast
+					if result.Error == da.ErrBlobNotMature {
+						c.logger.Debug("Transaction not mature yet, retrying...", "txHash", submitMetadata.TxHash)
+						return result.Error
+					}
 					return result.Error
 				},
 				retry.Context(c.ctx),
@@ -217,6 +223,42 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				retry.Attempts(c.batchRetryAttempts),
 			)
 			if err != nil {
+				// If the error is due to immaturity after all retries, keep retrying without resubmitting
+				if err == da.ErrBlobNotMature {
+					c.logger.Info("Transaction not mature after retries, waiting longer...", "txHash", submitMetadata.TxHash)
+					backoff.Sleep()
+					// Continue checking the same transaction without resubmitting
+					for {
+						select {
+						case <-c.ctx.Done():
+							return da.ResultSubmitBatch{}
+						default:
+							result := c.checkBatchAvailability(submitMetadata)
+							if result.Error == nil {
+								// Transaction is now mature and available
+								c.logger.Debug("Transaction matured and is available.", "txHash", submitMetadata.TxHash)
+								metrics.RollappConsecutiveFailedDASubmission.Set(0)
+								return da.ResultSubmitBatch{
+									BaseResult: da.BaseResult{
+										Code:    da.StatusSuccess,
+										Message: "success",
+									},
+									SubmitMetaData: &da.DASubmitMetaData{
+										DAPath: submitMetadata.ToPath(),
+										Client: da.Kaspa,
+									},
+								}
+							}
+							if result.Error != da.ErrBlobNotMature {
+								// If we get a different error, break to resubmit
+								c.logger.Error("Different error while waiting for maturity", "error", result.Error)
+								break
+							}
+							// Still not mature, keep waiting
+							time.Sleep(c.batchRetryDelay)
+						}
+					}
+				}
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
@@ -294,6 +336,11 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 			if result.Error == da.ErrBlobNotFound {
 				return retry.Unrecoverable(result.Error)
 			}
+			// Continue retrying if transaction is not mature
+			if result.Error == da.ErrBlobNotMature {
+				c.logger.Debug("Transaction not mature yet in CheckBatchAvailability, retrying...", "txHash", daMetaData.TxHash)
+				return result.Error
+			}
 			return result.Error
 		},
 		retry.Attempts(c.batchRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
@@ -324,6 +371,29 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
+	// First check if transactions are mature enough
+	err := c.client.CheckTransactionMaturity(daMetaData.TxHash)
+	if err != nil {
+		// If transactions are not mature, return appropriate error
+		if err == da.ErrBlobNotMature {
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: "Transaction not mature enough",
+					Error:   da.ErrBlobNotMature,
+				},
+			}
+		}
+		// For other errors during maturity check
+		return da.ResultCheckBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: fmt.Sprintf("Failed to check transaction maturity: %v", err),
+				Error:   err,
+			},
+		}
+	}
+
 	// Check if the transaction exists by trying to fetch it
 	blob, err := c.client.GetBlob(daMetaData.TxHash)
 	if err != nil {

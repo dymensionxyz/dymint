@@ -34,12 +34,17 @@ type KaspaClient interface {
 	GetBalance() (uint64, error)
 	SubmitBlob(blob []byte) ([]string, string, error)
 	GetBlob(txHash []string) ([]byte, error)
+	CheckTransactionMaturity(txHash []string) error
 }
 
-// Transaction is a partial struct to extract payload
+// Transaction is a partial struct to extract payload and maturity info
 type Transaction struct {
-	TransactionID string `json:"transaction_id"`
-	Payload       string `json:"payload"`
+	TransactionID   string `json:"transaction_id"`
+	Payload         string `json:"payload"`
+	BlockTime       uint64 `json:"block_time,omitempty"`
+	AcceptingBlock  string `json:"accepting_block_hash,omitempty"`
+	IsCoinbase      bool   `json:"is_coinbase,omitempty"`
+	AcceptingHeight uint64 `json:"accepting_block_blue_score,omitempty"`
 }
 
 type FailedTxRetrieve struct {
@@ -244,4 +249,31 @@ func versionFromNetworkName(name string) ([4]byte, error) {
 
 func defaultPath() string {
 	return fmt.Sprintf("m/%d'/%d'/0'", SingleSignerPurpose, CoinType)
+}
+
+// CheckTransactionMaturity checks if all transactions in the list are mature enough
+func (c *Client) CheckTransactionMaturity(txHash []string) error {
+	// Get current DAG info to check maturity
+	dagInfo, err := c.rpcClient.GetBlockDAGInfo()
+	if err != nil {
+		return fmt.Errorf("failed to get DAG info: %w", err)
+	}
+
+	for _, hash := range txHash {
+		tx, err := c.retrieveBlobTx(hash)
+		if err != nil {
+			return err
+		}
+
+		// Check if transaction is coinbase and needs maturity check
+		if tx.IsCoinbase {
+			// Check if the transaction is mature enough
+			// Transaction needs to have at least BlockCoinbaseMaturity confirmations
+			if tx.AcceptingHeight+c.params.BlockCoinbaseMaturity >= dagInfo.VirtualDAAScore {
+				return da.ErrBlobNotMature
+			}
+		}
+	}
+
+	return nil
 }

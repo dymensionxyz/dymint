@@ -18,7 +18,7 @@ func (m *Manager) validateAndApplyBlock(block *types.Block, commit *types.Commit
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
 		}
 	}
-
+	m.logger.Debug("block validated", "appling height", block.Header.Height)
 	if err := m.applyBlock(block, commit, blockMetaData); err != nil {
 		return fmt.Errorf("apply block: %w", err)
 	}
