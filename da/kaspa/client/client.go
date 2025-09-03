@@ -302,7 +302,6 @@ func (c *Client) CheckTransactionMaturity(txHash []string) error {
 		// Check if the transaction is mature enough
 		// Transaction needs to have at least BlockCoinbaseMaturity confirmations * 10 (equivalent to 10 bps after crescendo)
 		confirmationsRequired := c.params.BlockCoinbaseMaturity * 10
-		fmt.Println("tx hash", tx.TransactionID, "confirmations required score:", confirmationsRequired, "Virtual Blue Score:", blueScoreResp.BlueScore, "Tx accepting block blue score:", tx.AcceptingBlockBlueScore)
 
 		if blueScoreResp.BlueScore-tx.AcceptingBlockBlueScore < confirmationsRequired {
 			missingConfirmations := confirmationsRequired - (blueScoreResp.BlueScore - tx.AcceptingBlockBlueScore)

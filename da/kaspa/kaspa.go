@@ -333,7 +333,6 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
-	var result da.ResultCheckBatch
 	var currentDelay time.Duration = c.batchRetryDelay
 
 	err := retry.Do(
@@ -345,62 +344,14 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 				var maturityErr da.ErrMaturityNotReached
 				if errors.As(err, &maturityErr) {
 					// Calculate dynamic delay based on missing confirmations. Kaspa has 10 blocks per second, so we estimate delay accordingly
-					currentDelay = time.Duration(float64(maturityErr.MissingConfirmations)*0.1) * time.Second
+					currentDelay += time.Duration(float64(maturityErr.MissingConfirmations)*0.1) * time.Second
 
 					c.logger.Debug("Transaction not mature yet, retrying with dynamic delay",
 						"txHash", daMetaData.TxHash,
 						"missingConfirmations", maturityErr.MissingConfirmations,
 						"retryDelay", currentDelay)
-					return err // Return error to trigger retry
 				}
-				// For other errors during maturity check, don't retry
-				result = da.ResultCheckBatch{
-					BaseResult: da.BaseResult{
-						Code:    da.StatusError,
-						Message: fmt.Sprintf("Failed to check transaction maturity: %v", err),
-						Error:   err,
-					},
-				}
-				return retry.Unrecoverable(err)
-			}
-
-			// Check if the transaction exists by trying to fetch it
-			blob, err := c.client.GetBlob(daMetaData.TxHash)
-			if err != nil {
-				result = da.ResultCheckBatch{
-					BaseResult: da.BaseResult{
-						Code:    da.StatusError,
-						Message: fmt.Sprintf("Blob not found: %v", err),
-						Error:   err,
-					},
-				}
-				if err == da.ErrBlobNotFound {
-					return retry.Unrecoverable(err)
-				}
-				return err // Retry for other errors
-			}
-
-			// calculate blobhash
-			h := sha256.New()
-			h.Write(blob)
-			blobHash := h.Sum(nil)
-
-			if hex.EncodeToString(blobHash) != daMetaData.BlobHash {
-				result = da.ResultCheckBatch{
-					BaseResult: da.BaseResult{
-						Code:    da.StatusError,
-						Message: "Blob hash mismatch",
-						Error:   da.ErrBlobNotFound,
-					},
-				}
-				return retry.Unrecoverable(da.ErrBlobNotFound)
-			}
-
-			result = da.ResultCheckBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusSuccess,
-					Message: "Batch is available",
-				},
+				return err // Return error to trigger retry
 			}
 			return nil // Success
 		},
@@ -413,27 +364,57 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 
 	if err != nil {
 		c.logger.Error("checkBatchAvailability", "hash", daMetaData.TxHash, "error", err)
-		// If we don't have a result set yet (shouldn't happen), create an error result
-		if result.Code == 0 {
-			var maturityErr da.ErrMaturityNotReached
-			if errors.As(err, &maturityErr) {
-				result = da.ResultCheckBatch{
-					BaseResult: da.BaseResult{
-						Code:    da.StatusError,
-						Message: fmt.Sprintf("Transaction not mature enough after retries, missing %d confirmations", maturityErr.MissingConfirmations),
-						Error:   err,
-					},
-				}
-			} else {
-				result = da.ResultCheckBatch{
-					BaseResult: da.BaseResult{
-						Code:    da.StatusError,
-						Message: fmt.Sprintf("All attempts failed: %v", err),
-						Error:   err,
-					},
-				}
+		var maturityErr da.ErrMaturityNotReached
+		if errors.As(err, &maturityErr) {
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: fmt.Sprintf("Transaction not mature enough after retries, missing %d confirmations", maturityErr.MissingConfirmations),
+					Error:   err,
+				},
+			}
+		} else {
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: fmt.Sprintf("All attempts failed: %v", err),
+					Error:   err,
+				},
 			}
 		}
 	}
-	return result
+
+	// Check if the transaction exists by trying to fetch it
+	blob, err := c.client.GetBlob(daMetaData.TxHash)
+	if err != nil {
+		return da.ResultCheckBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: fmt.Sprintf("Blob not found: %v", err),
+				Error:   err,
+			},
+		}
+	}
+
+	// calculate blobhash
+	h := sha256.New()
+	h.Write(blob)
+	blobHash := h.Sum(nil)
+
+	if hex.EncodeToString(blobHash) != daMetaData.BlobHash {
+		return da.ResultCheckBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Blob hash mismatch",
+				Error:   da.ErrBlobNotFound,
+			},
+		}
+	}
+
+	return da.ResultCheckBatch{
+		BaseResult: da.BaseResult{
+			Code:    da.StatusSuccess,
+			Message: "Batch is available",
+		},
+	}
 }
