@@ -399,7 +399,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: "Blob hash mismatch",
+				Message: fmt.Sprintf("Blob not found: %v", err),
 				Error:   da.ErrBlobNotFound,
 			},
 		}
