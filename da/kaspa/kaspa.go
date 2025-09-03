@@ -295,7 +295,24 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
 	}
 
-	return c.checkBatchAvailability(daMetaData)
+	var result da.ResultCheckBatch
+	err = retry.Do(
+		func() error {
+			result = c.checkBatchAvailability(daMetaData)
+			if result.Error == da.ErrBlobNotFound {
+				return retry.Unrecoverable(result.Error)
+			}
+			return result.Error
+		},
+		retry.Attempts(c.batchRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
+		retry.DelayType(retry.FixedDelay),
+		retry.Delay(c.batchRetryDelay),
+	)
+	if err != nil {
+		c.logger.Error("CheckBatchAvailability", "hash", daMetaData.TxHash, "error", err)
+	}
+	return result
+
 }
 
 // GetSignerBalance returns the balance for a specific address. //TODO: implement balance refresh func.(https://github.com/dymensionxyz/dymint/issues/1415)
