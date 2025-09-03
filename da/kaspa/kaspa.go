@@ -209,12 +209,6 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			err = retry.Do(
 				func() error {
 					result := c.checkBatchAvailability(submitMetadata)
-					// If error is due to immaturity, we should retry
-					// For other errors, we may want to fail fast
-					if result.Error == da.ErrBlobNotFinal {
-						c.logger.Debug("Transaction not mature yet, retrying...", "txHash", submitMetadata.TxHash)
-						return result.Error
-					}
 					return result.Error
 				},
 				retry.Context(c.ctx),
