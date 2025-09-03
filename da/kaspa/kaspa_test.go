@@ -145,6 +145,7 @@ func TestKaspaSubmitRetrieve(t *testing.T) {
 	blobHash := h.Sum(nil)
 
 	mockClient.On("SubmitBlob", mock.Anything, mock.Anything).Return(txHash, hex.EncodeToString(blobHash), nil)
+	mockClient.On("CheckTransactionMaturity", mock.Anything, mock.Anything).Return(nil)
 	mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(blobData, nil)
 	mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(blobData, nil)
 
@@ -212,6 +213,7 @@ func TestKaspaAvailCheck(t *testing.T) {
 				BlobHash: hex.EncodeToString(blobHash),
 			}
 
+			mockClient.On("CheckTransactionMaturity", mock.Anything, mock.Anything).Return(nil)
 			mockClient.On("GetBlob", mock.Anything, mock.Anything).Return(blobData, tc.err)
 
 			// validate avail check
