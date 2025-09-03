@@ -218,11 +218,7 @@ func (c *Client) makeAPICall(endpoint string, result interface{}) error {
 	if err != nil {
 		return fmt.Errorf("API call failed: %w", err)
 	}
-	defer func() {
-		if cerr := resp.Body.Close(); cerr != nil {
-			return
-		}
-	}()
+	defer resp.Body.Close() // nolint:errcheck
 
 	if resp.StatusCode != 200 {
 		return APIError{StatusCode: resp.StatusCode, Message: fmt.Sprintf("endpoint %s returned status %d", endpoint, resp.StatusCode)}
@@ -250,7 +246,7 @@ func (c *Client) retrieveBlobTx(txHash string) (*Transaction, error) {
 			url := fmt.Sprintf("%s%s", c.apiURL, endpoint)
 			resp, _ := c.httpClient.Get(url)
 			if resp != nil {
-				defer resp.Body.Close()
+				defer resp.Body.Close() // nolint:errcheck
 				var failedTx FailedTxRetrieve
 				if json.NewDecoder(resp.Body).Decode(&failedTx) == nil {
 					if failedTx.Result == "Transaction not found" {
