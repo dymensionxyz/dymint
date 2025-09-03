@@ -217,7 +217,6 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				retry.DelayType(retry.FixedDelay),
 				retry.Attempts(c.batchRetryAttempts),
 			)
-
 			if err != nil {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
@@ -306,7 +305,6 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 		c.logger.Error("CheckBatchAvailability", "hash", daMetaData.TxHash, "error", err)
 	}
 	return result
-
 }
 
 // GetSignerBalance returns the balance for a specific address. //TODO: implement balance refresh func.(https://github.com/dymensionxyz/dymint/issues/1415)
@@ -355,7 +353,6 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 			return currentDelay
 		}),
 	)
-
 	if err != nil {
 		c.logger.Error("checkBatchAvailability", "hash", daMetaData.TxHash, "error", err)
 		var maturityErr da.ErrMaturityNotReached
