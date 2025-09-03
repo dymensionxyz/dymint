@@ -293,21 +293,27 @@ func (c *Client) CheckTransactionMaturity(txHash []string) error {
 		return fmt.Errorf("failed to get virtual chain blue score: %w", err)
 	}
 
+	confirmationsRequired := c.params.BlockCoinbaseMaturity * 10
+	maxMissingConfirmations := uint64(0)
+
 	for _, hash := range txHash {
 		tx, err := c.retrieveBlobTx(hash)
 		if err != nil {
 			return err
 		}
 
-		// Check if the transaction is mature enough
-		// Transaction needs to have at least BlockCoinbaseMaturity confirmations * 10 (equivalent to 10 bps after crescendo)
-		confirmationsRequired := c.params.BlockCoinbaseMaturity * 10
-
-		if blueScoreResp.BlueScore-tx.AcceptingBlockBlueScore < confirmationsRequired {
-			missingConfirmations := confirmationsRequired - (blueScoreResp.BlueScore - tx.AcceptingBlockBlueScore)
-			return da.ErrMaturityNotReached{MissingConfirmations: missingConfirmations}
+		if confirmationsRequired > blueScoreResp.BlueScore-tx.AcceptingBlockBlueScore {
+			continue
 		}
+		// Check if the transaction is mature enough
+		missingConfirmations := confirmationsRequired - (blueScoreResp.BlueScore - tx.AcceptingBlockBlueScore)
+		if missingConfirmations > maxMissingConfirmations {
+			maxMissingConfirmations = missingConfirmations
+		}
+	}
 
+	if maxMissingConfirmations > 0 {
+		return da.ErrMaturityNotReached{MissingConfirmations: maxMissingConfirmations}
 	}
 
 	return nil
