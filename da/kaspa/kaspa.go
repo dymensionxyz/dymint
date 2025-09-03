@@ -211,7 +211,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					result := c.checkBatchAvailability(submitMetadata)
 					// If error is due to immaturity, we should retry
 					// For other errors, we may want to fail fast
-					if result.Error == da.ErrBlobNotMature {
+					if result.Error == da.ErrBlobNotFinal {
 						c.logger.Debug("Transaction not mature yet, retrying...", "txHash", submitMetadata.TxHash)
 						return result.Error
 					}
@@ -223,43 +223,8 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				retry.DelayType(retry.FixedDelay),
 				retry.Attempts(c.batchRetryAttempts),
 			)
+
 			if err != nil {
-				// If the error is due to immaturity after all retries, keep retrying without resubmitting
-				if err == da.ErrBlobNotMature {
-					c.logger.Info("Transaction not mature after retries, waiting longer...", "txHash", submitMetadata.TxHash)
-					backoff.Sleep()
-					// Continue checking the same transaction without resubmitting
-					for {
-						select {
-						case <-c.ctx.Done():
-							return da.ResultSubmitBatch{}
-						default:
-							result := c.checkBatchAvailability(submitMetadata)
-							if result.Error == nil {
-								// Transaction is now mature and available
-								c.logger.Debug("Transaction matured and is available.", "txHash", submitMetadata.TxHash)
-								metrics.RollappConsecutiveFailedDASubmission.Set(0)
-								return da.ResultSubmitBatch{
-									BaseResult: da.BaseResult{
-										Code:    da.StatusSuccess,
-										Message: "success",
-									},
-									SubmitMetaData: &da.DASubmitMetaData{
-										DAPath: submitMetadata.ToPath(),
-										Client: da.Kaspa,
-									},
-								}
-							}
-							if result.Error != da.ErrBlobNotMature {
-								// If we get a different error, break to resubmit
-								c.logger.Error("Different error while waiting for maturity", "error", result.Error)
-								break
-							}
-							// Still not mature, keep waiting
-							time.Sleep(c.batchRetryDelay)
-						}
-					}
-				}
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
@@ -330,46 +295,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "wrong da path", Error: err}}
 	}
 
-	var result da.ResultCheckBatch
-	var currentDelay time.Duration = c.batchRetryDelay
-
-	err = retry.Do(
-		func() error {
-			result = c.checkBatchAvailability(daMetaData)
-			if result.Error == da.ErrBlobNotFound {
-				return retry.Unrecoverable(result.Error)
-			}
-
-			// Check if this is a maturity error with missing confirmations info
-			var maturityErr da.ErrMaturityNotReached
-			if errors.As(result.Error, &maturityErr) {
-				// Calculate dynamic delay based on missing confirmations. Kaspa has 10 blocks per second, so we estimate delay accordingly
-				currentDelay := time.Duration(float64(maturityErr.MissingConfirmations)*0.1) * time.Second
-
-				c.logger.Debug("Transaction not mature yet, retrying with dynamic delay",
-					"txHash", daMetaData.TxHash,
-					"missingConfirmations", maturityErr.MissingConfirmations,
-					"retryDelay", currentDelay)
-				return result.Error
-			}
-
-			// For backwards compatibility with old error
-			if errors.Is(result.Error, da.ErrBlobNotMature) {
-				c.logger.Debug("Transaction not mature yet in CheckBatchAvailability, retrying...", "txHash", daMetaData.TxHash)
-				return result.Error
-			}
-			return result.Error
-		},
-		retry.Attempts(c.batchRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
-		retry.DelayType(func(n uint, err error, config *retry.Config) time.Duration {
-			// Use dynamic delay for maturity errors
-			return currentDelay
-		}),
-	)
-	if err != nil {
-		c.logger.Error("CheckBatchAvailability", "hash", daMetaData.TxHash, "error", err)
-	}
-	return result
+	return c.checkBatchAvailability(daMetaData)
 }
 
 // GetSignerBalance returns the balance for a specific address. //TODO: implement balance refresh func.(https://github.com/dymensionxyz/dymint/issues/1415)
@@ -390,71 +316,107 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
-	// First check if transactions are mature enough
-	err := c.client.CheckTransactionMaturity(daMetaData.TxHash)
-	if err != nil {
-		// Check if this is a maturity error with missing confirmations info
-		var maturityErr da.ErrMaturityNotReached
-		if errors.As(err, &maturityErr) {
-			return da.ResultCheckBatch{
+	var result da.ResultCheckBatch
+	var currentDelay time.Duration = c.batchRetryDelay
+
+	err := retry.Do(
+		func() error {
+			// First check if transactions are mature enough
+			err := c.client.CheckTransactionMaturity(daMetaData.TxHash)
+			if err != nil {
+				// Check if this is a maturity error with missing confirmations info
+				var maturityErr da.ErrMaturityNotReached
+				if errors.As(err, &maturityErr) {
+					// Calculate dynamic delay based on missing confirmations. Kaspa has 10 blocks per second, so we estimate delay accordingly
+					currentDelay = time.Duration(float64(maturityErr.MissingConfirmations)*0.1) * time.Second
+
+					c.logger.Debug("Transaction not mature yet, retrying with dynamic delay",
+						"txHash", daMetaData.TxHash,
+						"missingConfirmations", maturityErr.MissingConfirmations,
+						"retryDelay", currentDelay)
+					return err // Return error to trigger retry
+				}
+				// For other errors during maturity check, don't retry
+				result = da.ResultCheckBatch{
+					BaseResult: da.BaseResult{
+						Code:    da.StatusError,
+						Message: fmt.Sprintf("Failed to check transaction maturity: %v", err),
+						Error:   err,
+					},
+				}
+				return retry.Unrecoverable(err)
+			}
+
+			// Check if the transaction exists by trying to fetch it
+			blob, err := c.client.GetBlob(daMetaData.TxHash)
+			if err != nil {
+				result = da.ResultCheckBatch{
+					BaseResult: da.BaseResult{
+						Code:    da.StatusError,
+						Message: fmt.Sprintf("Blob not found: %v", err),
+						Error:   err,
+					},
+				}
+				if err == da.ErrBlobNotFound {
+					return retry.Unrecoverable(err)
+				}
+				return err // Retry for other errors
+			}
+
+			// calculate blobhash
+			h := sha256.New()
+			h.Write(blob)
+			blobHash := h.Sum(nil)
+
+			if hex.EncodeToString(blobHash) != daMetaData.BlobHash {
+				result = da.ResultCheckBatch{
+					BaseResult: da.BaseResult{
+						Code:    da.StatusError,
+						Message: "Blob hash mismatch",
+						Error:   da.ErrBlobNotFound,
+					},
+				}
+				return retry.Unrecoverable(da.ErrBlobNotFound)
+			}
+
+			result = da.ResultCheckBatch{
 				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: fmt.Sprintf("Transaction not mature enough, missing %d confirmations", maturityErr.MissingConfirmations),
-					Error:   err,
+					Code:    da.StatusSuccess,
+					Message: "Batch is available",
 				},
 			}
-		}
-		// For backwards compatibility, check for old error too
-		if errors.Is(err, da.ErrBlobNotMature) {
-			return da.ResultCheckBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: "Transaction not mature enough",
-					Error:   err,
-				},
-			}
-		}
-		// For other errors during maturity check
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: fmt.Sprintf("Failed to check transaction maturity: %v", err),
-				Error:   err,
-			},
-		}
-	}
-
-	// Check if the transaction exists by trying to fetch it
-	blob, err := c.client.GetBlob(daMetaData.TxHash)
-	if err != nil {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: fmt.Sprintf("Blob not found: %v", err),
-				Error:   err,
-			},
-		}
-	}
-
-	// calculate blobhash
-	h := sha256.New()
-	h.Write(blob)
-	blobHash := h.Sum(nil)
-
-	if hex.EncodeToString(blobHash) != daMetaData.BlobHash {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: fmt.Sprintf("Blob not found: %v", err),
-				Error:   da.ErrBlobNotFound,
-			},
-		}
-	}
-
-	return da.ResultCheckBatch{
-		BaseResult: da.BaseResult{
-			Code:    da.StatusSuccess,
-			Message: "Batch is available",
+			return nil // Success
 		},
+		retry.Attempts(c.batchRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
+		retry.DelayType(func(n uint, err error, config *retry.Config) time.Duration {
+			// Use dynamic delay for maturity errors
+			return currentDelay
+		}),
+	)
+
+	if err != nil {
+		c.logger.Error("checkBatchAvailability", "hash", daMetaData.TxHash, "error", err)
+		// If we don't have a result set yet (shouldn't happen), create an error result
+		if result.Code == 0 {
+			var maturityErr da.ErrMaturityNotReached
+			if errors.As(err, &maturityErr) {
+				result = da.ResultCheckBatch{
+					BaseResult: da.BaseResult{
+						Code:    da.StatusError,
+						Message: fmt.Sprintf("Transaction not mature enough after retries, missing %d confirmations", maturityErr.MissingConfirmations),
+						Error:   err,
+					},
+				}
+			} else {
+				result = da.ResultCheckBatch{
+					BaseResult: da.BaseResult{
+						Code:    da.StatusError,
+						Message: fmt.Sprintf("All attempts failed: %v", err),
+						Error:   err,
+					},
+				}
+			}
+		}
 	}
+	return result
 }
