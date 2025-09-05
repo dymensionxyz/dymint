@@ -41,6 +41,27 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 	return validator
 }
 
+// GetLastValidatedHeight returns the last height that was validated by the settlement validator.
+func (v *SettlementValidator) GetLastValidatedHeight() uint64 {
+	return v.lastValidatedHeight.Load()
+}
+
+// GetLastValidatedBlockHash returns the hash of the last validated block.
+func (v *SettlementValidator) GetLastValidatedBlockHash() ([]byte, error) {
+	height := v.GetLastValidatedHeight()
+	if height == 0 {
+		return nil, fmt.Errorf("no blocks validated yet")
+	}
+	
+	block, err := v.blockManager.Store.LoadBlock(height)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load block at height %d: %w", height, err)
+	}
+	
+	hash := block.Header.Hash()
+	return hash[:], nil
+}
+
 // ValidateStateUpdate validates that the blocks from the state info are available in DA,
 // that the information included in the Hub state info matches the blocks retrieved from DA
 // and those blocks are the same that are obtained via P2P.
@@ -244,11 +265,6 @@ func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64) {
 			break
 		}
 	}
-}
-
-// GetLastValidatedHeight returns the most last block height that is validated with settlement state updates.
-func (v *SettlementValidator) GetLastValidatedHeight() uint64 {
-	return v.lastValidatedHeight.Load()
 }
 
 // NextValidationHeight returns the next height that needs to be validated with settlement state updates.
