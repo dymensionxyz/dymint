@@ -2,16 +2,15 @@ package tee
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
-	"sort"
 	"strings"
 	
+	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/node"
 )
 
@@ -19,34 +18,6 @@ type TEEAttestation struct {
 	Token string `json:"token"`
 	Nonce string `json:"nonce"`
 	Error string `json:"error,omitempty"`
-}
-
-type TEENonce struct {
-	ChainID       string `json:"chain_id"`
-	Height        uint64 `json:"height"`
-	LastBlockHash string `json:"last_block_hash"`
-}
-
-func (n TEENonce) MarshalJSONSorted() ([]byte, error) {
-	m := map[string]interface{}{
-		"chain_id":        n.ChainID,
-		"height":          n.Height,
-		"last_block_hash": n.LastBlockHash,
-	}
-	
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	
-	var parts []string
-	for _, k := range keys {
-		val, _ := json.Marshal(m[k])
-		parts = append(parts, fmt.Sprintf(`"%s":%s`, k, val))
-	}
-	
-	return []byte("{" + strings.Join(parts, ",") + "}"), nil
 }
 
 func HandleTEEAttestation(node *node.Node) http.HandlerFunc {
@@ -59,67 +30,55 @@ func HandleTEEAttestation(node *node.Node) http.HandlerFunc {
 		}
 
 		if node == nil || node.BlockManager == nil {
-			json.NewEncoder(w).Encode(TEEAttestation{
-				Error: "Block manager not available",
-			})
+			writeErrorResponse(w, "Block manager not available")
 			return
 		}
 
 		validator := node.BlockManager.SettlementValidator
 		if validator == nil {
-			json.NewEncoder(w).Encode(TEEAttestation{
-				Error: "Settlement validator not available",
-			})
+			writeErrorResponse(w, "Settlement validator not available")
 			return
 		}
 
 		lastValidatedHeight := validator.GetLastValidatedHeight()
 		if lastValidatedHeight == 0 {
-			json.NewEncoder(w).Encode(TEEAttestation{
-				Error: "No blocks validated yet",
-			})
+			writeErrorResponse(w, "No blocks validated yet")
 			return
 		}
 
 		lastBlockHash, err := validator.GetLastValidatedBlockHash()
 		if err != nil {
-			json.NewEncoder(w).Encode(TEEAttestation{
-				Error: fmt.Sprintf("Get last block hash: %v", err),
-			})
+			writeErrorResponse(w, fmt.Sprintf("Get last block hash: %v", err))
 			return
 		}
 
 		chainID := node.BlockManager.State.ChainID
+		blockHashHex := hex.EncodeToString(lastBlockHash)
 		
-		nonce := TEENonce{
-			ChainID:       chainID,
-			Height:        lastValidatedHeight,
-			LastBlockHash: hex.EncodeToString(lastBlockHash),
-		}
+		nonce := block.CreateTEENonce(chainID, lastValidatedHeight, blockHashHex)
+		nonceHash := block.HashTEENonce(nonce)
 
-		nonceBytes, err := nonce.MarshalJSONSorted()
+		token, err := getGCPAttestationToken(nonceHash)
 		if err != nil {
-			json.NewEncoder(w).Encode(TEEAttestation{
-				Error: fmt.Sprintf("Marshal nonce: %v", err),
-			})
+			writeErrorResponse(w, fmt.Sprintf("Get attestation token: %v", err))
 			return
 		}
 
-		nonceHash := sha256.Sum256(nonceBytes)
-		nonceHashHex := hex.EncodeToString(nonceHash[:])
-
-		token, err := getGCPAttestationToken(nonceHashHex)
-		if err != nil {
-			json.NewEncoder(w).Encode(TEEAttestation{
-				Error: fmt.Sprintf("Get attestation token: %v", err),
-			})
-			return
-		}
-
-		json.NewEncoder(w).Encode(TEEAttestation{
+		response := TEEAttestation{
 			Token: token,
-			Nonce: string(nonceBytes),
-		})
+			Nonce: nonce,
+		}
+		
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
+	}
+}
+
+func writeErrorResponse(w http.ResponseWriter, errorMsg string) {
+	response := TEEAttestation{Error: errorMsg}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode error response", http.StatusInternalServerError)
 	}
 }
 
