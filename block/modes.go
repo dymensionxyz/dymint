@@ -96,6 +96,21 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return m.MonitorProposerRotation(ctx)
 	})
 
+	// Start TEE attestation client if enabled
+	if m.Conf.TEE.Enabled {
+		teeConfig := TEEConfig{
+			Enabled:  true,
+			Endpoint: m.Conf.TEE.SidecarURL,
+			Interval: m.Conf.TEE.AttestationInterval,
+		}
+		teeClient := NewTEEClient(teeConfig, m.logger)
+		
+		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+			teeClient.Start(ctx, m.submitTEEAttestation)
+			return nil
+		})
+	}
+
 	return nil
 }
 
