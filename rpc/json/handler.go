@@ -38,6 +38,8 @@ func newHandler(s *service, codec rpc.Codec, logger types.Logger) *handler {
 
 	mux.HandleFunc("/", h.serveJSONRPC)
 	mux.HandleFunc("/websocket", h.wsHandler)
+	// Add TEE attestation endpoint
+	mux.HandleFunc("/tee/attestation", h.handleTEEAttestation)
 	for name, method := range s.methods {
 		logger.Debug("registering method", "name", name)
 		mux.HandleFunc("/"+name, h.newHandler(method))
