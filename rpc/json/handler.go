@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/rpc/v2/json2"
 
 	"github.com/dymensionxyz/dymint/rpc/client"
+	"github.com/dymensionxyz/dymint/tee"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -38,8 +39,7 @@ func newHandler(s *service, codec rpc.Codec, logger types.Logger) *handler {
 
 	mux.HandleFunc("/", h.serveJSONRPC)
 	mux.HandleFunc("/websocket", h.wsHandler)
-	// Add TEE attestation endpoint
-	mux.HandleFunc("/tee/attestation", h.handleTEEAttestation)
+	mux.HandleFunc("/tee/attestation", tee.HandleTEEAttestation(s.client.GetNode()))
 	for name, method := range s.methods {
 		logger.Debug("registering method", "name", name)
 		mux.HandleFunc("/"+name, h.newHandler(method))
