@@ -39,7 +39,11 @@ func newHandler(s *service, codec rpc.Codec, logger types.Logger) *handler {
 
 	mux.HandleFunc("/", h.serveJSONRPC)
 	mux.HandleFunc("/websocket", h.wsHandler)
-	mux.HandleFunc("/tee/attestation", tee.HandleTEEAttestation(s.client.GetNode()))
+	
+	// Only register TEE endpoint if TEE is enabled
+	if node := s.client.GetNode(); node != nil && node.BlockManager != nil && node.BlockManager.Conf.TEE.Enabled {
+		mux.HandleFunc("/tee/attestation", tee.HandleTEEAttestation(node))
+	}
 	for name, method := range s.methods {
 		logger.Debug("registering method", "name", name)
 		mux.HandleFunc("/"+name, h.newHandler(method))
