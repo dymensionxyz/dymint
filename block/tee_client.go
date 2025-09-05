@@ -33,12 +33,7 @@ type TEEAttestationResponse struct {
 	Error string `json:"error,omitempty"`
 }
 
-// NewTEEClient creates a new TEE client
 func NewTEEClient(config TEEConfig, logger types.Logger) *TEEClient {
-	if config.Interval == 0 {
-		config.Interval = 100 * 6 * time.Second // Default: every 100 blocks (~10 minutes)
-	}
-	
 	return &TEEClient{
 		endpoint: config.Endpoint,
 		interval: config.Interval,
@@ -49,14 +44,12 @@ func NewTEEClient(config TEEConfig, logger types.Logger) *TEEClient {
 	}
 }
 
-// Start begins the periodic attestation polling loop
 func (c *TEEClient) Start(ctx context.Context, submitFunc func(attestation *TEEAttestationResponse) error) {
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
 	
 	c.logger.Info("Starting TEE attestation client", "endpoint", c.endpoint, "interval", c.interval)
 	
-	// Initial attempt immediately
 	if err := c.fetchAndSubmitAttestation(submitFunc); err != nil {
 		c.logger.Error("Initial attestation fetch error", "error", err)
 	}
@@ -74,7 +67,6 @@ func (c *TEEClient) Start(ctx context.Context, submitFunc func(attestation *TEEA
 	}
 }
 
-// fetchAndSubmitAttestation fetches an attestation from the TEE sidecar and submits it
 func (c *TEEClient) fetchAndSubmitAttestation(submitFunc func(*TEEAttestationResponse) error) error {
 	attestation, err := c.GetAttestation()
 	if err != nil {
@@ -99,7 +91,6 @@ func (c *TEEClient) fetchAndSubmitAttestation(submitFunc func(*TEEAttestationRes
 	return nil
 }
 
-// GetAttestation fetches an attestation from the TEE sidecar
 func (c *TEEClient) GetAttestation() (*TEEAttestationResponse, error) {
 	url := fmt.Sprintf("%s/tee/attestation", c.endpoint)
 	
