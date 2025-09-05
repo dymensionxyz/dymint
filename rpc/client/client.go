@@ -95,6 +95,11 @@ func NewClient(node *node.Node) *Client {
 	}
 }
 
+// GetNode returns the underlying node instance.
+func (c *Client) GetNode() *node.Node {
+	return c.node
+}
+
 // ABCIInfo returns basic information about application state.
 func (c *Client) ABCIInfo(ctx context.Context) (*ctypes.ResultABCIInfo, error) {
 	resInfo, err := c.Query().InfoSync(proxy.RequestInfo)
