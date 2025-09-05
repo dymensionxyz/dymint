@@ -8,14 +8,9 @@ import (
 	"fmt"
 )
 
-// gcpConfidentialSpaceRootCert is the GCP Confidential Space root certificate
-// This certificate is used to verify the attestation tokens from GCP
-// Source: https://cloud.google.com/confidential-computing/confidential-space/docs/reference/attestation-tokens#token-verification
-//
-//go:embed gcp_confidential_space_root.pem
+//go:embed assets/gcp_confidential_space_root.pem
 var gcpConfidentialSpaceRootCert []byte
 
-// submitTEEAttestation submits a TEE attestation to the hub
 func (m *Manager) submitTEEAttestation(attestation *TEEAttestationResponse) error {
 	if attestation == nil {
 		return fmt.Errorf("attestation is nil")
@@ -25,34 +20,20 @@ func (m *Manager) submitTEEAttestation(attestation *TEEAttestationResponse) erro
 		return fmt.Errorf("attestation token is empty")
 	}
 	
-	// Parse the nonce to get the height information
-	var nonce struct {
-		ChainID       string `json:"chain_id"`
-		Height        uint64 `json:"height"`
-		LastBlockHash string `json:"last_block_hash"`
+	chainID, height, blockHash, err := parseNonce(attestation.Nonce)
+	if err != nil {
+		return fmt.Errorf("parse nonce: %w", err)
 	}
-	
-	if err := json.Unmarshal([]byte(attestation.Nonce), &nonce); err != nil {
-		return fmt.Errorf("unmarshal nonce: %w", err)
-	}
-	
-	// Calculate the nonce hash to verify it matches what was sent to GCP
-	nonceHash := sha256.Sum256([]byte(attestation.Nonce))
-	nonceHashHex := hex.EncodeToString(nonceHash[:])
 	
 	m.logger.Info("Submitting TEE attestation",
-		"height", nonce.Height,
-		"chain_id", nonce.ChainID,
-		"block_hash", nonce.LastBlockHash,
+		"height", height,
+		"chain_id", chainID,
+		"block_hash", blockHash,
 		"token_length", len(attestation.Token),
-		"nonce_hash", nonceHashHex,
 	)
 	
-	// Submit the attestation to the hub
-	// The hub will verify the token signature using the embedded GCP root certificate
-	// and immediately finalize the state update if valid
-	err := m.submitTEEAttestationToHub(
-		nonce.Height,
+	err = m.submitTEEAttestationToHub(
+		height,
 		attestation.Token,
 		gcpConfidentialSpaceRootCert,
 		attestation.Nonce,
@@ -62,24 +43,36 @@ func (m *Manager) submitTEEAttestation(attestation *TEEAttestationResponse) erro
 	}
 	
 	m.logger.Info("TEE attestation submitted successfully",
-		"height", nonce.Height,
+		"height", height,
 	)
 	
 	return nil
 }
 
-// submitTEEAttestationToHub sends the TEE attestation to the hub for verification and immediate finalization
-// This method will be replaced with the actual settlement client call once the hub API is implemented
+func parseNonce(nonceStr string) (chainID string, height uint64, blockHash string, err error) {
+	var nonce struct {
+		ChainID       string `json:"chain_id"`
+		Height        uint64 `json:"height"`
+		LastBlockHash string `json:"last_block_hash"`
+	}
+	
+	if err := json.Unmarshal([]byte(nonceStr), &nonce); err != nil {
+		return "", 0, "", fmt.Errorf("unmarshal nonce: %w", err)
+	}
+	
+	return nonce.ChainID, nonce.Height, nonce.LastBlockHash, nil
+}
+
+func createNonceHash(chainID string, height uint64, blockHash string) string {
+	// Stub implementation - will be replaced with sorted JSON or protobuf
+	nonce := fmt.Sprintf(`{"chain_id":"%s","height":%d,"last_block_hash":"%s"}`, chainID, height, blockHash)
+	hash := sha256.Sum256([]byte(nonce))
+	return hex.EncodeToString(hash[:])
+}
+
 func (m *Manager) submitTEEAttestationToHub(height uint64, token string, pemCert []byte, nonce string) error {
 	// When the hub API is ready, this will call:
 	// return m.SLClient.SubmitTEEAttestation(m.State.ChainID, height, token, pemCert, nonce)
-	
-	// For now, we simulate the submission for testing purposes
-	// The hub will verify:
-	// 1. The token signature using the provided PEM certificate
-	// 2. The nonce matches the expected format and includes the correct height
-	// 3. The attestation is from a valid TEE environment
-	// If all checks pass, the state update at the given height is immediately finalized
 	
 	m.logger.Debug("TEE attestation submission simulated (hub API not yet implemented)",
 		"rollapp_id", m.State.ChainID,
