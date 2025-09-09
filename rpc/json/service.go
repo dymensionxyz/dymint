@@ -17,6 +17,7 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 
 	"github.com/dymensionxyz/dymint/rpc/client"
+	"github.com/dymensionxyz/dymint/rpc/client/tee"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -81,40 +82,41 @@ func newService(c *client.Client, l types.Logger, opts ...option) *service {
 		subscribeBufferSize: defaultSubscribeBufferSize,
 	}
 	s.methods = map[string]*method{
-		"subscribe":            newMethod(s.Subscribe),
-		"unsubscribe":          newMethod(s.Unsubscribe),
-		"unsubscribe_all":      newMethod(s.UnsubscribeAll),
-		"health":               newMethod(s.Health),
-		"status":               newMethod(s.Status),
-		"net_info":             newMethod(s.NetInfo),
-		"blockchain":           newMethod(s.BlockchainInfo),
-		"genesis":              newMethod(s.Genesis),
-		"genesis_chunked":      newMethod(s.GenesisChunked),
-		"block":                newMethod(s.Block),
+		"abci_info":            newMethod(s.ABCIInfo),
+		"abci_query":           newMethod(s.ABCIQuery),
 		"block_by_hash":        newMethod(s.BlockByHash),
 		"block_results":        newMethod(s.BlockResults),
-		"commit":               newMethod(s.Commit),
-		"check_tx":             newMethod(s.CheckTx),
-		"tx":                   newMethod(s.Tx),
-		"tx_search":            newMethod(s.TxSearch),
 		"block_search":         newMethod(s.BlockSearch),
-		"validators":           newMethod(s.Validators),
-		"dump_consensus_state": newMethod(s.DumpConsensusState),
-		"consensus_state":      newMethod(s.GetConsensusState),
-		"consensus_params":     newMethod(s.ConsensusParams),
-		"unconfirmed_txs":      newMethod(s.UnconfirmedTxs),
-		"num_unconfirmed_txs":  newMethod(s.NumUnconfirmedTxs),
+		"block_validated":      newMethod(s.BlockValidated),
+		"block":                newMethod(s.Block),
+		"blockchain":           newMethod(s.BlockchainInfo),
+		"broadcast_evidence":   newMethod(s.BroadcastEvidence),
+		"broadcast_tx_async":   newMethod(s.BroadcastTxAsync),
 		"broadcast_tx_commit":  newMethod(s.BroadcastTxCommit),
 		"broadcast_tx_sync":    newMethod(s.BroadcastTxSync),
-		"broadcast_tx_async":   newMethod(s.BroadcastTxAsync),
-		"abci_query":           newMethod(s.ABCIQuery),
-		"abci_info":            newMethod(s.ABCIInfo),
-		"broadcast_evidence":   newMethod(s.BroadcastEvidence),
-		"block_validated":      newMethod(s.BlockValidated),
-		"eth_chainId":          newMethod(s.EthChainId),
-		"eth_getBlockByNumber": newMethod(s.EthGetBlockByNumber),
+		"check_tx":             newMethod(s.CheckTx),
+		"commit":               newMethod(s.Commit),
+		"consensus_params":     newMethod(s.ConsensusParams),
+		"consensus_state":      newMethod(s.GetConsensusState),
+		"dump_consensus_state": newMethod(s.DumpConsensusState),
 		"eth_blockNumber":      newMethod(s.EthBlockNumber),
+		"eth_chainId":          newMethod(s.EthChainId),
 		"eth_getBalance":       newMethod(s.EthGetBalance),
+		"eth_getBlockByNumber": newMethod(s.EthGetBlockByNumber),
+		"genesis_chunked":      newMethod(s.GenesisChunked),
+		"genesis":              newMethod(s.Genesis),
+		"health":               newMethod(s.Health),
+		"net_info":             newMethod(s.NetInfo),
+		"num_unconfirmed_txs":  newMethod(s.NumUnconfirmedTxs),
+		"status":               newMethod(s.Status),
+		"subscribe":            newMethod(s.Subscribe),
+		"tee":                  newMethod(s.Tee),
+		"tx_search":            newMethod(s.TxSearch),
+		"tx":                   newMethod(s.Tx),
+		"unconfirmed_txs":      newMethod(s.UnconfirmedTxs),
+		"unsubscribe_all":      newMethod(s.UnsubscribeAll),
+		"unsubscribe":          newMethod(s.Unsubscribe),
+		"validators":           newMethod(s.Validators),
 	}
 
 	for _, opt := range opts {
@@ -228,6 +230,10 @@ func (s *service) Commit(req *http.Request, args *commitArgs) (*ctypes.ResultCom
 
 func (s *service) CheckTx(req *http.Request, args *checkTxArgs) (*ctypes.ResultCheckTx, error) {
 	return s.client.CheckTx(req.Context(), args.Tx)
+}
+
+func (s *service) Tee(req *http.Request) (*tee.Response, error) {
+	return s.client.Tee(req.Context())
 }
 
 func (s *service) Tx(req *http.Request, args *txArgs) (*ctypes.ResultTx, error) {
