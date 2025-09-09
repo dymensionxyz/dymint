@@ -17,7 +17,7 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 
 	"github.com/dymensionxyz/dymint/rpc/client"
-	"github.com/dymensionxyz/dymint/rpc/client/tee"
+	teetypes "github.com/dymensionxyz/dymint/tee"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -232,7 +232,7 @@ func (s *service) CheckTx(req *http.Request, args *checkTxArgs) (*ctypes.ResultC
 	return s.client.CheckTx(req.Context(), args.Tx)
 }
 
-func (s *service) Tee(req *http.Request) (*tee.Response, error) {
+func (s *service) Tee(req *http.Request) (*teetypes.TEEResponse, error) {
 	return s.client.Tee(req.Context())
 }
 

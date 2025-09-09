@@ -99,12 +99,8 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 
 	// Start TEE attestation client if enabled
 	if m.Conf.TEE.Enabled {
-		rollapp, err := m.SLClient.GetRollapp()
-		if err != nil {
-			return fmt.Errorf("get rollapp for TEE: %w", err)
-		}
 
-		teeClient := tee.NewTEEFinalizer(m.Conf.TEE, m.logger, m.SLClient, rollapp.RollappID)
+		teeClient := tee.NewTEEFinalizer(m.Conf.TEE, m.logger, m.SLClient)
 
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return teeClient.Start(ctx)

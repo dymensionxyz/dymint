@@ -27,10 +27,9 @@ type TEEFinalizer struct {
 	logger        types.Logger
 	sidecarClient *http.Client
 	hubClient     settlement.ClientI
-	rollappID     string
 }
 
-func NewTEEFinalizer(config config.TEEConfig, logger types.Logger, slClient settlement.ClientI, rollappID string) *TEEFinalizer {
+func NewTEEFinalizer(config config.TEEConfig, logger types.Logger, slClient settlement.ClientI) *TEEFinalizer {
 	return &TEEFinalizer{
 		config: config,
 		logger: logger,
@@ -38,7 +37,6 @@ func NewTEEFinalizer(config config.TEEConfig, logger types.Logger, slClient sett
 			Timeout: 30 * time.Second,
 		},
 		hubClient: slClient,
-		rollappID: rollappID,
 	}
 }
 
@@ -59,9 +57,7 @@ func (f *TEEFinalizer) Start(ctx context.Context) error {
 	}
 }
 
-// fetchAndSubmitAttestation fetches attestation from full node and submits to hub
 func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
-	// Query the full node's /tee endpoint
 	attestation, err := f.queryFullNodeTEE()
 	if err != nil {
 		return fmt.Errorf("query full node TEE: %w", err)

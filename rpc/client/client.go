@@ -30,6 +30,7 @@ import (
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/rpc/client/tee"
+	teetypes "github.com/dymensionxyz/dymint/tee"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/version"
 
@@ -1198,10 +1199,10 @@ func (c *Client) getStakingDenom(ctx context.Context) (string, error) {
 	return respStDenom.Params.BondDenom, nil
 }
 
-func (c *Client) Tee(ctx context.Context) (*tee.Response, error) {
-	token, err := tee.GetToken(c.node)
+func (c *Client) Tee(ctx context.Context) (*teetypes.TEEResponse, error) {
+	ret, err := tee.GetToken(c.node)
 	if err != nil {
 		return nil, err
 	}
-	return &tee.Response{Token: token.Token, Nonce: token.Nonce}, nil
+	return &ret, nil
 }
