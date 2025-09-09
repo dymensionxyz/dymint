@@ -739,13 +739,7 @@ func (c *Client) getLatestProposer() (string, error) {
 }
 
 // SubmitTEEAttestation submits a TEE attestation to fast-finalize state updates
-func (c *Client) SubmitTEEAttestation(token string, nonce interface{}, stateIndex uint64) error {
-	// Cast the nonce to the proper type
-	teeNonce, ok := nonce.(rollapptypes.TEENonce)
-	if !ok {
-		return fmt.Errorf("invalid nonce type, expected rollapptypes.TEENonce")
-	}
-
+func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce, finalizedIx, currIx uint64) error {
 	account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
 	if err != nil {
 		return fmt.Errorf("get account: %w", err)
@@ -760,9 +754,9 @@ func (c *Client) SubmitTEEAttestation(token string, nonce interface{}, stateInde
 	msg := &rollapptypes.MsgFastFinalizeWithTEE{
 		Creator:             addr,
 		AttestationToken:    token,
-		CurrStateIndex:      stateIndex,
-		FinalizedStateIndex: 0, // Not available yet
-		Nonce:               teeNonce,
+		CurrStateIndex:      currIx,
+		FinalizedStateIndex: finalizedIx,
+		Nonce:               nonce,
 	}
 
 	// Broadcast the transaction
@@ -775,7 +769,6 @@ func (c *Client) SubmitTEEAttestation(token string, nonce interface{}, stateInde
 		return fmt.Errorf("TEE attestation tx failed with code %d: %s", txResp.Code, txResp.RawLog)
 	}
 
-	c.logger.Info("Successfully submitted TEE attestation", "tx_hash", txResp.TxHash, "state_index", stateIndex)
 	return nil
 }
 

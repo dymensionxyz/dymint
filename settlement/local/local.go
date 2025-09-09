@@ -354,9 +354,9 @@ func (c *Client) ValidateGenesisBridgeData(rollapptypes.GenesisBridgeData) error
 }
 
 // SubmitTEEAttestation submits a TEE attestation to fast-finalize state updates
-func (c *Client) SubmitTEEAttestation(token string, nonce interface{}, stateIndex uint64) error {
-	c.logger.Info("TEE attestation submission not implemented for local settlement layer", 
-		"state_index", stateIndex)
+func (c *Client) SubmitTEEAttestation(token string, nonce rollapp.TEENonce, finalizedIx, currIx uint64) error {
+	c.logger.Info("TEE attestation submission not implemented for local settlement layer",
+		"state_index", currIx)
 	// For local settlement, we just log and return success
 	return nil
 }
