@@ -17,6 +17,10 @@ type Response struct {
 }
 
 func GetToken(node *node.Node) (Response, error) {
+	if !node.BlockManager.Conf.TEE.Enabled {
+		return Response{}, fmt.Errorf("TEE is not enabled")
+	}
+
 	validator := node.BlockManager.SettlementValidator
 	if validator == nil {
 		return Response{}, fmt.Errorf("Settlement validator not available")

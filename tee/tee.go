@@ -2,9 +2,7 @@ package block
 
 import (
 	"context"
-	"crypto/sha256"
 	_ "embed"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,40 +10,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/types"
 )
 
 //go:embed assets/gcp_confidential_space_root.pem
 var gcpConfidentialSpaceRootCert []byte
-
-// TEEConfig holds configuration for the TEE client
-type TEEConfig struct {
-	Enabled  bool          `json:"enabled"`
-	Endpoint string        `json:"endpoint"`
-	Interval time.Duration `json:"interval"`
-}
-
-// TEEClient handles communication with the TEE sidecar
-type TEEClient struct {
-	endpoint string        // URL of the TEE sidecar attestation endpoint
-	interval time.Duration // How often to poll for attestations
-	logger   types.Logger
-	client   *http.Client
-}
-
-// TEEAttestationResponse represents the response from the TEE attestation endpoint
-type TEEAttestationResponse struct {
-	Token string `json:"token"`
-	Nonce string `json:"nonce"`
-	Error string `json:"error,omitempty"`
-}
-
-// TEENonceData represents the data that gets signed in the TEE attestation
-type TEENonceData struct {
-	ChainID         string `json:"chain_id"`
-	ValidatedHeight uint64 `json:"validated_height"` // The height validated by the TEE full node
-	LastBlockHash   string `json:"last_block_hash"`
-}
 
 // TEESubmissionState tracks the state needed for TEE attestation submission
 type TEESubmissionState struct {
@@ -62,12 +32,17 @@ type TEESubmissionState struct {
 	lastFinalizedHeightTime time.Time
 }
 
-// NewTEEClient creates a new TEE client
-func NewTEEClient(config TEEConfig, logger types.Logger) *TEEClient {
-	return &TEEClient{
-		endpoint: config.Endpoint,
-		interval: config.Interval,
-		logger:   logger,
+// Use by sequencer to quickly finalize blocks, by getting attestations from sidecar and sending them to hub
+type TEEFinalizer struct {
+	config config.TEEConfig
+	logger types.Logger
+	client *http.Client
+}
+
+func NewTEEFinalizer(config config.TEEConfig, logger types.Logger) *TEEFinalizer {
+	return &TEEFinalizer{
+		config: config,
+		logger: logger,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -75,7 +50,7 @@ func NewTEEClient(config TEEConfig, logger types.Logger) *TEEClient {
 }
 
 // Start begins the TEE attestation client loop
-func (c *TEEClient) Start(ctx context.Context, submitFunc func(attestation *TEEAttestationResponse) error) {
+func (c *TEEFinalizer) Start(ctx context.Context) error {
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
 
@@ -147,38 +122,6 @@ func (c *TEEClient) GetAttestation() (*TEEAttestationResponse, error) {
 	}
 
 	return &attestation, nil
-}
-
-// CreateTEENonce creates a deterministic nonce string from the given parameters.
-// This is a stub implementation using JSON. It will be replaced with protobuf
-// or another deterministic serialization format in production.
-func CreateTEENonce(chainID string, validatedHeight uint64, blockHash string) string {
-	nonce := TEENonceData{
-		ChainID:         chainID,
-		ValidatedHeight: validatedHeight,
-		LastBlockHash:   blockHash,
-	}
-
-	// Use json.Marshal for consistent ordering
-	nonceBytes, _ := json.Marshal(nonce)
-	return string(nonceBytes)
-}
-
-// HashTEENonce creates a SHA256 hash of the nonce and returns it as a hex string
-func HashTEENonce(nonce string) string {
-	hash := sha256.Sum256([]byte(nonce))
-	return hex.EncodeToString(hash[:])
-}
-
-// ParseTEENonce parses a nonce string and extracts the chainID, validated height, and blockHash
-func ParseTEENonce(nonceStr string) (chainID string, validatedHeight uint64, blockHash string, err error) {
-	var nonce TEENonceData
-
-	if err := json.Unmarshal([]byte(nonceStr), &nonce); err != nil {
-		return "", 0, "", fmt.Errorf("unmarshal nonce: %w", err)
-	}
-
-	return nonce.ChainID, nonce.ValidatedHeight, nonce.LastBlockHash, nil
 }
 
 // shouldSubmitTEEAttestation determines if we should submit a TEE attestation
@@ -339,31 +282,4 @@ func (m *Manager) submitTEEAttestation(attestation *TEEAttestationResponse) erro
 }
 
 func (m *Manager) submitTEEAttestationToHub(stateIndex uint64, validatedHeight uint64, token string, pemCert []byte, nonce string) error {
-	// When the hub API is ready, this will call:
-	// MsgFastFinalizeWithTEE with:
-	//   - creator: sequencer address
-	//   - rollapp_id: m.State.ChainID
-	//   - state_index: stateIndex (the highest state update that can be finalized)
-	//   - attestation_token: token (JWT from GCP)
-	//   - pem_cert: pemCert (GCP root cert for validation)
-	//   - nonce: nonce (contains validated_height and other data that was signed)
-	//
-	// The hub will:
-	//   1. Verify the JWT signature using the PEM cert
-	//   2. Extract and verify the nonce matches what was signed
-	//   3. Check validated_height covers the state update at state_index
-	//   4. Fast-finalize all state updates up to state_index
-
-	m.logger.Debug("TEE attestation submission simulated (hub API not yet implemented)",
-		"rollapp_id", m.State.ChainID,
-		"state_index", stateIndex,
-		"validated_height", validatedHeight,
-		"token_length", len(token),
-		"pem_cert_length", len(pemCert),
-		"nonce_length", len(nonce),
-	)
-
-	// TODO: Actual implementation will call hub TX submission
-	// For now, simulate success
-	return nil
 }

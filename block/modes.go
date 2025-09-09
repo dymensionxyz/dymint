@@ -7,6 +7,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
+	tee "github.com/dymensionxyz/dymint/tee"
 	"github.com/dymensionxyz/dymint/types"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
@@ -98,15 +99,11 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 
 	// Start TEE attestation client if enabled
 	if m.Conf.TEE.Enabled {
-		teeConfig := TEEConfig{
-			Enabled:  true,
-			Endpoint: m.Conf.TEE.SidecarURL,
-			Interval: m.Conf.TEE.AttestationInterval,
-		}
-		teeClient := NewTEEClient(teeConfig, m.logger)
-		
+
+		teeClient := tee.NewTEEFinalizer(m.Conf.TEE, m.logger)
+
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-			teeClient.Start(ctx, m.submitTEEAttestation)
+			teeClient.Start(ctx)
 			return nil
 		})
 	}
