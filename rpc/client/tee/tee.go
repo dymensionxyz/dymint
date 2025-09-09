@@ -2,7 +2,6 @@ package tee
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -10,15 +9,9 @@ import (
 	"strings"
 
 	"github.com/dymensionxyz/dymint/node"
+	"github.com/dymensionxyz/dymint/tee"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
-
-// Response represents the TEE attestation response
-type Response struct {
-	Token string                  `json:"token"`
-	Nonce rollapptypes.TEENonce   `json:"nonce"`
-	Error string                  `json:"error,omitempty"`
-}
 
 var (
 	socketPath    = "/run/container_launcher/teeserver.sock"
@@ -27,33 +20,33 @@ var (
 
 // GetToken generates a TEE attestation for the current validated state
 // This is served by the full node and called by the sequencer
-func GetToken(node *node.Node) (Response, error) {
+func GetToken(node *node.Node) (tee.TEEResponse, error) {
 	if !node.BlockManager.Conf.TEE.Enabled {
-		return Response{}, fmt.Errorf("TEE is not enabled")
+		return tee.TEEResponse{}, fmt.Errorf("TEE is not enabled")
 	}
 
 	// Get the settlement validator to access validated heights
 	validator := node.BlockManager.SettlementValidator
 	if validator == nil {
-		return Response{}, fmt.Errorf("settlement validator not available")
+		return tee.TEEResponse{}, fmt.Errorf("settlement validator not available")
 	}
 
 	// Get the last validated height
 	lastValidatedHeight := validator.GetLastValidatedHeight()
 	if lastValidatedHeight == 0 {
-		return Response{}, fmt.Errorf("no blocks validated yet")
+		return tee.TEEResponse{}, fmt.Errorf("no blocks validated yet")
 	}
 
 	// Get the block at the validated height to get state root
 	validatedBlock, err := node.Store.LoadBlock(lastValidatedHeight)
 	if err != nil {
-		return Response{}, fmt.Errorf("load validated block: %w", err)
+		return tee.TEEResponse{}, fmt.Errorf("load validated block: %w", err)
 	}
 
 	// Get the last finalized height from settlement
 	lastFinalizedHeight, err := node.BlockManager.SLClient.GetLatestFinalizedHeight()
 	if err != nil {
-		return Response{}, fmt.Errorf("get latest finalized height: %w", err)
+		return tee.TEEResponse{}, fmt.Errorf("get latest finalized height: %w", err)
 	}
 
 	// Get the block at the finalized height for state root
@@ -74,7 +67,7 @@ func GetToken(node *node.Node) (Response, error) {
 	// Get the rollapp ID
 	rollapp, err := node.BlockManager.SLClient.GetRollapp()
 	if err != nil {
-		return Response{}, fmt.Errorf("get rollapp: %w", err)
+		return tee.TEEResponse{}, fmt.Errorf("get rollapp: %w", err)
 	}
 
 	// Build the nonce
@@ -101,10 +94,10 @@ func GetToken(node *node.Node) (Response, error) {
 	// Get attestation token from GCP
 	token, err := getGCPAttestationToken(nonceHash)
 	if err != nil {
-		return Response{}, fmt.Errorf("get attestation token: %w", err)
+		return tee.TEEResponse{}, fmt.Errorf("get attestation token: %w", err)
 	}
 
-	return Response{
+	return tee.TEEResponse{
 		Token: token,
 		Nonce: nonce,
 	}, nil
@@ -143,26 +136,4 @@ func getGCPAttestationToken(nonceHex string) (string, error) {
 	}
 
 	return string(tokenBytes), nil
-}
-
-// HandleTEERequest handles HTTP requests to the /tee endpoint
-// This is registered in the RPC server when TEE is enabled
-func HandleTEERequest(node *node.Node) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		response, err := GetToken(node)
-		if err != nil {
-			response = Response{
-				Error: err.Error(),
-			}
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-	}
 }
