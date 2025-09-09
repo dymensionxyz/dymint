@@ -2,14 +2,12 @@ package tee
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"strings"
 
-	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/node"
 )
 
@@ -29,16 +27,9 @@ func GetToken(node *node.Node) (Response, error) {
 		return Response{}, fmt.Errorf("No blocks validated yet")
 	}
 
-	lastBlockHash, err := validator.GetLastValidatedBlockHash()
-	if err != nil {
-		return Response{}, fmt.Errorf("Get last block hash: %v", err)
-	}
-
 	chainID := node.BlockManager.State.ChainID
-	blockHashHex := hex.EncodeToString(lastBlockHash)
 
-	nonce := block.CreateTEENonce(chainID, lastValidatedHeight, blockHashHex)
-	nonceHash := block.HashTEENonce(nonce)
+	// TODO!! build correct nonce, pass to GCP to get token
 
 	token, err := getGCPAttestationToken(nonceHash)
 	if err != nil {

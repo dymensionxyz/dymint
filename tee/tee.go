@@ -42,23 +42,23 @@ type TEEAttestationResponse struct {
 
 // TEENonceData represents the data that gets signed in the TEE attestation
 type TEENonceData struct {
-	ChainID           string `json:"chain_id"`
-	ValidatedHeight   uint64 `json:"validated_height"`   // The height validated by the TEE full node
-	LastBlockHash     string `json:"last_block_hash"`
+	ChainID         string `json:"chain_id"`
+	ValidatedHeight uint64 `json:"validated_height"` // The height validated by the TEE full node
+	LastBlockHash   string `json:"last_block_hash"`
 }
 
 // TEESubmissionState tracks the state needed for TEE attestation submission
 type TEESubmissionState struct {
 	mu sync.RWMutex
-	
+
 	// Last time we successfully submitted a TEE attestation
 	lastSubmissionTime time.Time
-	
+
 	// Last height we attempted to fast-finalize
 	lastAttemptedHeight uint64
-	
+
 	// Cache of the last finalized height from hub
-	lastFinalizedHeight uint64
+	lastFinalizedHeight     uint64
 	lastFinalizedHeightTime time.Time
 }
 
@@ -78,13 +78,13 @@ func NewTEEClient(config TEEConfig, logger types.Logger) *TEEClient {
 func (c *TEEClient) Start(ctx context.Context, submitFunc func(attestation *TEEAttestationResponse) error) {
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
-	
+
 	c.logger.Info("Starting TEE attestation client", "endpoint", c.endpoint, "interval", c.interval)
-	
+
 	if err := c.fetchAndSubmitAttestation(submitFunc); err != nil {
 		c.logger.Error("Initial attestation fetch error", "error", err)
 	}
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -103,21 +103,21 @@ func (c *TEEClient) fetchAndSubmitAttestation(submitFunc func(*TEEAttestationRes
 	if err != nil {
 		return fmt.Errorf("get attestation: %w", err)
 	}
-	
+
 	if attestation.Error != "" {
 		return fmt.Errorf("attestation error: %s", attestation.Error)
 	}
-	
+
 	if attestation.Token == "" {
 		return fmt.Errorf("empty attestation token")
 	}
-	
+
 	c.logger.Info("Got TEE attestation", "nonce_length", len(attestation.Nonce))
-	
+
 	if err := submitFunc(attestation); err != nil {
 		return fmt.Errorf("submit attestation: %w", err)
 	}
-	
+
 	c.logger.Info("Successfully submitted TEE attestation")
 	return nil
 }
@@ -125,27 +125,27 @@ func (c *TEEClient) fetchAndSubmitAttestation(submitFunc func(*TEEAttestationRes
 // GetAttestation fetches attestation from TEE sidecar
 func (c *TEEClient) GetAttestation() (*TEEAttestationResponse, error) {
 	url := fmt.Sprintf("%s/tee/attestation", c.endpoint)
-	
+
 	resp, err := c.client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("request attestation: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read response: %w", err)
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("TEE sidecar returned status %d: %s", resp.StatusCode, string(body))
 	}
-	
+
 	var attestation TEEAttestationResponse
 	if err := json.Unmarshal(body, &attestation); err != nil {
 		return nil, fmt.Errorf("unmarshal response: %w", err)
 	}
-	
+
 	return &attestation, nil
 }
 
@@ -158,7 +158,7 @@ func CreateTEENonce(chainID string, validatedHeight uint64, blockHash string) st
 		ValidatedHeight: validatedHeight,
 		LastBlockHash:   blockHash,
 	}
-	
+
 	// Use json.Marshal for consistent ordering
 	nonceBytes, _ := json.Marshal(nonce)
 	return string(nonceBytes)
@@ -173,11 +173,11 @@ func HashTEENonce(nonce string) string {
 // ParseTEENonce parses a nonce string and extracts the chainID, validated height, and blockHash
 func ParseTEENonce(nonceStr string) (chainID string, validatedHeight uint64, blockHash string, err error) {
 	var nonce TEENonceData
-	
+
 	if err := json.Unmarshal([]byte(nonceStr), &nonce); err != nil {
 		return "", 0, "", fmt.Errorf("unmarshal nonce: %w", err)
 	}
-	
+
 	return nonce.ChainID, nonce.ValidatedHeight, nonce.LastBlockHash, nil
 }
 
@@ -187,10 +187,10 @@ func (m *Manager) shouldSubmitTEEAttestation(validatedHeight uint64) (bool, uint
 	if m.teeState == nil {
 		m.teeState = &TEESubmissionState{}
 	}
-	
+
 	m.teeState.mu.Lock()
 	defer m.teeState.mu.Unlock()
-	
+
 	// Get the latest finalized height from hub (with 30 second cache)
 	if time.Since(m.teeState.lastFinalizedHeightTime) > 30*time.Second {
 		finalizedHeight, err := m.SLClient.GetLatestFinalizedHeight()
@@ -200,7 +200,7 @@ func (m *Manager) shouldSubmitTEEAttestation(validatedHeight uint64) (bool, uint
 		m.teeState.lastFinalizedHeight = finalizedHeight
 		m.teeState.lastFinalizedHeightTime = time.Now()
 	}
-	
+
 	// If the validated height is not beyond what's already finalized, nothing to do
 	if validatedHeight <= m.teeState.lastFinalizedHeight {
 		m.logger.Debug("TEE validated height not beyond finalized",
@@ -208,23 +208,23 @@ func (m *Manager) shouldSubmitTEEAttestation(validatedHeight uint64) (bool, uint
 			"finalized", m.teeState.lastFinalizedHeight)
 		return false, 0, nil
 	}
-	
+
 	// Get the latest batch to understand current state
 	latestBatch, err := m.SLClient.GetLatestBatch()
 	if err != nil {
 		return false, 0, fmt.Errorf("get latest batch: %w", err)
 	}
-	
+
 	if latestBatch == nil || latestBatch.Batch == nil {
 		m.logger.Debug("No batches found on hub")
 		return false, 0, nil
 	}
-	
+
 	// Find which state updates can be finalized
 	// We need to find the highest state index whose EndHeight <= validatedHeight
 	var targetStateIndex uint64
 	var targetEndHeight uint64
-	
+
 	// Start from the latest batch and work backwards to find pending batches
 	for stateIdx := latestBatch.StateIndex; stateIdx > 0; stateIdx-- {
 		batch, err := m.SLClient.GetBatchAtIndex(stateIdx)
@@ -232,16 +232,16 @@ func (m *Manager) shouldSubmitTEEAttestation(validatedHeight uint64) (bool, uint
 			// If we can't get a batch, skip it
 			continue
 		}
-		
+
 		if batch == nil || batch.Batch == nil {
 			continue
 		}
-		
+
 		// If this batch is already finalized, we can stop looking
 		if batch.EndHeight <= m.teeState.lastFinalizedHeight {
 			break
 		}
-		
+
 		// If the validated height covers this entire batch, it can be finalized
 		if batch.EndHeight <= validatedHeight {
 			if batch.EndHeight > targetEndHeight {
@@ -250,7 +250,7 @@ func (m *Manager) shouldSubmitTEEAttestation(validatedHeight uint64) (bool, uint
 			}
 		}
 	}
-	
+
 	// No complete state update can be finalized
 	if targetStateIndex == 0 {
 		m.logger.Debug("No complete state updates can be finalized",
@@ -258,21 +258,21 @@ func (m *Manager) shouldSubmitTEEAttestation(validatedHeight uint64) (bool, uint
 			"latest_batch_end", latestBatch.EndHeight)
 		return false, 0, nil
 	}
-	
+
 	// Don't resubmit if we recently tried this height
-	if targetEndHeight == m.teeState.lastAttemptedHeight && 
-	   time.Since(m.teeState.lastSubmissionTime) < 1*time.Minute {
+	if targetEndHeight == m.teeState.lastAttemptedHeight &&
+		time.Since(m.teeState.lastSubmissionTime) < 1*time.Minute {
 		m.logger.Debug("Skipping TEE submission, recently attempted",
 			"height", targetEndHeight)
 		return false, 0, nil
 	}
-	
+
 	m.logger.Info("TEE attestation should be submitted",
 		"validated_height", validatedHeight,
 		"target_state_index", targetStateIndex,
 		"target_end_height", targetEndHeight,
 		"last_finalized", m.teeState.lastFinalizedHeight)
-	
+
 	return true, targetStateIndex, nil
 }
 
@@ -281,28 +281,28 @@ func (m *Manager) submitTEEAttestation(attestation *TEEAttestationResponse) erro
 	if attestation == nil {
 		return fmt.Errorf("attestation is nil")
 	}
-	
+
 	if attestation.Token == "" {
 		return fmt.Errorf("attestation token is empty")
 	}
-	
+
 	chainID, validatedHeight, blockHash, err := ParseTEENonce(attestation.Nonce)
 	if err != nil {
 		return fmt.Errorf("parse nonce: %w", err)
 	}
-	
+
 	// Check if we should submit based on the validated height
 	shouldSubmit, targetStateIndex, err := m.shouldSubmitTEEAttestation(validatedHeight)
 	if err != nil {
 		return fmt.Errorf("check should submit: %w", err)
 	}
-	
+
 	if !shouldSubmit {
 		m.logger.Debug("Skipping TEE submission, no actionable state updates",
 			"validated_height", validatedHeight)
 		return nil
 	}
-	
+
 	m.logger.Info("Submitting TEE attestation",
 		"validated_height", validatedHeight,
 		"target_state_index", targetStateIndex,
@@ -310,7 +310,7 @@ func (m *Manager) submitTEEAttestation(attestation *TEEAttestationResponse) erro
 		"block_hash", blockHash,
 		"token_length", len(attestation.Token),
 	)
-	
+
 	// Update state before submission
 	if m.teeState != nil {
 		m.teeState.mu.Lock()
@@ -318,7 +318,7 @@ func (m *Manager) submitTEEAttestation(attestation *TEEAttestationResponse) erro
 		m.teeState.lastAttemptedHeight = validatedHeight
 		m.teeState.mu.Unlock()
 	}
-	
+
 	err = m.submitTEEAttestationToHub(
 		targetStateIndex,
 		validatedHeight,
@@ -329,12 +329,12 @@ func (m *Manager) submitTEEAttestation(attestation *TEEAttestationResponse) erro
 	if err != nil {
 		return fmt.Errorf("submit TEE attestation to hub: %w", err)
 	}
-	
+
 	m.logger.Info("TEE attestation submitted successfully",
 		"state_index", targetStateIndex,
 		"validated_height", validatedHeight,
 	)
-	
+
 	return nil
 }
 
@@ -353,7 +353,7 @@ func (m *Manager) submitTEEAttestationToHub(stateIndex uint64, validatedHeight u
 	//   2. Extract and verify the nonce matches what was signed
 	//   3. Check validated_height covers the state update at state_index
 	//   4. Fast-finalize all state updates up to state_index
-	
+
 	m.logger.Debug("TEE attestation submission simulated (hub API not yet implemented)",
 		"rollapp_id", m.State.ChainID,
 		"state_index", stateIndex,
@@ -362,7 +362,7 @@ func (m *Manager) submitTEEAttestationToHub(stateIndex uint64, validatedHeight u
 		"pem_cert_length", len(pemCert),
 		"nonce_length", len(nonce),
 	)
-	
+
 	// TODO: Actual implementation will call hub TX submission
 	// For now, simulate success
 	return nil
