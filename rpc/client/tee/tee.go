@@ -33,11 +33,6 @@ func GetToken(node *node.Node) (tee.TEEResponse, error) {
 		return tee.TEEResponse{}, fmt.Errorf("no blocks validated yet")
 	}
 
-	validatedBlock, err := node.Store.LoadBlock(lastValidatedHeight)
-	if err != nil {
-		return tee.TEEResponse{}, fmt.Errorf("load validated block: %w", err)
-	}
-
 	rollapp, err := node.BlockManager.SLClient.GetRollapp()
 	if err != nil {
 		return tee.TEEResponse{}, fmt.Errorf("get rollapp: %w", err)
@@ -46,7 +41,7 @@ func GetToken(node *node.Node) (tee.TEEResponse, error) {
 	nonce := rollapptypes.TEENonce{
 		RollappId:          rollapp.RollappID,
 		CurrHeight:         lastValidatedHeight,
-		CurrStateRoot:      validatedBlock.Header.AppHash[:],
+		CurrStateRoot:      make([]byte, 32),
 		FinalizedHeight:    0,
 		FinalizedStateRoot: make([]byte, 32),
 	}
