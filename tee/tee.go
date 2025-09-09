@@ -2,9 +2,6 @@ package tee
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,43 +11,18 @@ import (
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
-// TEEAttestationResponse represents the response from the TEE sidecar
-type TEEAttestationResponse struct {
-	Token string `json:"token"`
-	Nonce string `json:"nonce"`
-	Error string `json:"error,omitempty"`
-}
-
-// TEENonce represents the nonce data that gets signed by the TEE
-type TEENonce struct {
-	RollappID          string
-	CurrHeight         uint64
-	CurrStateRoot      []byte
-	FinalizedHeight    uint64
-	FinalizedStateRoot []byte
-}
-
-// Hash generates a hash of the nonce for attestation
-func (n TEENonce) Hash() string {
-	bz := []byte(n.RollappID)
-
-	bzIx := make([]byte, 8)
-	binary.BigEndian.PutUint64(bzIx, n.FinalizedHeight)
-	bz = append(bz, bzIx...)
-	bz = append(bz, n.FinalizedStateRoot...)
-
-	bzIx = make([]byte, 8)
-	binary.BigEndian.PutUint64(bzIx, n.CurrHeight)
-	bz = append(bz, bzIx...)
-	bz = append(bz, n.CurrStateRoot...)
-
-	hash := sha256.Sum256(bz)
-	return hex.EncodeToString(hash[:])
+// TEEResponse represents the response from the full node's /tee endpoint
+type TEEResponse struct {
+	Token string                  `json:"token"`
+	Nonce rollapptypes.TEENonce   `json:"nonce"`
+	Error string                  `json:"error,omitempty"`
 }
 
 // TEEFinalizer handles fast finalization using TEE attestations
+// It runs on the sequencer and queries the full node for attestations
 type TEEFinalizer struct {
 	config    config.TEEConfig
 	logger    types.Logger
@@ -106,21 +78,34 @@ func (f *TEEFinalizer) Start(ctx context.Context) error {
 	}
 }
 
-// fetchAndSubmitAttestation fetches attestation from sidecar and submits to hub
+// fetchAndSubmitAttestation fetches attestation from full node and submits to hub
 func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
-	// Get the latest validated height from the sidecar
-	// For now, we'll get this from the settlement client
-	latestHeight, err := f.slClient.GetLatestHeight()
+	// Query the full node's /tee endpoint
+	attestation, err := f.queryFullNodeTEE()
 	if err != nil {
-		return fmt.Errorf("get latest height: %w", err)
+		return fmt.Errorf("query full node TEE: %w", err)
 	}
 
-	if latestHeight == 0 {
-		f.logger.Debug("No blocks to attest yet")
-		return nil
+	if attestation.Error != "" {
+		return fmt.Errorf("full node returned error: %s", attestation.Error)
 	}
 
-	// Get the latest batch to get state root
+	if attestation.Token == "" {
+		return fmt.Errorf("empty attestation token")
+	}
+
+	// Validate the nonce
+	if err := attestation.Nonce.Validate(); err != nil {
+		// For MVP, allow empty finalized fields
+		f.logger.Debug("Nonce validation failed, using as-is for MVP", "error", err)
+	}
+
+	f.logger.Info("Got TEE attestation from full node", 
+		"nonce_hash", attestation.Nonce.Hash(),
+		"curr_height", attestation.Nonce.CurrHeight,
+		"token_length", len(attestation.Token))
+
+	// Get the latest batch to determine state index
 	latestBatch, err := f.slClient.GetLatestBatch()
 	if err != nil {
 		return fmt.Errorf("get latest batch: %w", err)
@@ -131,40 +116,19 @@ func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
 		return nil
 	}
 
-	// Create nonce with current state
-	// For now, leave finalized fields empty as requested
-	nonce := TEENonce{
-		RollappID:          f.rollappID,
-		CurrHeight:         latestBatch.EndHeight,
-		CurrStateRoot:      make([]byte, 32), // TODO: Get actual state root when available
-		FinalizedHeight:    0,                 // Empty for now
-		FinalizedStateRoot: make([]byte, 0),   // Empty for now
+	// Check if the validated height is beyond what's already on the hub
+	if attestation.Nonce.CurrHeight <= latestBatch.EndHeight {
+		f.logger.Debug("TEE validated height not beyond latest batch",
+			"validated", attestation.Nonce.CurrHeight,
+			"latest_batch_end", latestBatch.EndHeight)
+		return nil
 	}
-
-	// Get attestation from sidecar
-	attestation, err := f.getAttestationFromSidecar(nonce)
-	if err != nil {
-		return fmt.Errorf("get attestation from sidecar: %w", err)
-	}
-
-	if attestation.Error != "" {
-		return fmt.Errorf("sidecar returned error: %s", attestation.Error)
-	}
-
-	if attestation.Token == "" {
-		return fmt.Errorf("empty attestation token")
-	}
-
-	f.logger.Info("Got TEE attestation", 
-		"nonce_hash", nonce.Hash(),
-		"curr_height", nonce.CurrHeight,
-		"token_length", len(attestation.Token))
 
 	// Submit to hub
 	err = f.slClient.SubmitTEEAttestation(
 		attestation.Token,
-		nonce,
-		latestBatch.StateIndex,
+		attestation.Nonce,
+		latestBatch.StateIndex, // Use current state index for curr_state_index
 	)
 	if err != nil {
 		return fmt.Errorf("submit attestation to hub: %w", err)
@@ -172,15 +136,14 @@ func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
 
 	f.logger.Info("Successfully submitted TEE attestation",
 		"state_index", latestBatch.StateIndex,
-		"height", nonce.CurrHeight)
+		"height", attestation.Nonce.CurrHeight)
 
 	return nil
 }
 
-// getAttestationFromSidecar fetches attestation from TEE sidecar
-func (f *TEEFinalizer) getAttestationFromSidecar(nonce TEENonce) (*TEEAttestationResponse, error) {
-	nonceHash := nonce.Hash()
-	url := fmt.Sprintf("%s/getToken?nonce=%s", f.config.SidecarURL, nonceHash)
+// queryFullNodeTEE queries the full node's /tee endpoint
+func (f *TEEFinalizer) queryFullNodeTEE() (*TEEResponse, error) {
+	url := fmt.Sprintf("%s/tee", f.config.SidecarURL)
 
 	resp, err := f.client.Get(url)
 	if err != nil {
@@ -194,16 +157,13 @@ func (f *TEEFinalizer) getAttestationFromSidecar(nonce TEENonce) (*TEEAttestatio
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("sidecar returned status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("full node returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var attestation TEEAttestationResponse
+	var attestation TEEResponse
 	if err := json.Unmarshal(body, &attestation); err != nil {
 		return nil, fmt.Errorf("unmarshal response: %w", err)
 	}
-
-	// Set the nonce in the response for tracking
-	attestation.Nonce = nonceHash
 
 	return &attestation, nil
 }

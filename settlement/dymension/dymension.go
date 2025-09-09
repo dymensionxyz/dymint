@@ -740,16 +740,10 @@ func (c *Client) getLatestProposer() (string, error) {
 
 // SubmitTEEAttestation submits a TEE attestation to fast-finalize state updates
 func (c *Client) SubmitTEEAttestation(token string, nonce interface{}, stateIndex uint64) error {
-	// Import the TEE nonce type
-	teeNonce, ok := nonce.(struct {
-		RollappID          string
-		CurrHeight         uint64
-		CurrStateRoot      []byte
-		FinalizedHeight    uint64
-		FinalizedStateRoot []byte
-	})
+	// Cast the nonce to the proper type
+	teeNonce, ok := nonce.(rollapptypes.TEENonce)
 	if !ok {
-		return fmt.Errorf("invalid nonce type")
+		return fmt.Errorf("invalid nonce type, expected rollapptypes.TEENonce")
 	}
 
 	account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
@@ -763,18 +757,12 @@ func (c *Client) SubmitTEEAttestation(token string, nonce interface{}, stateInde
 	}
 
 	// Create the MsgFastFinalizeWithTEE message
-	msg := &MsgFastFinalizeWithTEE{
+	msg := &rollapptypes.MsgFastFinalizeWithTEE{
 		Creator:             addr,
 		AttestationToken:    token,
 		CurrStateIndex:      stateIndex,
 		FinalizedStateIndex: 0, // Not available yet
-		Nonce: TEENonce{
-			RollappId:          teeNonce.RollappID,
-			CurrHeight:         teeNonce.CurrHeight,
-			CurrStateRoot:      teeNonce.CurrStateRoot,
-			FinalizedHeight:    teeNonce.FinalizedHeight,
-			FinalizedStateRoot: teeNonce.FinalizedStateRoot,
-		},
+		Nonce:               teeNonce,
 	}
 
 	// Broadcast the transaction
