@@ -406,3 +406,11 @@ func (c *Client) GetSignerBalance() (types.Balance, error) {
 func (c *Client) ValidateGenesisBridgeData(rollapptypes.GenesisBridgeData) error {
 	return nil
 }
+
+// SubmitTEEAttestation submits a TEE attestation to fast-finalize state updates
+func (c *Client) SubmitTEEAttestation(token string, nonce interface{}, stateIndex uint64) error {
+	c.logger.Info("TEE attestation submission not implemented for grpc settlement layer", 
+		"state_index", stateIndex)
+	// For grpc/mock settlement, we just log and return success
+	return nil
+}

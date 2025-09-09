@@ -7,7 +7,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
-	tee "github.com/dymensionxyz/dymint/tee"
+	"github.com/dymensionxyz/dymint/tee"
 	"github.com/dymensionxyz/dymint/types"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
@@ -99,12 +99,15 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 
 	// Start TEE attestation client if enabled
 	if m.Conf.TEE.Enabled {
+		rollapp, err := m.SLClient.GetRollapp()
+		if err != nil {
+			return fmt.Errorf("get rollapp for TEE: %w", err)
+		}
 
-		teeClient := tee.NewTEEFinalizer(m.Conf.TEE, m.logger)
+		teeClient := tee.NewTEEFinalizer(m.Conf.TEE, m.logger, m.SLClient, rollapp.RollappID)
 
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-			teeClient.Start(ctx)
-			return nil
+			return teeClient.Start(ctx)
 		})
 	}
 

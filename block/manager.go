@@ -116,9 +116,6 @@ type Manager struct {
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
-	
-	// TEE submission state tracking
-	teeState *TEESubmissionState
 }
 
 // NewManager creates new block Manager.

@@ -738,6 +738,59 @@ func (c *Client) getLatestProposer() (string, error) {
 	return proposerAddr, nil
 }
 
+// SubmitTEEAttestation submits a TEE attestation to fast-finalize state updates
+func (c *Client) SubmitTEEAttestation(token string, nonce interface{}, stateIndex uint64) error {
+	// Import the TEE nonce type
+	teeNonce, ok := nonce.(struct {
+		RollappID          string
+		CurrHeight         uint64
+		CurrStateRoot      []byte
+		FinalizedHeight    uint64
+		FinalizedStateRoot []byte
+	})
+	if !ok {
+		return fmt.Errorf("invalid nonce type")
+	}
+
+	account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
+	if err != nil {
+		return fmt.Errorf("get account: %w", err)
+	}
+
+	addr, err := account.Address(addressPrefix)
+	if err != nil {
+		return fmt.Errorf("derive address: %w", err)
+	}
+
+	// Create the MsgFastFinalizeWithTEE message
+	msg := &MsgFastFinalizeWithTEE{
+		Creator:             addr,
+		AttestationToken:    token,
+		CurrStateIndex:      stateIndex,
+		FinalizedStateIndex: 0, // Not available yet
+		Nonce: TEENonce{
+			RollappId:          teeNonce.RollappID,
+			CurrHeight:         teeNonce.CurrHeight,
+			CurrStateRoot:      teeNonce.CurrStateRoot,
+			FinalizedHeight:    teeNonce.FinalizedHeight,
+			FinalizedStateRoot: teeNonce.FinalizedStateRoot,
+		},
+	}
+
+	// Broadcast the transaction
+	txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msg)
+	if err != nil {
+		return fmt.Errorf("broadcast TEE attestation tx: %w", err)
+	}
+
+	if txResp.Code != 0 {
+		return fmt.Errorf("TEE attestation tx failed with code %d: %s", txResp.Code, txResp.RawLog)
+	}
+
+	c.logger.Info("Successfully submitted TEE attestation", "tx_hash", txResp.TxHash, "state_index", stateIndex)
+	return nil
+}
+
 func (c *Client) GetSignerBalance() (types.Balance, error) {
 	account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
 	if err != nil {

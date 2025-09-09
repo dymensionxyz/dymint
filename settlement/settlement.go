@@ -102,4 +102,6 @@ type ClientI interface {
 	GetSignerBalance() (types.Balance, error)
 	// ValidateGenesisBridgeData validates the genesis bridge data.
 	ValidateGenesisBridgeData(data rollapp.GenesisBridgeData) error
+	// SubmitTEEAttestation submits a TEE attestation to fast-finalize state updates
+	SubmitTEEAttestation(token string, nonce interface{}, stateIndex uint64) error
 }

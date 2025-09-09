@@ -11,36 +11,21 @@ import (
 	"github.com/dymensionxyz/dymint/node"
 )
 
+// Response represents the TEE token response
 type Response struct {
 	Token string `json:"token"`
 	Nonce string `json:"nonce"`
 }
 
+// GetToken retrieves a TEE attestation token
 func GetToken(node *node.Node) (Response, error) {
 	if !node.BlockManager.Conf.TEE.Enabled {
 		return Response{}, fmt.Errorf("TEE is not enabled")
 	}
 
-	validator := node.BlockManager.SettlementValidator
-	if validator == nil {
-		return Response{}, fmt.Errorf("Settlement validator not available")
-	}
-
-	lastValidatedHeight := validator.GetLastValidatedHeight()
-	if lastValidatedHeight == 0 {
-		return Response{}, fmt.Errorf("No blocks validated yet")
-	}
-
-	chainID := node.BlockManager.State.ChainID
-
-	// TODO!! build correct nonce, pass to GCP to get token
-
-	token, err := getGCPAttestationToken(nonceHash)
-	if err != nil {
-		return Response{}, fmt.Errorf("Get attestation token: %v", err)
-	}
-
-	return Response{Token: token, Nonce: nonce}, nil
+	// For now, return an error as this endpoint is not fully implemented
+	// The actual TEE attestation is handled by the TEEFinalizer in the block package
+	return Response{}, fmt.Errorf("TEE RPC endpoint not implemented - attestation handled by TEEFinalizer")
 }
 
 var (
@@ -48,6 +33,8 @@ var (
 	tokenEndpoint = "http://localhost/v1/token"
 )
 
+// getGCPAttestationToken requests an attestation token from GCP
+// This is kept for reference but actual implementation is in tee/tee.go
 func getGCPAttestationToken(nonceHex string) (string, error) {
 	httpClient := http.Client{
 		Transport: &http.Transport{
