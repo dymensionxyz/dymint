@@ -982,17 +982,17 @@ func (_c *MockClientI_SubmitBatch_Call) RunAndReturn(run func(*types.Batch, da.C
 	return _c
 }
 
-// SubmitTEEAttestation provides a mock function with given fields: token, nonce, finalizedIx, currIx
-func (_m *MockClientI) SubmitTEEAttestation(token string, nonce rollapp.TEENonce, finalizedIx uint64, currIx uint64) error {
-	ret := _m.Called(token, nonce, finalizedIx, currIx)
+// SubmitTEEAttestation provides a mock function with given fields: token, nonce
+func (_m *MockClientI) SubmitTEEAttestation(token string, nonce rollapp.TEENonce) error {
+	ret := _m.Called(token, nonce)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SubmitTEEAttestation")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, rollapp.TEENonce, uint64, uint64) error); ok {
-		r0 = rf(token, nonce, finalizedIx, currIx)
+	if rf, ok := ret.Get(0).(func(string, rollapp.TEENonce) error); ok {
+		r0 = rf(token, nonce)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1008,15 +1008,13 @@ type MockClientI_SubmitTEEAttestation_Call struct {
 // SubmitTEEAttestation is a helper method to define mock.On call
 //   - token string
 //   - nonce rollapp.TEENonce
-//   - finalizedIx uint64
-//   - currIx uint64
-func (_e *MockClientI_Expecter) SubmitTEEAttestation(token interface{}, nonce interface{}, finalizedIx interface{}, currIx interface{}) *MockClientI_SubmitTEEAttestation_Call {
-	return &MockClientI_SubmitTEEAttestation_Call{Call: _e.mock.On("SubmitTEEAttestation", token, nonce, finalizedIx, currIx)}
+func (_e *MockClientI_Expecter) SubmitTEEAttestation(token interface{}, nonce interface{}) *MockClientI_SubmitTEEAttestation_Call {
+	return &MockClientI_SubmitTEEAttestation_Call{Call: _e.mock.On("SubmitTEEAttestation", token, nonce)}
 }
 
-func (_c *MockClientI_SubmitTEEAttestation_Call) Run(run func(token string, nonce rollapp.TEENonce, finalizedIx uint64, currIx uint64)) *MockClientI_SubmitTEEAttestation_Call {
+func (_c *MockClientI_SubmitTEEAttestation_Call) Run(run func(token string, nonce rollapp.TEENonce)) *MockClientI_SubmitTEEAttestation_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(rollapp.TEENonce), args[2].(uint64), args[3].(uint64))
+		run(args[0].(string), args[1].(rollapp.TEENonce))
 	})
 	return _c
 }
@@ -1026,7 +1024,7 @@ func (_c *MockClientI_SubmitTEEAttestation_Call) Return(_a0 error) *MockClientI_
 	return _c
 }
 
-func (_c *MockClientI_SubmitTEEAttestation_Call) RunAndReturn(run func(string, rollapp.TEENonce, uint64, uint64) error) *MockClientI_SubmitTEEAttestation_Call {
+func (_c *MockClientI_SubmitTEEAttestation_Call) RunAndReturn(run func(string, rollapp.TEENonce) error) *MockClientI_SubmitTEEAttestation_Call {
 	_c.Call.Return(run)
 	return _c
 }

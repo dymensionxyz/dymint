@@ -51,7 +51,7 @@ func (f *TEEFinalizer) Start(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			if err := f.fetchAndSubmitAttestation(); err != nil {
-				f.logger.Error("Attestation fetch error", "error", err)
+				f.logger.Error("Attestation fetch and submit", "error", err)
 			}
 		}
 	}
