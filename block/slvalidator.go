@@ -22,7 +22,8 @@ type SettlementValidator struct {
 
 	// immutable: the height the node starts from, and therefore impliclity trusts.
 	// In this way the correctness of lastValidatedHeight depends on this trusted height being correct.
-	trustedHeight uint64 // TODO: populate
+	// If zero, then node has been started from genesis
+	trustedHeight uint64
 }
 
 // NewSettlementValidator returns a new StateUpdateValidator instance.
@@ -33,8 +34,9 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 	}
 
 	validator := &SettlementValidator{
-		logger:       logger,
-		blockManager: blockManager,
+		logger:        logger,
+		blockManager:  blockManager,
+		trustedHeight: blockManager.State.LastBlockHeight.Load(),
 	}
 
 	// if SkipValidationHeight is set,  dont validate anything previous to that (used by 2D migration)

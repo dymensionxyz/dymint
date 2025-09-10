@@ -33,15 +33,10 @@ func GetToken(node *node.Node) (tee.TEEResponse, error) {
 		return tee.TEEResponse{}, fmt.Errorf("no blocks validated yet")
 	}
 
-	rollapp, err := node.BlockManager.SLClient.GetRollapp()
-	if err != nil {
-		return tee.TEEResponse{}, fmt.Errorf("get rollapp: %w", err)
-	}
-
 	nonce := rollapptypes.TEENonce{
-		RollappId:       rollapp.RollappID,
+		RollappId:       node.BlockManager.State.ChainID,
 		CurrHeight:      lastValidatedHeight,
-		FinalizedHeight: 0,
+		FinalizedHeight: validator.GetTrustedHeight(),
 	}
 
 	token, err := getGCPAttestationToken(nonce.Hash())
