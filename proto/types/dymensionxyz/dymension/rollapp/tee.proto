@@ -11,16 +11,13 @@ message MsgFastFinalizeWithTEE {
   option (cosmos.msg.v1.signer) = "creator";
 
   // creator must be the active sequencer for the rollapp
-  string creator = 1;
+  string creator = 1 ;
 
   // attestation_token is the JWT token from GCP
   string attestation_token = 4;
 
   // nonce contains the data that was signed by TEE
   TEENonce nonce = 5 [(gogoproto.nullable) = false];
-
-  // what should be finalized immediately
-  uint64 state_index = 6;
 }
 
 // what the verifying full node inside the tee actually attests over

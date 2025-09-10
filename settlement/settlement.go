@@ -103,5 +103,5 @@ type ClientI interface {
 	// ValidateGenesisBridgeData validates the genesis bridge data.
 	ValidateGenesisBridgeData(data rollapp.GenesisBridgeData) error
 	// SubmitTEEAttestation submits a TEE attestation to fast-finalize state updates
-	SubmitTEEAttestation(token string, nonce rollapp.TEENonce, finalizedIx, currIx uint64) error
+	SubmitTEEAttestation(token string, nonce rollapp.TEENonce, currIx uint64) error
 }
