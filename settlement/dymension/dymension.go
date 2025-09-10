@@ -739,7 +739,7 @@ func (c *Client) getLatestProposer() (string, error) {
 }
 
 // SubmitTEEAttestation submits a TEE attestation to fast-finalize state updates
-func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce, finalizedIx, currIx uint64) error {
+func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce) error {
 	account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
 	if err != nil {
 		return fmt.Errorf("get account: %w", err)
@@ -754,7 +754,6 @@ func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce,
 	msg := &rollapptypes.MsgFastFinalizeWithTEE{
 		Creator:          addr,
 		AttestationToken: token,
-		StateIndex:       currIx,
 		Nonce:            nonce,
 	}
 
