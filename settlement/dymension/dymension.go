@@ -752,11 +752,10 @@ func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce,
 
 	// Create the MsgFastFinalizeWithTEE message
 	msg := &rollapptypes.MsgFastFinalizeWithTEE{
-		Creator:             addr,
-		AttestationToken:    token,
-		CurrStateIndex:      currIx,
-		FinalizedStateIndex: finalizedIx,
-		Nonce:               nonce,
+		Creator:          addr,
+		AttestationToken: token,
+		StateIndex:       currIx,
+		Nonce:            nonce,
 	}
 
 	// Broadcast the transaction

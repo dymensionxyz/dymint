@@ -39,11 +39,9 @@ func GetToken(node *node.Node) (tee.TEEResponse, error) {
 	}
 
 	nonce := rollapptypes.TEENonce{
-		RollappId:          rollapp.RollappID,
-		CurrHeight:         lastValidatedHeight,
-		CurrStateRoot:      make([]byte, 32),
-		FinalizedHeight:    0,
-		FinalizedStateRoot: make([]byte, 32),
+		RollappId:       rollapp.RollappID,
+		CurrHeight:      lastValidatedHeight,
+		FinalizedHeight: 0,
 	}
 
 	token, err := getGCPAttestationToken(nonce.Hash())
