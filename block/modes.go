@@ -99,7 +99,6 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 
 	// Start TEE attestation client if enabled
 	if m.Conf.TEE.Enabled {
-
 		teeClient := tee.NewTEEFinalizer(m.Conf.TEE, m.logger, m.SLClient)
 
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
