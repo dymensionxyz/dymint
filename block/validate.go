@@ -18,7 +18,8 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 	m.SettlementValidator.UpdateLastValidatedHeight(eventData.EndHeight)
 }
 
-// SettlementValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.
+// Pulls down state updates from the hub and checks they are correct and match local state
+// Local state has thus far progressed by applying and validating blocks from the DA or P2P
 func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 	for {
 		select {

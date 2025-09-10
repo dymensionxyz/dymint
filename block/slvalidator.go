@@ -19,6 +19,10 @@ type SettlementValidator struct {
 	logger              types.Logger
 	blockManager        *Manager
 	lastValidatedHeight atomic.Uint64
+
+	// immutable: the height the node starts from, and therefore impliclity trusts.
+	// In this way the correctness of lastValidatedHeight depends on this trusted height being correct.
+	trustedHeight uint64 // TODO: populate
 }
 
 // NewSettlementValidator returns a new StateUpdateValidator instance.
