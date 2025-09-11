@@ -17,6 +17,7 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 
 	"github.com/dymensionxyz/dymint/rpc/client"
+	teetypes "github.com/dymensionxyz/dymint/tee"
 	"github.com/dymensionxyz/dymint/types"
 )
 
