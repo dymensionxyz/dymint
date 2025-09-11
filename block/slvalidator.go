@@ -251,6 +251,12 @@ func (v *SettlementValidator) GetLastValidatedHeight() uint64 {
 	return v.lastValidatedHeight.Load()
 }
 
+// GetTrustedHeight returns the trusted height for TEE attestation purposes.
+// Currently returns the last validated height as the trusted height.
+func (v *SettlementValidator) GetTrustedHeight() uint64 {
+	return v.lastValidatedHeight.Load()
+}
+
 // NextValidationHeight returns the next height that needs to be validated with settlement state updates.
 func (v *SettlementValidator) NextValidationHeight() uint64 {
 	return v.lastValidatedHeight.Load() + 1
