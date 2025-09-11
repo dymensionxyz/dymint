@@ -331,6 +331,6 @@ func (s *service) EthGetBalance(req *http.Request, args *ethBalanceArgs) (*clien
 	return s.client.EthGetBalance(req.Context(), addrStr, &height)
 }
 
-func (s *service) Tee(req *http.Request) (*teetypes.TEEResponse, error) {
+func (s *service) Tee(req *http.Request, args *teeArgs) (*teetypes.TEEResponse, error) {
 	return s.client.Tee(req.Context())
 }

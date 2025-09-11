@@ -119,6 +119,8 @@ type ABCIQueryArgs struct {
 // ABCIInfoArgs defines args for ABCI Info method.
 type ABCIInfoArgs struct{}
 
+type teeArgs struct{}
+
 // evidence API
 
 type broadcastEvidenceArgs struct {
