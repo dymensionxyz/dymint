@@ -1199,8 +1199,8 @@ func (c *Client) getStakingDenom(ctx context.Context) (string, error) {
 	return respStDenom.Params.BondDenom, nil
 }
 
-func (c *Client) Tee(ctx context.Context) (*teetypes.TEEResponse, error) {
-	ret, err := tee.GetToken(c.node)
+func (c *Client) Tee(ctx context.Context, dry bool) (*teetypes.TEEResponse, error) {
+	ret, err := tee.GetToken(c.node, dry)
 	if err != nil {
 		return nil, err
 	}

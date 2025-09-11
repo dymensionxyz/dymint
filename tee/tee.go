@@ -23,13 +23,13 @@ type TEEResponse struct {
 // TEEFinalizer handles fast finalization using TEE attestations
 // It runs on the sequencer and queries the full node for attestations
 type TEEFinalizer struct {
-	config        config.TEEConfig
+	config        config.BlockManagerConfig
 	logger        types.Logger
 	sidecarClient *http.Client
 	hubClient     settlement.ClientI
 }
 
-func NewTEEFinalizer(config config.TEEConfig, logger types.Logger, slClient settlement.ClientI) *TEEFinalizer {
+func NewTEEFinalizer(config config.BlockManagerConfig, logger types.Logger, slClient settlement.ClientI) *TEEFinalizer {
 	return &TEEFinalizer{
 		config: config,
 		logger: logger,
@@ -41,7 +41,7 @@ func NewTEEFinalizer(config config.TEEConfig, logger types.Logger, slClient sett
 }
 
 func (f *TEEFinalizer) Start(ctx context.Context) error {
-	ticker := time.NewTicker(f.config.AttestationInterval)
+	ticker := time.NewTicker(f.config.TeeInterval)
 	defer ticker.Stop()
 
 	for {
@@ -83,7 +83,7 @@ func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
 }
 
 func (f *TEEFinalizer) queryFullNodeTEE() (*TEEResponse, error) {
-	url := fmt.Sprintf("%s/tee", f.config.SidecarURL)
+	url := fmt.Sprintf("%s/tee", f.config.TeeSidecarURL)
 
 	resp, err := f.sidecarClient.Get(url)
 	if err != nil {
