@@ -115,6 +115,7 @@ func newService(c *client.Client, l types.Logger, opts ...option) *service {
 		"eth_getBlockByNumber": newMethod(s.EthGetBlockByNumber),
 		"eth_blockNumber":      newMethod(s.EthBlockNumber),
 		"eth_getBalance":       newMethod(s.EthGetBalance),
+		"tee":                  newMethod(s.Tee),
 	}
 
 	for _, opt := range opts {
@@ -327,4 +328,8 @@ func (s *service) EthGetBalance(req *http.Request, args *ethBalanceArgs) (*clien
 	addrStr := strings.Replace(args.Address, "0x", "", -1)
 
 	return s.client.EthGetBalance(req.Context(), addrStr, &height)
+}
+
+func (s *service) Tee(req *http.Request) (*teetypes.TEEResponse, error) {
+	return s.client.Tee(req.Context())
 }
