@@ -18,8 +18,8 @@ var (
 	tokenEndpoint = "http://localhost/v1/token"
 )
 
-func GetToken(node *node.Node) (tee.TEEResponse, error) {
-	if !node.BlockManager.Conf.TEE.Enabled {
+func GetToken(node *node.Node, dry bool) (tee.TEEResponse, error) {
+	if !node.BlockManager.Conf.TeeEnabled {
 		return tee.TEEResponse{}, fmt.Errorf("TEE is not enabled")
 	}
 
@@ -39,9 +39,14 @@ func GetToken(node *node.Node) (tee.TEEResponse, error) {
 		FinalizedHeight: validator.GetTrustedHeight(),
 	}
 
-	token, err := getGCPAttestationToken(nonce.Hash())
-	if err != nil {
-		return tee.TEEResponse{}, fmt.Errorf("get attestation token: %w", err)
+	var token string
+	if !dry {
+		// enables checking things work without GCP
+		var err error
+		token, err = getGCPAttestationToken(nonce.Hash())
+		if err != nil {
+			return tee.TEEResponse{}, fmt.Errorf("get attestation token: %w", err)
+		}
 	}
 
 	return tee.TEEResponse{

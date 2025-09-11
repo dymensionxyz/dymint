@@ -332,5 +332,5 @@ func (s *service) EthGetBalance(req *http.Request, args *ethBalanceArgs) (*clien
 }
 
 func (s *service) Tee(req *http.Request, args *teeArgs) (*teetypes.TEEResponse, error) {
-	return s.client.Tee(req.Context())
+	return s.client.Tee(req.Context(), args.Dry)
 }
