@@ -7,6 +7,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/tee"
 	"github.com/dymensionxyz/dymint/types"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
@@ -95,6 +96,15 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorProposerRotation(ctx)
 	})
+
+	// Start TEE attestation client if enabled
+	if m.Conf.TEE.Enabled {
+		teeClient := tee.NewTEEFinalizer(m.Conf.TEE, m.logger, m.SLClient)
+
+		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+			return teeClient.Start(ctx)
+		})
+	}
 
 	return nil
 }
