@@ -10,6 +10,7 @@ import (
 	"time"
 
 	sdkerrors "cosmossdk.io/errors"
+	teetypes "github.com/dymensionxyz/dymint/tee"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	evmostypes "github.com/evmos/evmos/v12/types"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
+	"github.com/dymensionxyz/dymint/rpc/client/tee"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/version"
 
@@ -75,6 +77,11 @@ type Client struct {
 
 	// cache of chunked genesis data.
 	genChunks []string
+}
+
+// GetNode returns the underlying node instance.
+func (c *Client) GetNode() *node.Node {
+	return c.node
 }
 
 type ResultBlockValidated struct {
@@ -1190,4 +1197,12 @@ func (c *Client) getStakingDenom(ctx context.Context) (string, error) {
 		return "", err
 	}
 	return respStDenom.Params.BondDenom, nil
+}
+
+func (c *Client) Tee(ctx context.Context) (*teetypes.TEEResponse, error) {
+	ret, err := tee.GetToken(c.node)
+	if err != nil {
+		return nil, err
+	}
+	return &ret, nil
 }
