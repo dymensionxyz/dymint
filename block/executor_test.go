@@ -92,7 +92,7 @@ func TestCreateBlock(t *testing.T) {
 	assert.Len(block.Data.Txs, 2)
 
 	// native -> proto -> binary -> proto -> native
-	var b1 = block
+	b1 := block
 	require.NoError(b1.ValidateBasic())
 	b1p1 := b1.ToProto()
 	b1p1bz, err := b1p1.Marshal()
@@ -120,7 +120,6 @@ func TestCreateBlock(t *testing.T) {
 	err = b4.FromProto(b1p3)
 	require.NoError(err)
 	require.NoError(b4.ValidateBasic())
-
 }
 
 func TestCreateBlockWithConsensusMessages(t *testing.T) {
@@ -195,7 +194,7 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 	assert.True(proto.Equal(anyMsg2, block.Data.ConsensusMessages[1]))
 
 	// native -> proto -> binary -> proto -> native
-	var b1 = block
+	b1 := block
 	require.NoError(b1.ValidateBasic())
 	b1p1 := b1.ToProto()
 	b1p1bz, err := b1p1.Marshal()

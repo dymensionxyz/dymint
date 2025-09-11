@@ -68,7 +68,6 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			result := client.SubmitBatch(tc.batch)
 			if tc.wantErr {
 				require.Error(t, result.Error)
@@ -134,5 +133,4 @@ func TestDataAvailabilityLayerClientRetrieval(t *testing.T) {
 	rresult := client.RetrieveBatches(meta.ToPath())
 	require.NoError(t, rresult.Error)
 	require.Equal(t, da.StatusSuccess, rresult.Code)
-
 }
