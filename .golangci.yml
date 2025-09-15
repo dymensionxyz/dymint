@@ -26,11 +26,7 @@ linters:
   enable:
   - errcheck
   - gocyclo
-  - gofmt
-  - gofumpt
-  - goimports
   - gosec
-  - gosimple
   - govet
   - ineffassign
   - misspell
