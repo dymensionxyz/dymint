@@ -64,17 +64,19 @@ func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
 		return fmt.Errorf("query full node TEE: %w", err)
 	}
 
+	nonce := attestation.Nonce
+
 	latestFinalizedHeight, err := f.hubClient.GetLatestFinalizedHeight()
 	if err != nil {
 		return fmt.Errorf("get latest finalized height: %w", err)
 	}
-	if attestation.Nonce.CurrHeight <= latestFinalizedHeight {
+	if nonce.CurrHeight <= latestFinalizedHeight {
 		return fmt.Errorf("attestation height is not greater than latest finalized height")
 	}
 
 	err = f.hubClient.SubmitTEEAttestation(
 		attestation.Token,
-		attestation.Nonce,
+		nonce,
 	)
 	if err != nil {
 		return fmt.Errorf("submit attestation to hub: %w", err)
