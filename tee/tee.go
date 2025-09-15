@@ -84,12 +84,16 @@ func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
 }
 
 func (f *TEEFinalizer) queryFullNodeTEE() (*TEEResponse, error) {
+	return queryFullNodeTEE(f.sidecarClient, f.config.TeeSidecarURL)
+}
+
+func queryFullNodeTEE(client *http.Client, url string) (*TEEResponse, error) {
 	// JSON-RPC request structure
 	type jsonRPCRequest struct {
-		JSONRPC string                 `json:"jsonrpc"`
-		Method  string                 `json:"method"`
+		JSONRPC string         `json:"jsonrpc"`
+		Method  string         `json:"method"`
 		Params  map[string]any `json:"params"`
-		ID      int                    `json:"id"`
+		ID      int            `json:"id"`
 	}
 
 	// JSON-RPC response structure
@@ -117,8 +121,8 @@ func (f *TEEFinalizer) queryFullNodeTEE() (*TEEResponse, error) {
 	}
 
 	// Make POST request to RPC endpoint
-	resp, err := f.sidecarClient.Post(
-		f.config.TeeSidecarURL,
+	resp, err := client.Post(
+		url,
 		"application/json",
 		bytes.NewReader(reqBody),
 	)
