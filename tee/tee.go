@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/dymensionxyz/dymint/config"
@@ -64,19 +65,17 @@ func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
 		return fmt.Errorf("query full node TEE: %w", err)
 	}
 
-	nonce := attestation.Nonce
-
 	latestFinalizedHeight, err := f.hubClient.GetLatestFinalizedHeight()
 	if err != nil {
 		return fmt.Errorf("get latest finalized height: %w", err)
 	}
-	if nonce.CurrHeight <= latestFinalizedHeight {
+	if attestation.Nonce.CurrHeight <= latestFinalizedHeight {
 		return fmt.Errorf("attestation height is not greater than latest finalized height")
 	}
 
 	err = f.hubClient.SubmitTEEAttestation(
 		attestation.Token,
-		nonce,
+		attestation.Nonce,
 	)
 	if err != nil {
 		return fmt.Errorf("submit attestation to hub: %w", err)
@@ -157,4 +156,39 @@ func queryFullNodeTEE(client *http.Client, url string) (*TEEResponse, error) {
 	}
 
 	return rpcResponse.Result, nil
+}
+
+// required to make work with json-rpc framework
+func (t *TEEResponse) UnmarshalJSON(data []byte) error {
+	var aux struct {
+		Token string `json:"token"`
+		Nonce struct {
+			RollappId       string `json:"rollapp_id"`
+			CurrHeight      string `json:"curr_height"`
+			FinalizedHeight string `json:"finalized_height"`
+		} `json:"nonce"`
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	currHeight, err := strconv.ParseUint(aux.Nonce.CurrHeight, 10, 64)
+	if err != nil {
+		return fmt.Errorf("parse curr_height: %w", err)
+	}
+
+	finalizedHeight, err := strconv.ParseUint(aux.Nonce.FinalizedHeight, 10, 64)
+	if err != nil {
+		return fmt.Errorf("parse finalized_height: %w", err)
+	}
+
+	t.Token = aux.Token
+	t.Nonce = rollapptypes.TEENonce{
+		RollappId:       aux.Nonce.RollappId,
+		CurrHeight:      currHeight,
+		FinalizedHeight: finalizedHeight,
+	}
+
+	return nil
 }
