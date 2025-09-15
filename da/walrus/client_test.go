@@ -15,7 +15,7 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	//t.Skip("Skipping Walrus client tests")
+	// t.Skip("Skipping Walrus client tests")
 
 	// Create test config
 	config := walrus.TestConfig
