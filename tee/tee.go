@@ -1,6 +1,7 @@
 package tee
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -83,9 +84,44 @@ func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
 }
 
 func (f *TEEFinalizer) queryFullNodeTEE() (*TEEResponse, error) {
-	url := fmt.Sprintf("%s/tee", f.config.TeeSidecarURL)
+	// JSON-RPC request structure
+	type jsonRPCRequest struct {
+		JSONRPC string                 `json:"jsonrpc"`
+		Method  string                 `json:"method"`
+		Params  map[string]any `json:"params"`
+		ID      int                    `json:"id"`
+	}
 
-	resp, err := f.sidecarClient.Get(url)
+	// JSON-RPC response structure
+	type jsonRPCResponse struct {
+		JSONRPC string       `json:"jsonrpc"`
+		Result  *TEEResponse `json:"result"`
+		Error   *struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+		ID int `json:"id"`
+	}
+
+	// Create JSON-RPC request
+	request := jsonRPCRequest{
+		JSONRPC: "2.0",
+		Method:  "tee",
+		Params:  map[string]any{"dry": true},
+		ID:      1,
+	}
+
+	reqBody, err := json.Marshal(request)
+	if err != nil {
+		return nil, fmt.Errorf("marshal request: %w", err)
+	}
+
+	// Make POST request to RPC endpoint
+	resp, err := f.sidecarClient.Post(
+		f.config.TeeSidecarURL,
+		"application/json",
+		bytes.NewReader(reqBody),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("request attestation: %w", err)
 	}
@@ -100,10 +136,19 @@ func (f *TEEFinalizer) queryFullNodeTEE() (*TEEResponse, error) {
 		return nil, fmt.Errorf("full node returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var attestation TEEResponse
-	if err := json.Unmarshal(body, &attestation); err != nil {
+	var rpcResponse jsonRPCResponse
+	if err := json.Unmarshal(body, &rpcResponse); err != nil {
 		return nil, fmt.Errorf("unmarshal response: %w", err)
 	}
 
-	return &attestation, nil
+	// Check for JSON-RPC error
+	if rpcResponse.Error != nil {
+		return nil, fmt.Errorf("JSON-RPC error %d: %s", rpcResponse.Error.Code, rpcResponse.Error.Message)
+	}
+
+	if rpcResponse.Result == nil {
+		return nil, fmt.Errorf("empty result in JSON-RPC response")
+	}
+
+	return rpcResponse.Result, nil
 }
