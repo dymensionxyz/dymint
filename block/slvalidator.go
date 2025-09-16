@@ -20,7 +20,7 @@ type SettlementValidator struct {
 	blockManager        *Manager
 	lastValidatedHeight atomic.Uint64
 
-	// the height the node was started from
+	// immutable: the height the node was started from
 	trustedHeight uint64
 }
 
