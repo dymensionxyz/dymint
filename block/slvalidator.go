@@ -19,6 +19,9 @@ type SettlementValidator struct {
 	logger              types.Logger
 	blockManager        *Manager
 	lastValidatedHeight atomic.Uint64
+
+	// the height the node was started from
+	trustedHeight uint64
 }
 
 // NewSettlementValidator returns a new StateUpdateValidator instance.
@@ -29,8 +32,9 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 	}
 
 	validator := &SettlementValidator{
-		logger:       logger,
-		blockManager: blockManager,
+		logger:        logger,
+		blockManager:  blockManager,
+		trustedHeight: blockManager.State.LastBlockHeight.Load(),
 	}
 
 	// if SkipValidationHeight is set,  dont validate anything previous to that (used by 2D migration)
@@ -251,6 +255,9 @@ func (v *SettlementValidator) GetLastValidatedHeight() uint64 {
 	return v.lastValidatedHeight.Load()
 }
 
+func (v *SettlementValidator) GetTrustedHeight() uint64 {
+	return v.trustedHeight
+}
 // NextValidationHeight returns the next height that needs to be validated with settlement state updates.
 func (v *SettlementValidator) NextValidationHeight() uint64 {
 	return v.lastValidatedHeight.Load() + 1
