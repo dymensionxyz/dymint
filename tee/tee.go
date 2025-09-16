@@ -164,13 +164,20 @@ func (t *TEEResponse) UnmarshalJSON(data []byte) error {
 		Token string `json:"token"`
 		Nonce struct {
 			RollappId       string `json:"rollapp_id"`
-			CurrHeight      string `json:"curr_height"`
-			FinalizedHeight string `json:"finalized_height"`
+			CurrHeight      string `json:"curr_height,omitempty"`
+			FinalizedHeight string `json:"finalized_height,omitempty"`
 		} `json:"nonce"`
 	}
 
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
+	}
+
+	if aux.Nonce.CurrHeight == "" {
+		aux.Nonce.CurrHeight = "0"
+	}
+	if aux.Nonce.FinalizedHeight == "" {
+		aux.Nonce.FinalizedHeight = "0"
 	}
 
 	currHeight, err := strconv.ParseUint(aux.Nonce.CurrHeight, 10, 64)
