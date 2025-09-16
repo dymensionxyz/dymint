@@ -81,6 +81,8 @@ func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
 		return fmt.Errorf("submit attestation to hub: %w", err)
 	}
 
+	f.logger.Info("Submitted attestation", "new finalized height", attestation.Nonce.CurrHeight)
+
 	return nil
 }
 
