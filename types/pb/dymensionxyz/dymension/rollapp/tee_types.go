@@ -30,9 +30,6 @@ func (n TEENonce) Hash() string {
 
 // Validate validates the TEE nonce
 func (n TEENonce) Validate() error {
-	if n.FinalizedHeight == 0 {
-		return gerrc.ErrInvalidArgument.Wrap("finalized height is required")
-	}
 	if n.CurrHeight == 0 {
 		return gerrc.ErrInvalidArgument.Wrap("current height is required")
 	}
