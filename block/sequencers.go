@@ -114,7 +114,7 @@ func (m *Manager) ShouldRotate() (bool, error) {
 // rotate rotates current proposer by doing the following:
 // 1. Creating last block with the new proposer, which will stop him from producing blocks.
 // 2. Submitting the last batch
-// 3. Panicing so the node restarts as full node
+// 3. Panicking so the node restarts as full node
 // Note: In case he already created his last block, he will only try to submit the last batch.
 func (m *Manager) rotate(ctx context.Context) {
 	// Get Next Proposer from SL. We assume such exists (even if empty proposer) otherwise function wouldn't be called.
