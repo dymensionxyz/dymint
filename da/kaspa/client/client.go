@@ -28,6 +28,8 @@ const (
 	Mainnet                       = "kaspa-mainnet"
 	Testnet                       = "kaspa-testnet-10"
 	TxHashLength                  = 64
+	ConfirmationsRequired         = 1000 // Kaspa requires 1000 confirmations for coinbase transaction to be spendable after Crescent hardfork.
+	KaspaBlockTimeSeconds         = 10
 )
 
 type KaspaClient interface {
@@ -289,7 +291,6 @@ func (c *Client) CheckTransactionMaturity(txHash []string) error {
 		return fmt.Errorf("failed to get virtual chain blue score: %w", err)
 	}
 
-	confirmationsRequired := c.params.BlockCoinbaseMaturity * 10
 	maxMissingConfirmations := uint64(0)
 
 	for _, hash := range txHash {
@@ -298,11 +299,14 @@ func (c *Client) CheckTransactionMaturity(txHash []string) error {
 			return err
 		}
 
-		if confirmationsRequired > blueScoreResp.BlueScore-tx.AcceptingBlockBlueScore {
+		// if the transaction is mature enough, go to next tx
+		if ConfirmationsRequired < blueScoreResp.BlueScore-tx.AcceptingBlockBlueScore {
 			continue
 		}
-		// Check if the transaction is mature enough
-		missingConfirmations := confirmationsRequired - (blueScoreResp.BlueScore - tx.AcceptingBlockBlueScore)
+
+		// calculate missing confirmations
+		missingConfirmations := ConfirmationsRequired - (blueScoreResp.BlueScore - tx.AcceptingBlockBlueScore)
+		// set max missing confirmations from all txs
 		if missingConfirmations > maxMissingConfirmations {
 			maxMissingConfirmations = missingConfirmations
 		}
