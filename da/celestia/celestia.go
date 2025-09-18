@@ -106,7 +106,7 @@ func createConfig(bz []byte) (c Config, err error) {
 	}
 	err = json.Unmarshal(bz, &c)
 	if err != nil {
-		return c, fmt.Errorf("json unmarshal: %w", err)
+		return c, fmt.Errorf("json unmarshal: %w, %s", err, string(bz)) // TODO: remove
 	}
 	err = c.InitNamespaceID()
 	if err != nil {
