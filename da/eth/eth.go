@@ -139,7 +139,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	client, err := NewClient(c.ctx, &c.config)
+	client, err := NewClient(c.ctx, &c.config, c.logger)
 	if err != nil {
 		return fmt.Errorf("error while establishing connection to DA layer: %w", err)
 	}
@@ -201,7 +201,9 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 						},
 					}
 				}
-				backoff.Sleep()
+				if !errors.Is(err, da.ErrBlobNotIncluded) {
+					backoff.Sleep()
+				}
 				continue
 			}
 

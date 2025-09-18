@@ -10,11 +10,11 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/ethutils"
+	dyminttypes "github.com/dymensionxyz/dymint/types"
 
 	"github.com/dymensionxyz/go-ethereum/consensus/misc/eip4844"
 	"github.com/dymensionxyz/go-ethereum/crypto/kzg4844"
@@ -27,10 +27,8 @@ import (
 )
 
 const (
-	beaconBlockUrl            = "%s/eth/v2/beacon/blocks/%s"
-	blobSidecarUrl            = "%s/eth/v1/beacon/blob_sidecars/%s"
-	confirmationRetryAttempts = 20
-	confirmationRetryDelay    = 5 * time.Second
+	beaconBlockUrl = "%s/eth/v2/beacon/blocks/%s"
+	blobSidecarUrl = "%s/eth/v1/beacon/blob_sidecars/%s"
 )
 
 type EthClient interface {
@@ -49,11 +47,12 @@ type Client struct {
 	cfg        *EthConfig
 	account    *Account
 	apiURL     string
+	logger     dyminttypes.Logger
 }
 
 var _ EthClient = &Client{}
 
-func NewClient(ctx context.Context, config *EthConfig) (EthClient, error) {
+func NewClient(ctx context.Context, config *EthConfig, logger dyminttypes.Logger) (EthClient, error) {
 	rpcClient, err := rpc.DialContext(ctx, config.Endpoint)
 	if err != nil {
 		return nil, err
@@ -81,6 +80,7 @@ func NewClient(ctx context.Context, config *EthConfig) (EthClient, error) {
 		cfg:        config,
 		account:    account,
 		apiURL:     config.ApiUrl,
+		logger:     logger,
 	}
 
 	return client, nil
@@ -101,10 +101,14 @@ func (c Client) SubmitBlob(blob []byte) ([]byte, []byte, string, error) {
 	if err != nil {
 		return nil, nil, "", err
 	}
-
 	// computes the recommended gas fee with base and tip obtained
 	gasFeeCap := ethutils.CalcGasFeeCap(baseFee, gasTipCap)
 
+	// Calculate estimated costs for debugging
+	regularGasCost := new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(*c.cfg.GasLimit))
+	blobGasCost := new(big.Int).Mul(blobBaseFee, big.NewInt(131072)) // 131072 blob gas per blob
+	totalCost := new(big.Int).Add(regularGasCost, blobGasCost)
+	c.logger.Debug("Estimated transaction costs", "regularGasCost", regularGasCost.String(), "blobGasCost", blobGasCost.String(), "totalCost", totalCost.String())
 	// create blob tx with blob and fee params previously obtained
 	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, *c.cfg.GasLimit, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	if err != nil {
@@ -114,6 +118,8 @@ func (c Client) SubmitBlob(blob []byte) ([]byte, []byte, string, error) {
 	// send blob tx to Ethereum
 	cCtx, cancel = context.WithTimeout(c.ctx, c.cfg.Timeout)
 	defer cancel()
+
+	c.logger.Debug("Sending blob tx to Ethereum", "txHash", blobTx.Hash().String(), "gas", blobTx.Gas(), "fee", blobTx.GasPrice(), "blobgas", blobTx.BlobGas())
 	err = c.ethclient.SendTransaction(cCtx, blobTx)
 	if err != nil {
 		return nil, nil, "", err
@@ -123,7 +129,7 @@ func (c Client) SubmitBlob(blob []byte) ([]byte, []byte, string, error) {
 	// wait for inclusion receipt
 	receipt, err := c.waitForTxReceipt(txhash)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, "", errors.Join(da.ErrBlobNotIncluded, err)
 	}
 
 	// parse blob commitment generated to hex format
@@ -224,8 +230,8 @@ func (c Client) waitForTxReceipt(txHash common.Hash) (*types.Receipt, error) {
 			return nil
 		},
 		retry.Context(ctx),
-		retry.Attempts(confirmationRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
-		retry.Delay(confirmationRetryDelay),
+		retry.Attempts(uint(*c.cfg.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
+		retry.Delay(c.cfg.RetryDelay),
 		retry.DelayType(retry.FixedDelay), // Force fixed delay between attempts
 		retry.LastErrorOnly(true),         // Only log the last error
 	)
