@@ -105,7 +105,7 @@ func (c Client) SubmitBlob(blob []byte) ([]byte, []byte, string, error) {
 	gasFeeCap := ethutils.CalcGasFeeCap(baseFee, gasTipCap)
 
 	// Calculate estimated costs for debugging
-	regularGasCost := new(big.Int).Mul(gasFeeCap, big.NewInt(int64(*c.cfg.GasLimit)))
+	regularGasCost := new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(*c.cfg.GasLimit))
 	blobGasCost := new(big.Int).Mul(blobBaseFee, big.NewInt(131072)) // 131072 blob gas per blob
 	totalCost := new(big.Int).Add(regularGasCost, blobGasCost)
 	c.logger.Debug("Estimated transaction costs", "regularGasCost", regularGasCost.String(), "blobGasCost", blobGasCost.String(), "totalCost", totalCost.String())
