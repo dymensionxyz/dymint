@@ -21,5 +21,5 @@ where:
 - program_address: sequencer Solana address with funds.
 - timeout (nanoseconds): used to cancel retry when fail submissions or retrievals (optional).
 - apikey_env: env variable used to set the auth token required by RPC nodes, if necessary (optional).
-- tx_rate_: rate used to send Solana transactions, required if RPC is rate limited (optional).
-- req_rate: rate used to send Solana queries, required if RPC is rate limited (optional).
+- tx_rate_second: rate used to send Solana transactions, required if RPC is rate limited (optional).
+- req_rate_second: rate used to send Solana queries, required if RPC is rate limited (optional).
