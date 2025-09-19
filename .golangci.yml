@@ -36,6 +36,13 @@ linters:
   - unused
   - errorlint
   exclusions:
+    paths:
+      # mempool and indexer code is borrowed from Tendermint
+      - mempool
+      - state/indexer
+      - state/txindex
+      - da/celestia/mock/server.go
+      - ".*_test\\.go" # TODO: bring back
     rules:
     - linters:
       - staticcheck
@@ -58,16 +65,16 @@ linters:
 
 issues:
   uniq-by-line: true
-  exclude-dirs:
-    # mempool and indexer code is borrowed from Tendermint
-    - mempool
-    - state/indexer
-    - state/txindex
-  exclude-files:
-    - da/celestia/mock/server.go
-    - .*_test\.go # TODO: bring back
 
 formatters:
   enable:
   - goimports
   - gofumpt
+  exclusions:
+    paths:
+      # mempool and indexer code is borrowed from Tendermint
+      - mempool
+      - state/indexer
+      - state/txindex
+      - da/celestia/mock/server.go
+      - ".*_test\\.go" # TODO: bring back
