@@ -29,7 +29,7 @@ const (
 	Testnet                       = "kaspa-testnet-10"
 	TxHashLength                  = 64
 	ConfirmationsRequired         = 1000 // Kaspa requires 1000 confirmations (after Crescent hardfork) to consider a transaction final and safe against reorgs.
-	KaspaBlockTimeSeconds         = 10
+	KaspaBlocksPerSecond          = 10
 )
 
 type KaspaClient interface {
@@ -48,6 +48,7 @@ type Transaction struct {
 	AcceptingBlockHash      string `json:"accepting_block_hash,omitempty"`
 	IsCoinbase              bool   `json:"is_coinbase,omitempty"`
 	AcceptingBlockBlueScore uint64 `json:"accepting_block_blue_score,omitempty"`
+	IsAccepted              bool   `json:"is_accepted,omitempty"`
 }
 
 type FailedTxRetrieve struct {
@@ -297,6 +298,12 @@ func (c *Client) CheckTransactionMaturity(txHash []string) error {
 		tx, err := c.retrieveBlobTx(hash)
 		if err != nil {
 			return err
+		}
+
+		// if the transaction is not accepted yet, set max missing confirmations to be required and continue
+		if !tx.IsAccepted {
+			maxMissingConfirmations = ConfirmationsRequired
+			continue
 		}
 
 		// if the transaction is mature enough, go to next tx
