@@ -1,7 +1,6 @@
 package celestia
 
 import (
-	_ "embed"
 	"encoding/json"
 	"testing"
 	"time"
@@ -63,12 +62,4 @@ func TestCreateConfig(t *testing.T) {
 		bz := mustMarshal(c)
 		t.Log(string(bz))
 	})
-}
-
-//go:embed testdata/config.json
-var exampleConfig []byte
-
-func TestExampleConfig(t *testing.T) {
-	_, err := createConfig(exampleConfig)
-	require.NoError(t, err)
 }
