@@ -16,7 +16,7 @@ da_config = ['{"endpoint":"https://devnet.helius-rpc.com/?api-key=ffd685bc-4ce6-
 
 where:
 
-- endpoint = RPC url address for Solana RPC. This is an example of Helius RPC service with api-key included. When using rate limited RPC it is mandatory to set tx_rate_second and req_rate_second according to service limits. In case of deploying local node, it can be directly used node url (e.g. http://localhost:8899)
+- endpoint = RPC url address for Solana RPC. This is an example of Helius RPC service with api-key included. When using rate limited RPC it is mandatory to set tx_rate_second and req_rate_second according to service limits. In case of deploying local node, it can be directly used node url (e.g. <http://localhost:8899>)
 - keypath_env = env variable name used to set the path where the solana private key is stored.
 - program_address: sequencer Solana address with funds.
 - timeout (nanoseconds): used to cancel retry when fail submissions or retrievals (optional).
