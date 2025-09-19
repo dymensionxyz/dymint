@@ -2,6 +2,7 @@ package da
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
@@ -20,18 +21,31 @@ var (
 	ErrBlobNotFound = errors.New("blob not found")
 	// ErrBlobNotIncluded is returned when blob is not included.
 	ErrBlobNotIncluded = errors.New("blob not included")
+	// ErrBlobNotFinal is returned when blob/transaction is not mature enough (for Kaspa).
+	ErrBlobNotFinal = errors.New("blob not final")
 	// ErrUnableToGetProofs is returned when proof is not available.
 	ErrUnableToGetProofs = errors.Join(ErrBlobNotIncluded, errors.New("unable to get availability proofs"))
 	// ErrProofNotMatching is returned when proof does not match.
 	ErrProofNotMatching = errors.Join(ErrBlobNotIncluded, errors.New("proof not matching"))
 	// ErrBlobNotParsed is returned when blob cannot be parsed
 	ErrBlobNotParsed = errors.New("unable to parse blob to batch")
-
 	// ErrNameSpace is returned when wrong namespace used
 	ErrNameSpace = errors.New("namespace not matching")
 	// ErrDAMismatch is returned when the DA client used does not match the da client specified in the da path of the state update
 	ErrDAMismatch = gerrc.ErrInvalidArgument.Wrap("DA in config not matching DA path")
-
 	// ErrDANotAvailable is returned when da client has syncing or rpc issues
 	ErrDANotAvailable = errors.New("DA client not available")
 )
+
+// ErrMaturityNotReached is returned when a transaction is not mature enough
+type ErrMaturityNotReached struct {
+	MissingConfirmations uint64
+}
+
+func (e ErrMaturityNotReached) Error() string {
+	return fmt.Sprintf("transaction not mature, missing %d confirmations", e.MissingConfirmations)
+}
+
+func (e ErrMaturityNotReached) Is(target error) bool {
+	return target == ErrBlobNotFinal
+}
