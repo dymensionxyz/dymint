@@ -406,3 +406,9 @@ func (c *Client) GetSignerBalance() (types.Balance, error) {
 func (c *Client) ValidateGenesisBridgeData(rollapptypes.GenesisBridgeData) error {
 	return nil
 }
+
+// SubmitTEEAttestation submits a TEE attestation to fast-finalize state updates
+func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce) error {
+	// Stub implementation for grpc settlement layer
+	return nil
+}

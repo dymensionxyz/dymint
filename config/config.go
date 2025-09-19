@@ -64,6 +64,12 @@ type BlockManagerConfig struct {
 	SequencerSetUpdateInterval time.Duration `mapstructure:"sequencer_update_interval"`
 	// SkipValidationHeight can be used to skip fraud validation for a specific height (used to bypass backward compatibility issues between versions)
 	SkipValidationHeight uint64 `mapstructure:"skip_validation_height"`
+	// TEE configuration for attestation submission
+	TeeEnabled bool `mapstructure:"tee_enabled"`
+	// TeeSidecarURL is the URL of the TEE sidecar's RPC endpoint
+	TeeSidecarURL string `mapstructure:"tee_sidecar_url"`
+	// TeeInterval is how often to fetch and submit attestations
+	TeeInterval time.Duration `mapstructure:"tee_interval"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
