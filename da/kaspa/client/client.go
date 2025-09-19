@@ -28,7 +28,7 @@ const (
 	Mainnet                       = "kaspa-mainnet"
 	Testnet                       = "kaspa-testnet-10"
 	TxHashLength                  = 64
-	ConfirmationsRequired         = 1000 // Kaspa requires 1000 confirmations for coinbase transaction to be spendable after Crescent hardfork.
+	ConfirmationsRequired         = 1000 // Kaspa requires 1000 confirmations (after Crescent hardfork) to consider a transaction final and safe against reorgs.
 	KaspaBlockTimeSeconds         = 10
 )
 
