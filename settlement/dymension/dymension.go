@@ -804,14 +804,12 @@ func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce)
 		return fmt.Errorf("derive address: %w", err)
 	}
 
-	// Create the MsgFastFinalizeWithTEE message
 	msg := &rollapptypes.MsgFastFinalizeWithTEE{
 		Creator:          addr,
 		AttestationToken: token,
 		Nonce:            nonce,
 	}
 
-	// Broadcast the transaction
 	txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msg)
 	if err != nil {
 		return fmt.Errorf("broadcast TEE attestation tx: %w", err)
