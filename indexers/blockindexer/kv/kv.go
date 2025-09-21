@@ -21,7 +21,6 @@ import (
 
 	tmtypes "github.com/tendermint/tendermint/types"
 
-	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	dmtypes "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
@@ -369,8 +368,8 @@ func (idx *BlockerIndexer) match(
 
 	tmpHeights := make(map[string][]byte)
 
-	switch {
-	case c.Op == query.OpEqual:
+	switch c.Op {
+	case query.OpEqual:
 		it := idx.store.PrefixIterator(startKeyBz)
 		defer it.Discard()
 
@@ -386,7 +385,7 @@ func (idx *BlockerIndexer) match(
 			return nil, err
 		}
 
-	case c.Op == query.OpExists:
+	case query.OpExists:
 		prefix, err := orderedcode.Append(nil, c.CompositeKey)
 		if err != nil {
 			return nil, err
@@ -416,7 +415,7 @@ func (idx *BlockerIndexer) match(
 			return nil, err
 		}
 
-	case c.Op == query.OpContains:
+	case query.OpContains:
 		prefix, err := orderedcode.Append(nil, c.CompositeKey)
 		if err != nil {
 			return nil, err
@@ -611,7 +610,7 @@ func (idx *BlockerIndexer) pruneEvents(height int64, logger log.Logger, batch st
 	if err != nil {
 		return pruned, err
 	}
-	eventKeys := &dymint.EventKeys{}
+	eventKeys := &dmtypes.EventKeys{}
 	err = eventKeys.Unmarshal(keysList)
 	if err != nil {
 		return pruned, err
@@ -628,7 +627,7 @@ func (idx *BlockerIndexer) pruneEvents(height int64, logger log.Logger, batch st
 	return pruned, nil
 }
 
-func (idx *BlockerIndexer) addEventKeys(height int64, beginKeys *dymint.EventKeys, endKeys *dymint.EventKeys, batch store.KVBatch) error {
+func (idx *BlockerIndexer) addEventKeys(height int64, beginKeys *dmtypes.EventKeys, endKeys *dmtypes.EventKeys, batch store.KVBatch) error {
 	eventKeys := beginKeys
 	eventKeys.Keys = append(eventKeys.Keys, endKeys.Keys...)
 	eventKeyHeight, err := eventHeightKey(height)

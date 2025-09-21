@@ -119,7 +119,7 @@ func (nc NodeConfig) Validate() error {
 	}
 
 	if err := nc.validateInstrumentation(); err != nil {
-		return fmt.Errorf("Instrumentation: %w", err)
+		return fmt.Errorf("instrumentation: %w", err)
 	}
 
 	if err := nc.DBConfig.Validate(); err != nil {

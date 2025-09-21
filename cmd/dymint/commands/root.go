@@ -52,7 +52,7 @@ func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 	conf.SetRoot(conf.RootDir)
 	cfg.EnsureRoot(conf.RootDir)
 	if err := conf.ValidateBasic(); err != nil {
-		return nil, fmt.Errorf("in config file: %v", err)
+		return nil, fmt.Errorf("in config file: %w", err)
 	}
 
 	cfg := config.DefaultConfig(home)

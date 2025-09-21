@@ -229,7 +229,7 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, string, error) {
 			Commitment: rpc.CommitmentConfirmed,
 		},
 	)
-	if err == fmt.Errorf("not found") {
+	if errors.Is(err, fmt.Errorf("not found")) {
 		return "", "", da.ErrBlobNotFound
 	}
 
@@ -239,7 +239,7 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, string, error) {
 
 	// Check if logs are present
 	if out == nil || out.Meta == nil || len(out.Meta.LogMessages) == 0 {
-		return "", "", errors.Join(da.ErrBlobNotFound, fmt.Errorf("No logs found for this transaction."))
+		return "", "", errors.Join(da.ErrBlobNotFound, fmt.Errorf("no logs found for this transaction"))
 	}
 
 	hash, found := strings.CutPrefix(out.Meta.LogMessages[1], "Program log: Tx: ")

@@ -102,7 +102,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 			// after syncing from SL, attempt to apply cached blocks if any
 			err := m.attemptApplyCachedBlocks()
 			if err != nil {
-				return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
+				return fmt.Errorf("attempt apply cached blocks: %w", err)
 			}
 
 			// avoid notifying as synced in case it fails before

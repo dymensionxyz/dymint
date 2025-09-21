@@ -22,7 +22,7 @@ const (
 func NewBytes(p *loadtime.Payload) ([]byte, error) {
 	p.Padding = make([]byte, 1)
 	nullTime := time.Time{}
-	if p.Time == nullTime {
+	if p.Time.Equal(nullTime) {
 		p.Time = time.Now()
 	}
 	us, err := CalculateUnpaddedSize(p)

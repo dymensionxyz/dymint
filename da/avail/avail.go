@@ -19,7 +19,7 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-var AppIdError = errors.New("Transaction is not compatible with non-zero AppIds")
+var ErrAppID = errors.New("transaction is not compatible with non-zero AppIds")
 
 const (
 	keyringNetworkID          uint8 = 42
@@ -103,28 +103,28 @@ var (
 // WithRPCClient sets rpc client.
 func WithRPCClient(client AvailClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).client = client
+		daLayerClient.(*DataAvailabilityLayerClient).client = client //nolint:errcheck
 	}
 }
 
 // WithTxInclusionTimeout is an option which sets the timeout for waiting for transaction inclusion.
 func WithTxInclusionTimeout(timeout time.Duration) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
-		dalc.(*DataAvailabilityLayerClient).txInclusionTimeout = timeout
+		dalc.(*DataAvailabilityLayerClient).txInclusionTimeout = timeout //nolint:errcheck
 	}
 }
 
 // WithBatchRetryDelay is an option which sets the delay between batch retries.
 func WithBatchRetryDelay(delay time.Duration) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
-		dalc.(*DataAvailabilityLayerClient).batchRetryDelay = delay
+		dalc.(*DataAvailabilityLayerClient).batchRetryDelay = delay //nolint:errcheck
 	}
 }
 
 // WithBatchRetryAttempts is an option which sets the number of batch retries.
 func WithBatchRetryAttempts(attempts uint) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
-		dalc.(*DataAvailabilityLayerClient).batchRetryAttempts = attempts
+		dalc.(*DataAvailabilityLayerClient).batchRetryAttempts = attempts //nolint:errcheck
 	}
 }
 
@@ -220,7 +220,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
-						if errors.Is(err, da.ErrTxBroadcastConfigError) || errors.Is(err, AppIdError) {
+						if errors.Is(err, da.ErrTxBroadcastConfigError) || errors.Is(err, ErrAppID) {
 							err = retry.Unrecoverable(err)
 						}
 						return err

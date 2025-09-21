@@ -243,7 +243,7 @@ func (c Client) getKzg4844Blob(slot string, txCommitment []byte) (*kzg4844.Blob,
 	}
 
 	if blobSidecars == nil {
-		return nil, errors.Join(da.ErrBlobNotFound, fmt.Errorf("Unable to get blob. No blobs included in slot id:%s", slot))
+		return nil, errors.Join(da.ErrBlobNotFound, fmt.Errorf("unable to get blob. No blobs included in slot id:%s", slot))
 	}
 
 	for _, blobSidecar := range blobSidecars {
@@ -255,7 +255,7 @@ func (c Client) getKzg4844Blob(slot string, txCommitment []byte) (*kzg4844.Blob,
 			return blobSidecar.Blob, nil
 		}
 	}
-	return nil, errors.Join(da.ErrBlobNotFound, fmt.Errorf("Unable to get blob. No commitment match"))
+	return nil, errors.Join(da.ErrBlobNotFound, fmt.Errorf("unable to get blob. No commitment match"))
 }
 
 // getSlot returns the beacon chain slot id that corresponds to the execution layer block id

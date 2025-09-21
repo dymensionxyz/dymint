@@ -15,7 +15,6 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/dymensionxyz/dymint/da/celestia/client"
 	daclient "github.com/dymensionxyz/dymint/da/celestia/client"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -46,30 +45,30 @@ var (
 )
 
 // WithRPCClient sets rpc client.
-func WithRPCClient(client client.DAClient) da.Option {
+func WithRPCClient(client daclient.DAClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).client = client
+		daLayerClient.(*DataAvailabilityLayerClient).client = client //nolint:errcheck
 	}
 }
 
 // WithRPCRetryDelay sets failed rpc calls retry delay.
 func WithRPCRetryDelay(delay time.Duration) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).config.RetryDelay = delay
+		daLayerClient.(*DataAvailabilityLayerClient).config.RetryDelay = delay //nolint:errcheck
 	}
 }
 
 // WithRPCAttempts sets failed rpc calls retry attempts.
 func WithRPCAttempts(attempts int) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = &attempts
+		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = &attempts //nolint:errcheck
 	}
 }
 
 // WithSubmitBackoff sets submit retry delay config.
 func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).config.Backoff = c
+		daLayerClient.(*DataAvailabilityLayerClient).config.Backoff = c //nolint:errcheck
 	}
 }
 

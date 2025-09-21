@@ -289,7 +289,7 @@ func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCap
 	if outCap > 0 {
 		sub, err = c.EventBus.Subscribe(ctx, subscriber, q, outCap)
 	} else {
-		sub, err = c.EventBus.SubscribeUnbuffered(ctx, subscriber, q)
+		sub, err = c.SubscribeUnbuffered(ctx, subscriber, q)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("subscribe: %w", err)
@@ -959,9 +959,9 @@ func (c *Client) normalizeHeight(height *int64) uint64 {
 }
 
 func (c *Client) IsSubscriptionAllowed(subscriber string) error {
-	if c.EventBus.NumClients() >= c.config.MaxSubscriptionClients {
+	if c.NumClients() >= c.config.MaxSubscriptionClients {
 		return fmt.Errorf("max_subscription_clients %d reached", c.config.MaxSubscriptionClients)
-	} else if c.EventBus.NumClientSubscriptions(subscriber) >= c.config.MaxSubscriptionsPerClient {
+	} else if c.NumClientSubscriptions(subscriber) >= c.config.MaxSubscriptionsPerClient {
 		return fmt.Errorf("max_subscriptions_per_client %d reached", c.config.MaxSubscriptionsPerClient)
 	}
 

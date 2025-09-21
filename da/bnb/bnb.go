@@ -3,6 +3,7 @@ package bnb
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -86,28 +87,28 @@ type SubmitMetaData struct {
 // WithRPCClient sets rpc client.
 func WithRPCClient(client BNBClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).client = client
+		daLayerClient.(*DataAvailabilityLayerClient).client = client //nolint:errcheck
 	}
 }
 
 // WithTxInclusionTimeout is an option which sets the timeout for waiting for transaction inclusion.
 func WithTxInclusionTimeout(timeout time.Duration) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
-		dalc.(*DataAvailabilityLayerClient).txInclusionTimeout = timeout
+		dalc.(*DataAvailabilityLayerClient).txInclusionTimeout = timeout //nolint:errcheck
 	}
 }
 
 // WithBatchRetryDelay is an option which sets the delay between batch retries.
 func WithBatchRetryDelay(delay time.Duration) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
-		dalc.(*DataAvailabilityLayerClient).batchRetryDelay = delay
+		dalc.(*DataAvailabilityLayerClient).batchRetryDelay = delay //nolint:errcheck
 	}
 }
 
 // WithBatchRetryAttempts is an option which sets the number of batch retries.
 func WithBatchRetryAttempts(attempts uint) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
-		dalc.(*DataAvailabilityLayerClient).batchRetryAttempts = attempts
+		dalc.(*DataAvailabilityLayerClient).batchRetryAttempts = attempts //nolint:errcheck
 	}
 }
 
@@ -305,7 +306,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 	err = retry.Do(
 		func() error {
 			result = c.checkBatchAvailability(daMetaData)
-			if result.Error == da.ErrBlobNotFound {
+			if errors.Is(result.Error, da.ErrBlobNotFound) {
 				return retry.Unrecoverable(result.Error)
 			}
 			return result.Error

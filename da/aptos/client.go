@@ -68,7 +68,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(txHash string) da.ResultRe
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("Failed to retrieve transaction: %v", err),
-				Error:   fmt.Errorf("failed to retrieve transaction: %v", err),
+				Error:   fmt.Errorf("failed to retrieve transaction: %w", err),
 			},
 		}
 	}
@@ -133,7 +133,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(txHash string) da.ResultRe
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("Failed to decode argument from hex: %v", err),
-				Error:   fmt.Errorf("failed to decode argument from hex: %v", err),
+				Error:   fmt.Errorf("failed to decode argument from hex: %w", err),
 			},
 		}
 	}
@@ -146,7 +146,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(txHash string) da.ResultRe
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("Failed to deserialize argument: %v", err),
-				Error:   fmt.Errorf("failed to deserialize argument: %v", err),
+				Error:   fmt.Errorf("failed to deserialize argument: %w", err),
 			},
 		}
 	}
@@ -178,14 +178,14 @@ func (c *DataAvailabilityLayerClient) parseBatch(batchData []byte) (*types.Batch
 	var batch pb.Batch
 	err := proto.Unmarshal(batchData, &batch)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling batch: %s", err)
+		return nil, fmt.Errorf("error unmarshaling batch: %w", err)
 	}
 
 	// Convert from proto format to our batch type
 	parsedBatch := new(types.Batch)
 	err = parsedBatch.FromProto(&batch)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling batch: %s", err)
+		return nil, fmt.Errorf("error unmarshaling batch: %w", err)
 	}
 
 	return parsedBatch, nil
@@ -301,7 +301,7 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 	// Create transaction parameters for each chunk
 	rawData, err := bcs.SerializeBytes(data)
 	if err != nil {
-		return nil, fmt.Errorf("marshal to BCS: %v", err)
+		return nil, fmt.Errorf("marshal to BCS: %w", err)
 	}
 
 	// Submit the transaction
@@ -319,13 +319,13 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("build transaction: %v", err)
+		return nil, fmt.Errorf("build transaction: %w", err)
 	}
 
 	// Wait for transaction confirmation
 	userTx, err := c.cli.WaitForTransaction(tx.Hash)
 	if err != nil {
-		return nil, fmt.Errorf("wait for transaction: %v", err)
+		return nil, fmt.Errorf("wait for transaction: %w", err)
 	}
 
 	if !userTx.Success {

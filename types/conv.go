@@ -58,8 +58,8 @@ func ToABCIBlock(block *Block) (*tmtypes.Block, error) {
 		},
 		LastCommit: abciLastCommit,
 	}
-	abciBlock.Data.Txs = ToABCIBlockDataTxs(&block.Data)
-	abciBlock.Header.DataHash = block.Header.DataHash[:]
+	abciBlock.Txs = ToABCIBlockDataTxs(&block.Data)
+	abciBlock.DataHash = block.Header.DataHash[:]
 
 	return &abciBlock, nil
 }

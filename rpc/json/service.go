@@ -310,7 +310,7 @@ func (s *service) EthBlockNumber(req *http.Request, args *blockArgs) (*client.Re
 }
 
 func (s *service) EthGetBlockByNumber(req *http.Request, args *ethBlockArgs) (*client.ResultEthMethod, error) {
-	heightStr := strings.Replace(args.Height, "0x", "", -1)
+	heightStr := strings.ReplaceAll(args.Height, "0x", "")
 	height, err := strconv.ParseInt(heightStr, 16, 64)
 	if err != nil {
 		return &client.ResultEthMethod{Result: ""}, nil
@@ -319,12 +319,12 @@ func (s *service) EthGetBlockByNumber(req *http.Request, args *ethBlockArgs) (*c
 }
 
 func (s *service) EthGetBalance(req *http.Request, args *ethBalanceArgs) (*client.ResultEthMethod, error) {
-	heightStr := strings.Replace(args.Height, "0x", "", -1)
+	heightStr := strings.ReplaceAll(args.Height, "0x", "")
 	height, err := strconv.ParseInt(heightStr, 16, 64)
 	if err != nil {
 		height = 0
 	}
-	addrStr := strings.Replace(args.Address, "0x", "", -1)
+	addrStr := strings.ReplaceAll(args.Address, "0x", "")
 
 	return s.client.EthGetBalance(req.Context(), addrStr, &height)
 }

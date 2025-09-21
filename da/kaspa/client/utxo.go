@@ -165,7 +165,7 @@ func (c *Client) selectUTXOs(feeRate float64, maxFee uint64, blob []byte) (selec
 	totalSpend := fee
 	// totalReceived = spendAmount
 	if totalValue < totalSpend {
-		return nil, 0, fmt.Errorf("Insufficient funds for send: %f required, while only %f available",
+		return nil, 0, fmt.Errorf("insufficient funds for send: %f required, while only %f available",
 			float64(totalSpend)/constants.SompiPerKaspa, float64(totalValue)/constants.SompiPerKaspa)
 	}
 

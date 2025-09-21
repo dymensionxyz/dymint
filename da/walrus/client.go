@@ -57,7 +57,7 @@ func (d *DataAvailabilityLayerClient) retrieveBatches(blobID string) da.ResultRe
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("Failed to retrieve blob: %v", err),
-				Error:   fmt.Errorf("failed to retrieve blob: %v", err),
+				Error:   fmt.Errorf("failed to retrieve blob: %w", err),
 			},
 		}
 	}
@@ -197,7 +197,7 @@ func (d *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 
 	blobID, err := d.client.SubmitBlob(ctx, data, d.config.StoreDurationEpochs, d.config.BlobOwnerAddr)
 	if err != nil {
-		return nil, fmt.Errorf("submit blob: %v", err)
+		return nil, fmt.Errorf("submit blob: %w", err)
 	}
 
 	if blobID == "" {

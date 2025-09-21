@@ -72,35 +72,35 @@ var (
 // WithRPCClient sets rpc client.
 func WithGatewayClient(gateway Gateway) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).gateway = gateway
+		daLayerClient.(*DataAvailabilityLayerClient).gateway = gateway //nolint:errcheck
 	}
 }
 
 // WithRPCClient sets rpc client.
 func WithRPCClient(rpc LoadNetwork) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).client = rpc
+		daLayerClient.(*DataAvailabilityLayerClient).client = rpc //nolint:errcheck
 	}
 }
 
 // WithRPCRetryDelay sets failed rpc calls retry delay.
 func WithRPCRetryDelay(delay time.Duration) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).config.RetryDelay = delay
+		daLayerClient.(*DataAvailabilityLayerClient).config.RetryDelay = delay //nolint:errcheck
 	}
 }
 
 // WithRPCAttempts sets failed rpc calls retry attempts.
 func WithRPCAttempts(attempts int) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = &attempts
+		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = &attempts //nolint:errcheck
 	}
 }
 
 // WithSubmitBackoff sets submit retry delay config.
 func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).config.Backoff = c
+		daLayerClient.(*DataAvailabilityLayerClient).config.Backoff = c //nolint:errcheck
 	}
 }
 
@@ -292,11 +292,11 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daPath string) da.ResultRe
 				func() error {
 					resultRetrieveBatch = c.retrieveBatches(daMetaData)
 					if resultRetrieveBatch.Error != nil {
-						switch resultRetrieveBatch.Error {
-						case da.ErrRetrieval:
+						switch {
+						case errors.Is(resultRetrieveBatch.Error, da.ErrRetrieval):
 							c.logger.Error("Retrieve batch failed with retrieval error. Retrying retrieve attempt.", "error", resultRetrieveBatch.Error)
-							return resultRetrieveBatch.Error // Trigger retry
-						case da.ErrBlobNotFound, da.ErrBlobNotIncluded, da.ErrProofNotMatching:
+							return resultRetrieveBatch.Error
+						case errors.Is(resultRetrieveBatch.Error, da.ErrBlobNotFound), errors.Is(resultRetrieveBatch.Error, da.ErrBlobNotIncluded), errors.Is(resultRetrieveBatch.Error, da.ErrProofNotMatching):
 							return retry.Unrecoverable(resultRetrieveBatch.Error)
 						default:
 							return retry.Unrecoverable(resultRetrieveBatch.Error)
@@ -457,11 +457,11 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 				func() error {
 					result := c.checkBatchAvailability(daMetaData)
 					availabilityResult = result
-					switch result.Error {
-					case da.ErrRetrieval:
+					switch {
+					case errors.Is(result.Error, da.ErrRetrieval):
 						c.logger.Error("CheckBatchAvailability failed with retrieval error. Retrying availability check.", "error", result.Error)
-						return result.Error // Trigger retry
-					case da.ErrBlobNotFound, da.ErrBlobNotIncluded, da.ErrProofNotMatching:
+						return result.Error
+					case errors.Is(result.Error, da.ErrBlobNotFound), errors.Is(result.Error, da.ErrBlobNotIncluded), errors.Is(result.Error, da.ErrProofNotMatching):
 						return retry.Unrecoverable(result.Error)
 					default:
 						return retry.Unrecoverable(result.Error)
