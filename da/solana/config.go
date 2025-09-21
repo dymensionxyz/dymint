@@ -13,8 +13,6 @@ const (
 	defaultRetryDelay    = 5 * time.Second
 	defaultRetryAttempts = uint(10)
 	MaxBlobSizeBytes     = 500000
-	defaultTxRate        = 1
-	defaultRequestRate   = 100
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -24,15 +22,15 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 
 // Config stores Solana client configuration parameters.
 type Config struct {
-	KeyPathEnv     string               `json:"keypath_env,omitempty"`     // mnemonic used to generate key
-	ApiKeyEnv      string               `json:"apikey_env,omitempty"`      // apikey used for the rpc client
-	RetryAttempts  *uint                `json:"retry_attempts,omitempty"`  // num retries before failing when submitting or retrieving blobs
-	RetryDelay     time.Duration        `json:"retry_delay,omitempty"`     // waiting time after failing before failing when submitting or retrieving blobs
-	Backoff        uretry.BackoffConfig `json:"backoff,omitempty"`         // backoff function used before retrying after all retries failed when submitting
-	Endpoint       string               `json:"endpoint,omitempty"`        // rpc endpoint
-	ProgramAddress string               `json:"program_address,omitempty"` // address of the Solana program used to write/read data
-	SubmitTxRate   *int                 `json:"tx_rate,omitempty"`         // rate limit to send transactions
-	RequestTxRate  *int                 `json:"req_rate,omitempty"`        // rate limit for querying transactions
+	KeyPathEnv             string               `json:"keypath_env,omitempty"`     // mnemonic used to generate key
+	ApiKeyEnv              string               `json:"apikey_env,omitempty"`      // apikey used for the rpc client
+	RetryAttempts          *uint                `json:"retry_attempts,omitempty"`  // num retries before failing when submitting or retrieving blobs
+	RetryDelay             time.Duration        `json:"retry_delay,omitempty"`     // waiting time after failing before failing when submitting or retrieving blobs
+	Backoff                uretry.BackoffConfig `json:"backoff,omitempty"`         // backoff function used before retrying after all retries failed when submitting
+	Endpoint               string               `json:"endpoint,omitempty"`        // rpc endpoint
+	ProgramAddress         string               `json:"program_address,omitempty"` // address of the Solana program used to write/read data
+	SubmitTxRatePerSecond  *int                 `json:"tx_rate_second,omitempty"`  // rate limit to send transactions
+	RequestTxRatePerSecond *int                 `json:"req_rate_second,omitempty"` // rate limit for querying transactions
 }
 
 var TestConfig = Config{
@@ -53,11 +51,11 @@ func CreateConfig(bz []byte) (c Config, err error) {
 		return c, fmt.Errorf("json unmarshal: %w", err)
 	}
 
-	if c.SubmitTxRate != nil && *c.SubmitTxRate <= 0 {
+	if c.SubmitTxRatePerSecond != nil && *c.SubmitTxRatePerSecond <= 0 {
 		return c, errors.New("rate must be positive")
 	}
 
-	if c.RequestTxRate != nil && *c.RequestTxRate <= 0 {
+	if c.SubmitTxRatePerSecond != nil && *c.SubmitTxRatePerSecond <= 0 {
 		return c, errors.New("rate must be positive")
 	}
 
