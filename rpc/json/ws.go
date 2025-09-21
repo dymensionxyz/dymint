@@ -81,7 +81,7 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 			} else {
 				h.logger.Error("read next WebSocket message", "error", err)
 			}
-			err := h.srv.client.EventBus.UnsubscribeAll(r.Context(), remoteAddr)
+			err := h.srv.client.UnsubscribeAll(r.Context(), remoteAddr)
 			if err != nil && !errors.Is(err, tmpubsub.ErrSubscriptionNotFound) {
 				h.logger.Error("unsubscribe addr from events", "addr", remoteAddr, "err", err)
 			}

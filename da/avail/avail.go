@@ -19,7 +19,7 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-var AppIdError = errors.New("transaction is not compatible with non-zero AppIds")
+var ErrAppID = errors.New("transaction is not compatible with non-zero AppIds")
 
 const (
 	keyringNetworkID          uint8 = 42
@@ -220,7 +220,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					if err != nil {
 						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
-						if errors.Is(err, da.ErrTxBroadcastConfigError) || errors.Is(err, AppIdError) {
+						if errors.Is(err, da.ErrTxBroadcastConfigError) || errors.Is(err, ErrAppID) {
 							err = retry.Unrecoverable(err)
 						}
 						return err

@@ -28,7 +28,7 @@ var _ AvailClient = &Client{}
 
 // NewClient returns a DA avail client
 func NewClient(endpoint string, seed string, appId uint32) (AvailClient, error) {
-	sdk, err := sdk.NewSDK(endpoint)
+	availSDK, err := sdk.NewSDK(endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func NewClient(endpoint string, seed string, appId uint32) (AvailClient, error) 
 	}
 
 	client := Client{
-		sdk:     sdk,
+		sdk:     availSDK,
 		account: acc,
 		appId:   appId,
 	}

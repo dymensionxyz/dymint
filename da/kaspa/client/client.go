@@ -77,7 +77,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 	case Mainnet:
 		params = &dagconfig.MainnetParams
 	default:
-		return nil, fmt.Errorf("Kaspa network not set to testnet or mainnet. Param: %s", config.Network)
+		return nil, fmt.Errorf("kaspa network not set to testnet or mainnet. Param: %s", config.Network)
 	}
 
 	seed := bip39.NewSeed(mnemonic, "")
@@ -215,17 +215,17 @@ func (c *Client) retrieveBlobTx(txHash string) (*Transaction, error) {
 	if resp.StatusCode != 200 {
 		var tx FailedTxRetrieve
 		if err := json.NewDecoder(resp.Body).Decode(&tx); err != nil {
-			return nil, fmt.Errorf("Kaspa API response decode failed: %w", err)
+			return nil, fmt.Errorf("kaspa API response decode failed: %w", err)
 		}
 		if tx.Result == "Transaction not found" {
 			return nil, da.ErrBlobNotFound
 		}
-		return nil, fmt.Errorf("Http response status code not OK: Status: %d", resp.StatusCode)
+		return nil, fmt.Errorf("http response status code not OK: Status: %d", resp.StatusCode)
 	}
 
 	var tx Transaction
 	if err := json.NewDecoder(resp.Body).Decode(&tx); err != nil {
-		return nil, fmt.Errorf("Kaspa API response decode failed: %w", err)
+		return nil, fmt.Errorf("kaspa API response decode failed: %w", err)
 	}
 	return &tx, nil
 }
