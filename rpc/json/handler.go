@@ -63,7 +63,8 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 	// Get service method to be called.
 	method, err := codecReq.Method()
 	if err != nil {
-		if e, ok := err.(*json2.Error); method == "" && ok && e.Message == "EOF" {
+		e := &json2.Error{}
+		if errors.As(err, &e) && method == "" && e.Message == "EOF" {
 			// just serve empty page if request is empty
 			return
 		}
