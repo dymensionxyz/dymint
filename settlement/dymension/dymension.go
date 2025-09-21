@@ -349,7 +349,7 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 				return nil, fmt.Errorf("get batch at height: %w", err)
 			}
 		} else {
-			proposerAddr = res.Batch.Sequencer
+			proposerAddr = res.Sequencer
 		}
 	}
 
@@ -681,7 +681,7 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 	var (
 		gas           string
-		gasAdjustment float64 = 1.0
+		gasAdjustment = 1.0
 	)
 	if config.GasLimit == 0 {
 		gas = "auto"
@@ -713,7 +713,7 @@ func (c *Client) pollForBatchInclusion(batchEndHeight uint64) (bool, error) {
 		return false, fmt.Errorf("get latest batch: %w", err)
 	}
 
-	return latestBatch.Batch.EndHeight == batchEndHeight, nil
+	return latestBatch.EndHeight == batchEndHeight, nil
 }
 
 func (c *Client) getLatestProposer() (string, error) {

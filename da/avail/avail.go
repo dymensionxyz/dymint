@@ -19,7 +19,7 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-var AppIdError = errors.New("Transaction is not compatible with non-zero AppIds")
+var AppIdError = errors.New("transaction is not compatible with non-zero AppIds")
 
 const (
 	keyringNetworkID          uint8 = 42

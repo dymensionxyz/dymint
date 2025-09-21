@@ -47,23 +47,23 @@ func NewCosmosClient(client cosmosclient.Client) CosmosClient {
 }
 
 func (c *cosmosClient) StartEventListener() error {
-	return c.Client.RPC.Start()
+	return c.RPC.Start()
 }
 
 func (c *cosmosClient) StopEventListener() error {
-	return c.Client.RPC.Stop()
+	return c.RPC.Stop()
 }
 
 func (c *cosmosClient) EventListenerQuit() <-chan struct{} {
-	return c.Client.RPC.Quit()
+	return c.RPC.Quit()
 }
 
 func (c *cosmosClient) SubscribeToEvents(ctx context.Context, subscriber string, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
-	return c.Client.WSEvents.Subscribe(ctx, subscriber, query, outCapacity...)
+	return c.WSEvents.Subscribe(ctx, subscriber, query, outCapacity...)
 }
 
 func (c *cosmosClient) UnsubscribeAll(ctx context.Context, subscriber string) error {
-	return c.Client.WSEvents.UnsubscribeAll(ctx, subscriber)
+	return c.WSEvents.UnsubscribeAll(ctx, subscriber)
 }
 
 func (c *cosmosClient) GetRollappClient() rollapptypes.QueryClient {
@@ -89,7 +89,7 @@ func (c *cosmosClient) GetAccount(accountName string) (cosmosaccount.Account, er
 }
 
 func (c *cosmosClient) GetBalance(ctx context.Context, address string, denom string) (*sdktypes.Coin, error) {
-	balance, err := c.Client.Balance(ctx, address, denom)
+	balance, err := c.Balance(ctx, address, denom)
 	if err != nil {
 		return &sdktypes.Coin{}, err
 	}

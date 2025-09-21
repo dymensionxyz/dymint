@@ -6,7 +6,6 @@ import (
 	"github.com/availproject/avail-go-sdk/metadata"
 	prim "github.com/availproject/avail-go-sdk/primitives"
 	"github.com/availproject/avail-go-sdk/sdk"
-	availgo "github.com/availproject/avail-go-sdk/sdk"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/vedhavyas/go-subkey/v2"
 )
@@ -16,7 +15,7 @@ type AvailClient interface {
 	IsSyncing() (bool, error)
 	GetBlock(blockHash string) (sdk.Block, error)
 	GetAccountAddress() string
-	GetBlobsBySigner(blockHash string, accountAddress string) ([]availgo.DataSubmission, error)
+	GetBlobsBySigner(blockHash string, accountAddress string) ([]sdk.DataSubmission, error)
 }
 
 type Client struct {
@@ -33,7 +32,7 @@ func NewClient(endpoint string, seed string, appId uint32) (AvailClient, error) 
 	if err != nil {
 		return nil, err
 	}
-	acc, err := availgo.Account.NewKeyPair(seed)
+	acc, err := sdk.Account.NewKeyPair(seed)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +52,7 @@ func (c Client) SubmitData(data []byte) (string, error) {
 		return "", errors.Join(err, da.ErrDANotAvailable)
 	}
 	tx := c.sdk.Tx.DataAvailability.SubmitData(data)
-	res, err := tx.ExecuteAndWatchInclusion(c.account, availgo.NewTransactionOptions().WithAppId(c.appId))
+	res, err := tx.ExecuteAndWatchInclusion(c.account, sdk.NewTransactionOptions().WithAppId(c.appId))
 	if err != nil {
 		return "", err
 	}
@@ -89,7 +88,7 @@ func (c Client) GetAccountAddress() string {
 }
 
 // GetBlobsBySigner returns posted blobs filtered by block and sequencer account
-func (c Client) GetBlobsBySigner(blockHash string, accountAddress string) ([]availgo.DataSubmission, error) {
+func (c Client) GetBlobsBySigner(blockHash string, accountAddress string) ([]sdk.DataSubmission, error) {
 	syncing, err := c.IsSyncing()
 	if syncing || err != nil {
 		return nil, errors.Join(err, da.ErrDANotAvailable)

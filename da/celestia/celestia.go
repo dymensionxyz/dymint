@@ -15,7 +15,6 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/dymensionxyz/dymint/da/celestia/client"
 	daclient "github.com/dymensionxyz/dymint/da/celestia/client"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -46,7 +45,7 @@ var (
 )
 
 // WithRPCClient sets rpc client.
-func WithRPCClient(client client.DAClient) da.Option {
+func WithRPCClient(client daclient.DAClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).client = client
 	}

@@ -10,7 +10,6 @@ import (
 	mh "github.com/multiformats/go-multihash"
 
 	"github.com/ipfs/boxo/blockservice"
-	"github.com/ipfs/boxo/ipld/merkledag"
 	dag "github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -32,7 +31,7 @@ func NewDAGService(bsrv blockservice.BlockService) BlockSyncDagService {
 			Version:  1,
 		},
 	}
-	bsDagService.DAGService = merkledag.NewDAGService(bsrv)
+	bsDagService.DAGService = dag.NewDAGService(bsrv)
 
 	return *bsDagService
 }
@@ -48,7 +47,7 @@ func (bsDagService *BlockSyncDagService) SaveBlock(ctx context.Context, block []
 	// the loop creates nodes for each block chunk and sets each cid
 	for {
 		nextData, err := splitter.NextBytes()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

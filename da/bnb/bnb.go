@@ -3,6 +3,7 @@ package bnb
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -305,7 +306,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 	err = retry.Do(
 		func() error {
 			result = c.checkBatchAvailability(daMetaData)
-			if result.Error == da.ErrBlobNotFound {
+			if errors.Is(result.Error, da.ErrBlobNotFound) {
 				return retry.Unrecoverable(result.Error)
 			}
 			return result.Error
