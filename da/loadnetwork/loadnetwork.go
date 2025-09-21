@@ -72,35 +72,35 @@ var (
 // WithRPCClient sets rpc client.
 func WithGatewayClient(gateway Gateway) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).gateway = gateway
+		daLayerClient.(*DataAvailabilityLayerClient).gateway = gateway //nolint:errcheck
 	}
 }
 
 // WithRPCClient sets rpc client.
 func WithRPCClient(rpc LoadNetwork) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).client = rpc
+		daLayerClient.(*DataAvailabilityLayerClient).client = rpc //nolint:errcheck
 	}
 }
 
 // WithRPCRetryDelay sets failed rpc calls retry delay.
 func WithRPCRetryDelay(delay time.Duration) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).config.RetryDelay = delay
+		daLayerClient.(*DataAvailabilityLayerClient).config.RetryDelay = delay //nolint:errcheck
 	}
 }
 
 // WithRPCAttempts sets failed rpc calls retry attempts.
 func WithRPCAttempts(attempts int) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = &attempts
+		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = &attempts //nolint:errcheck
 	}
 }
 
 // WithSubmitBackoff sets submit retry delay config.
 func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).config.Backoff = c
+		daLayerClient.(*DataAvailabilityLayerClient).config.Backoff = c //nolint:errcheck
 	}
 }
 
