@@ -48,8 +48,8 @@ type RPCClient struct {
 // NewClient creates the new client that is used to communicate with Solana chain
 func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 	// create two rpc clients, one for sending transactions and one for queries. done this way to allow different rate limits.
-	txRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.SubmitTxRate)
-	reqRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.RequestTxRate)
+	txRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.SubmitTxRatePerSecond)
+	reqRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.RequestTxRatePerSecond)
 
 	// keypath is used to get solana private key
 	keyPath := os.Getenv(config.KeyPathEnv)
@@ -255,10 +255,10 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, string, error) {
 	return data, hash, nil
 }
 
-func SetRpcClient(endpoint string, apiKeyEnv string, maxRate *int) *RPCClient {
-	if os.Getenv(apiKeyEnv) != "" && maxRate != nil {
+func SetRpcClient(endpoint string, apiKeyEnv string, maxRatePerSecond *int) *RPCClient {
+	if os.Getenv(apiKeyEnv) != "" && maxRatePerSecond != nil {
 		apiKey := os.Getenv(apiKeyEnv)
-		jsonRpcClient := rpc.NewWithLimiterWithCustomHeaders(endpoint, rate.Every(time.Second), *maxRate, map[string]string{
+		jsonRpcClient := rpc.NewWithLimiterWithCustomHeaders(endpoint, rate.Every(time.Second), *maxRatePerSecond, map[string]string{
 			"x-api-key": apiKey,
 		})
 		return &RPCClient{rpc.NewWithCustomRPCClient(jsonRpcClient), "limiter+apikey"}
@@ -271,8 +271,8 @@ func SetRpcClient(endpoint string, apiKeyEnv string, maxRate *int) *RPCClient {
 		}), "apikey"}
 	}
 
-	if maxRate != nil {
-		jsonRpcClient := rpc.NewWithLimiter(endpoint, rate.Every(time.Second), *maxRate)
+	if maxRatePerSecond != nil {
+		jsonRpcClient := rpc.NewWithLimiter(endpoint, rate.Every(time.Second), *maxRatePerSecond)
 		return &RPCClient{rpc.NewWithCustomRPCClient(jsonRpcClient), "limiter"}
 	}
 
