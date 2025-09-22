@@ -177,7 +177,6 @@ func NewManager(
 	return m, nil
 }
 
-// Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
 	err := m.Setup(ctx)
 	if err != nil {
@@ -187,10 +186,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	return m.StartLoops(ctx)
 }
 
+// need to fetch latest info from SL up-front before starting the continuous loops
 func (m *Manager) Setup(ctx context.Context) error {
 	ctx, m.Cancel = context.WithCancel(ctx)
 	// set the fraud handler to freeze the node in case of fraud
-	// TODO: should be called for fullnode only?
 	m.setFraudHandler(NewFreezeHandler(m))
 
 	if m.State.IsGenesis() {
@@ -231,18 +230,46 @@ func (m *Manager) Setup(ctx context.Context) error {
 		}
 	}
 
-	// update local state from latest state in settlement
-	err = m.setupFromLastSettlementState()
+	err = m.UpdateSequencerSetFromSL()
 	if err != nil {
-		return fmt.Errorf("sync block manager from settlement: %w", err)
+		m.logger.Error("Non critical: fetch sequencer set from the Hub", "error", err)
 	}
+
+	// get latest submitted batch from SL
+	latestBatch, err := m.SLClient.GetLatestBatch()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		// The SL hasn't got any batches for this chain yet.
+		m.logger.Info("No batches for chain found in SL.")
+		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1)) //nolint:gosec // height is non-negative and falls in int64
+		return nil
+	}
+	if err != nil {
+		// TODO: separate between fresh rollapp and non-registered rollapp
+		return err
+	}
+
+	lastFinalized, err := m.SLClient.GetLatestFinalizedHeight()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		m.logger.Info("No finalized batches for chain found in SL.")
+	} else if err != nil {
+		return fmt.Errorf("getting finalized height. err: %w", err)
+	}
+	m.SettlementValidator = NewSettlementValidator(m.logger, m, lastFinalized)
+
+	m.P2PClient.UpdateLatestSeenHeight(latestBatch.EndHeight)
+	if latestBatch.EndHeight >= m.State.NextHeight() {
+		m.UpdateTargetHeight(latestBatch.EndHeight)
+	}
+
+	m.LastSettlementHeight.Store(latestBatch.EndHeight)
+	m.LastSubmissionTime.Store(latestBatch.CreationTime.UTC().UnixNano())
 
 	return nil
 }
 
 func (m *Manager) StartLoops(ctx context.Context) error {
 	m.logger.Info("starting block manager", "mode", m.runMode())
-	// we only trigger validation if no syncing is required (otherwise it may cause race condition).
+	// we only trigger validation if no syncing is required (otherwise it may cause race condition). TODO: what race cond?
 	// syncing loop will trigger validation after each batch synced.
 	if m.LastSettlementHeight.Load() > m.State.Height() {
 		// send signal to syncing loop with last settlement state update
@@ -256,18 +283,14 @@ func (m *Manager) StartLoops(ctx context.Context) error {
 	// when one of the loops exits with error, the block manager exits
 	eg, ctx := errgroup.WithContext(ctx)
 
-	// Start the pruning loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.PruningLoop(ctx)
 	})
 
-	// Start the settlement sync loop in the background
-	// TODO: should be called for fullnode only? it's triggered by p2p callback anyhow
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SettlementSyncLoop(ctx)
 	})
 
-	// Monitor sequencer set updates
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorSequencerSetUpdates(ctx)
 	})
@@ -311,47 +334,6 @@ func (m *Manager) StartLoops(ctx context.Context) error {
 
 func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSettlementHeight.Load() + 1
-}
-
-// setupFromLastSettlementState retrieves last sequencers and state update from the Hub and updates local state with it
-func (m *Manager) setupFromLastSettlementState() error {
-	// Update sequencers list from SL
-	err := m.UpdateSequencerSetFromSL()
-	if err != nil {
-		// this error is not critical
-		m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
-	}
-
-	// get latest submitted batch from SL
-	latestBatch, err := m.SLClient.GetLatestBatch()
-	if errors.Is(err, gerrc.ErrNotFound) {
-		// The SL hasn't got any batches for this chain yet.
-		m.logger.Info("No batches for chain found in SL.")
-		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1)) //nolint:gosec // height is non-negative and falls in int64
-		return nil
-	}
-	if err != nil {
-		// TODO: separate between fresh rollapp and non-registered rollapp
-		return err
-	}
-
-	lastFinalized, err := m.SLClient.GetLatestFinalizedHeight()
-	if errors.Is(err, gerrc.ErrNotFound) {
-		m.logger.Info("No finalized batches for chain found in SL.")
-	} else if err != nil {
-		return fmt.Errorf("getting finalized height. err: %w", err)
-	}
-	m.SettlementValidator = NewSettlementValidator(m.logger, m, lastFinalized)
-
-	m.P2PClient.UpdateLatestSeenHeight(latestBatch.EndHeight)
-	if latestBatch.EndHeight >= m.State.NextHeight() {
-		m.UpdateTargetHeight(latestBatch.EndHeight)
-	}
-
-	m.LastSettlementHeight.Store(latestBatch.EndHeight)
-	m.LastSubmissionTime.Store(latestBatch.CreationTime.UTC().UnixNano())
-
-	return nil
 }
 
 func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
