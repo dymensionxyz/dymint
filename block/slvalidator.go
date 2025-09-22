@@ -57,7 +57,7 @@ func (v *SettlementValidator) Loop(ctx context.Context) error {
 }
 
 // latestFinalizedHeight : 0 means nothing finalized yet
-func NewSettlementValidator(logger types.Logger, m *Manager, latestFinalizedHeight uint64) *SettlementValidator {
+func NewSettlementValidator(logger types.Logger, m *Manager, latestFinalizedHeight uint64) (*SettlementValidator, error) {
 	validator := &SettlementValidator{
 		logger:        logger,
 		manager:       m,
@@ -68,10 +68,13 @@ func NewSettlementValidator(logger types.Logger, m *Manager, latestFinalizedHeig
 	if m.Conf.TeeEnabled && m.runMode() == RunModeFullNode {
 		// want all validations to have run inside the full node
 		// relying on snapshot is not sufficient (TODO: sergi explain)
-		m.Store.SaveValidationHeight(latestFinalizedHeight, nil)
+		_, err := m.Store.SaveValidationHeight(latestFinalizedHeight, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return validator
+	return validator, nil
 }
 
 // SettlementValidator validates batches from settlement layer with the corresponding blocks from DA and P2P.

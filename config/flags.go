@@ -7,11 +7,10 @@ import (
 )
 
 const (
-	FlagBlockTime            = "dymint.block_time"
-	FlagMaxIdleTime          = "dymint.max_idle_time"
-	FlagBatchSubmitTime      = "dymint.batch_submit_time"
-	FlagBatchSubmitBytes     = "dymint.batch_submit_bytes"
-	FlagSkipValidationHeight = "dymint.skip_validation_height"
+	FlagBlockTime        = "dymint.block_time"
+	FlagMaxIdleTime      = "dymint.max_idle_time"
+	FlagBatchSubmitTime  = "dymint.batch_submit_time"
+	FlagBatchSubmitBytes = "dymint.batch_submit_bytes"
 )
 
 const (
@@ -70,9 +69,6 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 		return err
 	}
 	if err := v.BindPFlag("batch_submit_bytes", cmd.Flags().Lookup(FlagBatchSubmitBytes)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("skip_validation_height", cmd.Flags().Lookup(FlagSkipValidationHeight)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("settlement_layer", cmd.Flags().Lookup(FlagSettlementLayer)); err != nil {

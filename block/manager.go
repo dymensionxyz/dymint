@@ -254,7 +254,10 @@ func (m *Manager) Setup(ctx context.Context) error {
 	} else if err != nil {
 		return fmt.Errorf("getting finalized height. err: %w", err)
 	}
-	m.SettlementValidator = NewSettlementValidator(m.logger, m, lastFinalized)
+	m.SettlementValidator, err = NewSettlementValidator(m.logger, m, lastFinalized)
+	if err != nil {
+		return err
+	}
 
 	m.P2PClient.UpdateLatestSeenHeight(latestBatch.EndHeight)
 	if latestBatch.EndHeight >= m.State.NextHeight() {
