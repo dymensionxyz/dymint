@@ -16,6 +16,15 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
+// triggerStateUpdateValidation sends signal to channel used by validation loop
+func (m *Manager) triggerSettlementValidation() {
+	select {
+	case m.settlementValidationC <- struct{}{}:
+	default:
+		m.logger.Debug("disregarding new state update, node is still validating")
+	}
+}
+
 func NewSettlementValidator(logger types.Logger, blockManager *Manager) *SettlementValidator {
 	validator := &SettlementValidator{
 		logger:       logger,

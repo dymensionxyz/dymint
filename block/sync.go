@@ -130,12 +130,3 @@ func (m *Manager) triggerSettlementSyncing() {
 		m.logger.Debug("disregarding new state update, node is still syncing")
 	}
 }
-
-// triggerStateUpdateValidation sends signal to channel used by validation loop
-func (m *Manager) triggerSettlementValidation() {
-	select {
-	case m.settlementValidationC <- struct{}{}:
-	default:
-		m.logger.Debug("disregarding new state update, node is still validating")
-	}
-}
