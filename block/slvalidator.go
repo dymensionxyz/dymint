@@ -24,7 +24,6 @@ type SettlementValidator struct {
 	trustedHeight uint64
 }
 
-// NewSettlementValidator returns a new StateUpdateValidator instance.
 func NewSettlementValidator(logger types.Logger, blockManager *Manager) *SettlementValidator {
 	validator := &SettlementValidator{
 		logger:       logger,
