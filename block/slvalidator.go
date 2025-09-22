@@ -2,6 +2,7 @@ package block
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -12,17 +13,8 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/metrics"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/tendermint/tendermint/libs/pubsub"
 )
-
-// SettlementValidator validates batches from settlement layer with the corresponding blocks from DA and P2P.
-type SettlementValidator struct {
-	logger       types.Logger
-	blockManager *Manager
-	mu           sync.Mutex
-
-	// immutable: the height the node was started from
-	trustedHeight uint64
-}
 
 func NewSettlementValidator(logger types.Logger, blockManager *Manager) *SettlementValidator {
 	validator := &SettlementValidator{
@@ -32,6 +24,16 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 	validator.trustedHeight = validator.GetLastValidatedHeight()
 
 	return validator
+}
+
+// SettlementValidator validates batches from settlement layer with the corresponding blocks from DA and P2P.
+type SettlementValidator struct {
+	logger       types.Logger
+	blockManager *Manager
+	mu           sync.Mutex
+
+	// immutable: the height the node was started from
+	trustedHeight uint64
 }
 
 // ValidateStateUpdate validates that the blocks from the state info are available in DA,
@@ -284,4 +286,48 @@ func blockHash(block *types.Block) ([]byte, error) {
 	h := sha256.New()
 	h.Write(blockBytes)
 	return h.Sum(nil), nil
+}
+
+// onNewStateUpdateFinalized will update the last validated height with the last finalized height.
+// Unlike pending heights, once heights are finalized, we treat them as validated as there is no point validating finalized heights.
+func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
+	eventData, ok := event.Data().(*settlement.EventDataNewBatch)
+	if !ok {
+		m.logger.Error("onNewStateUpdateFinalized", "err", "wrong event data received")
+		return
+	}
+	m.SettlementValidator.UpdateLastValidatedHeight(eventData.EndHeight)
+}
+
+// SettlementValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.
+func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-m.settlementValidationC:
+			targetValidationHeight := min(m.LastSettlementHeight.Load(), m.State.Height())
+			m.logger.Info("validating state updates to target height", "targetHeight", targetValidationHeight)
+
+			for currH := m.SettlementValidator.NextValidationHeight(); currH <= targetValidationHeight; currH = m.SettlementValidator.NextValidationHeight() {
+				// get next batch that needs to be validated from SL
+				batch, err := m.SLClient.GetBatchAtHeight(currH)
+				if err != nil {
+					// TODO: should be recoverable. set to unhealthy and continue
+					return err
+				}
+
+				// validate batch
+				err = m.SettlementValidator.ValidateStateUpdate(batch)
+				if err != nil {
+					return err
+				}
+
+				// update the last validated height to the batch last block height
+				m.SettlementValidator.UpdateLastValidatedHeight(batch.EndHeight)
+
+				m.logger.Info("state info validated", "idx", batch.StateIndex, "start height", batch.StartHeight, "end height", batch.EndHeight)
+			}
+		}
+	}
 }
