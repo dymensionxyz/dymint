@@ -18,7 +18,7 @@ where:
 
 - endpoint = RPC url address for Solana RPC. This is an example of Helius RPC service with api-key included. When using rate limited RPC it is mandatory to set tx_rate_second and req_rate_second according to service limits. In case of deploying local node, it can be directly used node url (e.g. <http://localhost:8899>)
 - keypath_env = env variable name used to set the path where the solana private key is stored.
-- program_address: sequencer Solana address with funds.
+- program_address: Address of the program deployed on Solana used to store Rollapp data. The program address to be used by default will be 5cfjxBnFMoqdbZXTMHaoXfQm7obMpYMnkT681sRd95Qo for both mainnet and devnet.
 - timeout (nanoseconds): used to cancel retry when fail submissions or retrievals (optional).
 - apikey_env: env variable used to set the auth token required by RPC nodes, if necessary (optional).
 - tx_rate_second: rate used to send Solana transactions, required if RPC is rate limited (optional).
