@@ -17,11 +17,14 @@ import (
 )
 
 // triggerStateUpdateValidation sends signal to channel used by validation loop
-func (m *Manager) triggerSettlementValidation() {
+func (v *SettlementValidator) trigger() {
+	if v == nil {
+		return
+	}
 	select {
-	case m.settlementValidationC <- struct{}{}:
+	case v.C <- struct{}{}:
 	default:
-		m.logger.Debug("disregarding new state update, node is still validating")
+		v.logger.Debug("disregarding new state update, node is still validating")
 	}
 }
 
@@ -29,6 +32,7 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 	validator := &SettlementValidator{
 		logger:       logger,
 		blockManager: blockManager,
+		C:            make(chan struct{}, 1),
 	}
 	validator.trustedHeight = validator.GetLastValidatedHeight()
 
@@ -40,6 +44,7 @@ type SettlementValidator struct {
 	logger       types.Logger
 	blockManager *Manager
 	mu           sync.Mutex
+	C            chan struct{}
 
 	// immutable: the height the node was started from
 	trustedHeight uint64
@@ -309,33 +314,33 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 }
 
 // SettlementValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.
-func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
+func (v *SettlementValidator) Loop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-m.settlementValidationC:
-			targetValidationHeight := min(m.LastSettlementHeight.Load(), m.State.Height())
-			m.logger.Info("validating state updates to target height", "targetHeight", targetValidationHeight)
+		case <-v.C:
+			targetValidationHeight := min(v.blockManager.LastSettlementHeight.Load(), v.blockManager.State.Height())
+			v.logger.Info("validating state updates to target height", "targetHeight", targetValidationHeight)
 
-			for currH := m.SettlementValidator.NextValidationHeight(); currH <= targetValidationHeight; currH = m.SettlementValidator.NextValidationHeight() {
+			for currH := v.NextValidationHeight(); currH <= targetValidationHeight; currH = v.NextValidationHeight() {
 				// get next batch that needs to be validated from SL
-				batch, err := m.SLClient.GetBatchAtHeight(currH)
+				batch, err := v.blockManager.SLClient.GetBatchAtHeight(currH)
 				if err != nil {
 					// TODO: should be recoverable. set to unhealthy and continue
 					return err
 				}
 
 				// validate batch
-				err = m.SettlementValidator.ValidateStateUpdate(batch)
+				err = v.ValidateStateUpdate(batch)
 				if err != nil {
 					return err
 				}
 
 				// update the last validated height to the batch last block height
-				m.SettlementValidator.UpdateLastValidatedHeight(batch.EndHeight)
+				v.UpdateLastValidatedHeight(batch.EndHeight)
 
-				m.logger.Info("state info validated", "idx", batch.StateIndex, "start height", batch.StartHeight, "end height", batch.EndHeight)
+				v.logger.Info("state info validated", "idx", batch.StateIndex, "start height", batch.StartHeight, "end height", batch.EndHeight)
 			}
 		}
 	}

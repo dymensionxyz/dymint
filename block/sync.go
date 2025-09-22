@@ -38,8 +38,7 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 		// update target height used for syncing status rpc
 		m.UpdateTargetHeight(eventData.EndHeight)
 	} else {
-		// trigger validation of the last state update available in settlement
-		m.triggerSettlementValidation()
+		m.SettlementValidator.trigger()
 	}
 }
 
@@ -94,8 +93,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSettlementHeight.Load())
 
-				// trigger state update validation, after each state update is applied
-				m.triggerSettlementValidation()
+				m.SettlementValidator.trigger()
 
 			}
 

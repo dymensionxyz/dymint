@@ -163,10 +163,9 @@ func NewManager(
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
-		pruningC:              make(chan int64, 10),   // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
-		settlementSyncingC:    make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing syncing process, but syncing height is updated, which means the ongoing syncing will sync to the new height.
-		settlementValidationC: make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing validation process, but validation height is updated, which means the ongoing validation will validate to the new height.
-		syncedFromSettlement:  uchannel.NewNudger(),   // used by the sequencer to wait  till the node completes the syncing from settlement.
+		pruningC:             make(chan int64, 10),   // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
+		settlementSyncingC:   make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing syncing process, but syncing height is updated, which means the ongoing syncing will sync to the new height.
+		syncedFromSettlement: uchannel.NewNudger(),   // used by the sequencer to wait  till the node completes the syncing from settlement.
 	}
 
 	for _, client := range daClients {
@@ -251,10 +250,10 @@ func (m *Manager) StartLoops(ctx context.Context) error {
 	if m.LastSettlementHeight.Load() > m.State.Height() {
 		// send signal to syncing loop with last settlement state update
 		m.triggerSettlementSyncing()
-	} else {
+	} else if m.runMode() == RunModeFullNode {
 		m.SettlementValidator = NewSettlementValidator(m.logger, m)
 		// send signal to validation loop with last settlement state update
-		m.triggerSettlementValidation()
+		m.SettlementValidator.trigger()
 	}
 
 	// This error group is used to control the lifetime of the block manager.

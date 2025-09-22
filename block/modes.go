@@ -27,7 +27,7 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 
 	// Start the settlement validation loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.SettlementValidateLoop(ctx)
+		return m.SettlementValidator.Loop(ctx)
 	})
 
 	m.subscribeFullNodeEvents(ctx)

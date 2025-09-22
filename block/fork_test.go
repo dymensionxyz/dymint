@@ -22,7 +22,7 @@ func TestShouldStopNode(t *testing.T) {
 		rollapp  *types.Rollapp
 		block    *types.Block
 		height   uint64
-		runMode  uint
+		runMode  RunMode
 		expected bool
 	}{
 		{
