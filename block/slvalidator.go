@@ -46,7 +46,7 @@ type SettlementValidator struct {
 	mu           sync.Mutex
 	C            chan struct{}
 
-	// immutable: the height the node was started from
+	// immutable: the height the node assumes is validated when it starts
 	trustedHeight uint64
 }
 
@@ -310,7 +310,11 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 		m.logger.Error("onNewStateUpdateFinalized", "err", "wrong event data received")
 		return
 	}
-	m.SettlementValidator.SetMaxLastValidatedHeight(eventData.EndHeight)
+	m.SettlementValidator.onFinalizedHeight(eventData.EndHeight)
+}
+
+func (v *SettlementValidator) onFinalizedHeight(h uint64) {
+	v.SetMaxLastValidatedHeight(h)
 }
 
 // SettlementValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.
