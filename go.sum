@@ -451,8 +451,8 @@ github.com/dymensionxyz/rpc v1.3.1 h1:7EXWIobaBes5zldRvTIg7TmNsEKjicrWA/OjCc0NaG
 github.com/dymensionxyz/rpc v1.3.1/go.mod h1:f+WpX8ysy8wt95iGc6auYlHcnHj2bUkhiRVkkKNys8c=
 github.com/dymensionxyz/sdk-utils v0.1.2-0.20240909101947-e1b483ada9c8 h1:J7MH912xEkmYKEg1VxDZ4RARZ/ku1OO7VOoUZQQqWEU=
 github.com/dymensionxyz/sdk-utils v0.1.2-0.20240909101947-e1b483ada9c8/go.mod h1:5fmenxP75quS5D1gPynbmh5qE6vla64Kks2O/hM+gi4=
-github.com/dymensionxyz/solana-go v0.0.0-20250521091951-785576f3810c h1:TCiOf+3bjpE7RHVEzSnvi9FZ6vz6fnkhj7Ikl/8dvmY=
-github.com/dymensionxyz/solana-go v0.0.0-20250521091951-785576f3810c/go.mod h1:l/qqqIN6qJJPtxW/G1PF4JtcE3Zg2vD2EliZrr9Gn5k=
+github.com/dymensionxyz/solana-go v0.0.0-20250922062959-38bd74a446a4 h1:Mlfa/WwOanaNN0VvtR8iHMadUrrNE6q7wQKTiZNe8O8=
+github.com/dymensionxyz/solana-go v0.0.0-20250922062959-38bd74a446a4/go.mod h1:l/qqqIN6qJJPtxW/G1PF4JtcE3Zg2vD2EliZrr9Gn5k=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1:+020luEh2TKB4/GOp8oxxtq0Daoen/Cii55CzbTV6DU=
 github.com/eapache/queue v1.1.0/go.mod h1:6eCeP0CKFpHLu8blIFXhExK/dRa7WDZfr6jVFPTqq+I=
