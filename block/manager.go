@@ -187,8 +187,6 @@ func NewManager(
 		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
-	m.SettlementValidator = NewSettlementValidator(m.logger, m)
-
 	return m, nil
 }
 
@@ -285,6 +283,7 @@ func (m *Manager) StartLoops(ctx context.Context) error {
 		// send signal to syncing loop with last settlement state update
 		m.triggerSettlementSyncing()
 	} else {
+		m.SettlementValidator = NewSettlementValidator(m.logger, m)
 		// send signal to validation loop with last settlement state update
 		m.triggerSettlementValidation()
 	}
