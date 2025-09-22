@@ -370,7 +370,7 @@ replace (
 replace (
 	github.com/cosmos/cosmos-sdk => github.com/dymensionxyz/cosmos-sdk v0.46.17-0.20241128210616-e9dfe47b8c73
 	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
-	github.com/gagliardetto/solana-go => github.com/srene/solana-go v0.0.0-20250521091951-785576f3810c
+	github.com/gagliardetto/solana-go => github.com/dymensionxyz/solana-go v0.0.0-20250922062959-38bd74a446a4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/kaspanet/go-secp256k1 => github.com/dymensionxyz/kaspa-go-secp256k1 v0.0.0-20250430112425-a3ecc0fdaadb
 	github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2
