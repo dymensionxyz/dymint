@@ -34,11 +34,13 @@ import (
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 )
 
-const (
-	// RunModeProposer represents a node running as a proposer
-	RunModeProposer uint = iota
-	// RunModeFullNode represents a node running as a full node
-	RunModeFullNode
+type RunMode struct {
+	Name string
+}
+
+var (
+	RunModeFullNode RunMode = RunMode{Name: "full node"}
+	RunModeProposer RunMode = RunMode{Name: "proposer"}
 )
 
 // Manager is responsible for aggregating transactions into blocks.
@@ -64,9 +66,9 @@ type Manager struct {
 	DAClients map[da.Client]da.DataAvailabilityLayerClient
 	SLClient  settlement.ClientI
 
-	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that.
-	RunMode uint
-	Cancel  context.CancelFunc
+	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that. (Nil means not set)
+	RunModeCached *RunMode
+	Cancel        context.CancelFunc
 
 	// LastSubmissionTime is the time of last batch submitted in SL
 	LastSubmissionTime atomic.Int64
@@ -192,13 +194,20 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
-	// create new, cancelable context for the block manager
+	err := m.Setup(ctx)
+	if err != nil {
+		return err
+	}
+
+	return m.StartLoops(ctx)
+}
+
+func (m *Manager) Setup(ctx context.Context) error {
 	ctx, m.Cancel = context.WithCancel(ctx)
 	// set the fraud handler to freeze the node in case of fraud
 	// TODO: should be called for fullnode only?
 	m.setFraudHandler(NewFreezeHandler(m))
 
-	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
 
@@ -208,13 +217,11 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	// validate configuration params and rollapp consensus params are in line
 	err := m.ValidateConfigWithRollappParams()
 	if err != nil {
 		return err
 	}
 
-	// update dymint state with next revision info
 	err = m.updateStateForNextRevision()
 	if err != nil {
 		return err
@@ -239,25 +246,39 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	// checks if the the current node is the proposer either on rollapp or on the hub.
-	// In case of sequencer rotation, there's a phase where proposer rotated on Rollapp but hasn't yet rotated on hub.
-	// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
-	// The hub proposer, after sending the last state update, will panic and restart as full node.
-	amIProposerOnSL, err := m.AmIProposerOnSL()
-	if err != nil {
-		return fmt.Errorf("am i proposer on SL: %w", err)
-	}
-
-	amIProposer := amIProposerOnSL || m.AmIProposerOnRollapp()
-
-	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
-
 	// update local state from latest state in settlement
 	err = m.updateFromLastSettlementState()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 
+	return nil
+}
+
+// checks if the the current node is the proposer either on rollapp or on the hub.
+// In case of sequencer rotation, there's a phase where proposer rotated on Rollapp but hasn't yet rotated on hub.
+// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
+// The hub proposer, after sending the last state update, will panic and restart as full node.
+func (m *Manager) runMode() RunMode {
+	if m.RunModeCached != nil {
+		return *m.RunModeCached
+	}
+	isProposeronSL, err := m.AmIProposerOnSL()
+	if err != nil {
+		panic(fmt.Errorf("am i proposer on SL: %w", err))
+	}
+
+	isProposer := isProposeronSL || m.AmIProposerOnRollapp()
+	if isProposer {
+		m.RunModeCached = &RunModeProposer
+		return RunModeProposer
+	}
+	m.RunModeCached = &RunModeFullNode
+	return RunModeFullNode
+}
+
+func (m *Manager) StartLoops(ctx context.Context) error {
+	m.logger.Info("starting block manager", "mode", m.runMode())
 	// we only trigger validation if no syncing is required (otherwise it may cause race condition).
 	// syncing loop will trigger validation after each batch synced.
 	if m.LastSettlementHeight.Load() > m.State.Height() {
@@ -296,17 +317,14 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.MonitorBalances(ctx)
 	})
 
-	// run based on the node role
-	if !amIProposer {
+	var err error
+	if m.runMode() == RunModeFullNode {
 		err = m.runAsFullNode(ctx, eg)
-		if err != nil {
-			return err
-		}
 	} else {
 		err = m.runAsProposer(ctx, eg)
-		if err != nil {
-			return err
-		}
+	}
+	if err != nil {
+		return err
 	}
 
 	go func() {

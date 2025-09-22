@@ -24,7 +24,6 @@ const (
 // setFraudHandler sets the fraud handler for the block manager.
 func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 	m.logger.Info("starting block manager", "mode", "full node")
-	m.RunMode = RunModeFullNode
 
 	// Start the settlement validation loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
@@ -39,7 +38,6 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 
 func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	m.logger.Info("starting block manager", "mode", "proposer")
-	m.RunMode = RunModeProposer
 	// Subscribe to batch events, to update last submitted height in case batch confirmation was lost. This could happen if the sequencer crash/restarted just after submitting a batch to the settlement and by the time we query the last batch, this batch wasn't accepted yet.
 	go uevent.MustSubscribe(ctx, m.Pubsub, "updateSubmittedHeightLoop", settlement.EventQueryNewSettlementBatchAccepted, m.UpdateLastSubmittedHeight, m.logger)
 	// Subscribe to P2P received blocks events (used for P2P syncing).
