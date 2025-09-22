@@ -132,6 +132,7 @@ func queryFullNodeTEE(client *http.Client, url string) (*TEEResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("request attestation: %w", err)
 	}
+	//nolint:errcheck
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)

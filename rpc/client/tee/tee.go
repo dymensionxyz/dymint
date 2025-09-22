@@ -13,7 +13,8 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
-var (
+const (
+	// GPC defined
 	socketPath    = "/run/container_launcher/teeserver.sock"
 	tokenEndpoint = "http://localhost/v1/token"
 )
@@ -77,6 +78,7 @@ func getGCPAttestationToken(nonceHex string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("request token: %w", err)
 	}
+	//nolint:errcheck
 	defer resp.Body.Close()
 
 	tokenBytes, err := io.ReadAll(resp.Body)
