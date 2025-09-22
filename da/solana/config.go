@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	defaultRetryDelay    = 5 * time.Second
-	defaultRetryAttempts = uint(10)
-	MaxBlobSizeBytes     = 500000
+	defaultRetryDelay     = 5 * time.Second
+	defaultRetryAttempts  = uint(10)
+	MaxBlobSizeBytes      = 500000
+	defaultProgramAddress = "5cfjxBnFMoqdbZXTMHaoXfQm7obMpYMnkT681sRd95Qo"
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -34,11 +35,10 @@ type Config struct {
 }
 
 var TestConfig = Config{
-	KeyPathEnv: "SOLANA_KEYPATH",
-	ApiKeyEnv:  "API_KEY",
-	Endpoint:   "https://api.devnet.solana.com/",
-	// ProgramAddress: "3ZjisFKx4KGHg3yRnq6FX7izAnt6gzyKiVfJz66Tdyqc",
-	ProgramAddress: "5cfjxBnFMoqdbZXTMHaoXfQm7obMpYMnkT681sRd95Qo",
+	KeyPathEnv:     "SOLANA_KEYPATH",
+	ApiKeyEnv:      "API_KEY",
+	Endpoint:       "https://api.devnet.solana.com/",
+	ProgramAddress: defaultProgramAddress,
 }
 
 // CreateConfig, generates config from da_config field received in DA client Init()
@@ -70,6 +70,10 @@ func CreateConfig(bz []byte) (c Config, err error) {
 	if c.RetryAttempts == nil {
 		attempts := defaultRetryAttempts
 		c.RetryAttempts = &attempts
+	}
+
+	if c.ProgramAddress == "" {
+		c.ProgramAddress = defaultProgramAddress
 	}
 
 	return c, nil
