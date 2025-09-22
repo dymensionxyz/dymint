@@ -325,18 +325,14 @@ func (v *SettlementValidator) Loop(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-v.C:
-			targetValidationHeight := min(v.blockManager.LastSettlementHeight.Load(), v.blockManager.State.Height())
-			v.logger.Info("validating state updates to target height", "targetHeight", targetValidationHeight)
-
-			for currH := v.NextValidationHeight(); currH <= targetValidationHeight; currH = v.NextValidationHeight() {
+			for h := v.NextValidationHeight(); h <= min(v.blockManager.LastSettlementHeight.Load(), v.blockManager.State.Height()); h = v.NextValidationHeight() {
 				// get next batch that needs to be validated from SL
-				batch, err := v.blockManager.SLClient.GetBatchAtHeight(currH)
+				batch, err := v.blockManager.SLClient.GetBatchAtHeight(h)
 				if err != nil {
 					// TODO: should be recoverable. set to unhealthy and continue
 					return err
 				}
 
-				// validate batch
 				err = v.ValidateStateUpdate(batch)
 				if err != nil {
 					return err

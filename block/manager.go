@@ -248,7 +248,6 @@ func (m *Manager) StartLoops(ctx context.Context) error {
 		// send signal to syncing loop with last settlement state update
 		m.triggerSettlementSyncing()
 	} else if m.runMode() == RunModeFullNode {
-		m.SettlementValidator = NewSettlementValidator(m.logger, m)
 		// send signal to validation loop with last settlement state update
 		m.SettlementValidator.trigger()
 	}
@@ -336,10 +335,13 @@ func (m *Manager) setupFromLastSettlementState() error {
 		return err
 	}
 
-	err = m.updateLastFinalizedHeightFromSettlement()
-	if err != nil {
-		return fmt.Errorf("sync block manager from settlement: %w", err)
+	lastFinalized, err := m.SLClient.GetLatestFinalizedHeight()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		m.logger.Info("No finalized batches for chain found in SL.")
+	} else if err != nil {
+		return fmt.Errorf("getting finalized height. err: %w", err)
 	}
+	m.SettlementValidator = NewSettlementValidator(m.logger, m, lastFinalized)
 
 	m.P2PClient.UpdateLatestSeenHeight(latestBatch.EndHeight)
 	if latestBatch.EndHeight >= m.State.NextHeight() {
@@ -349,18 +351,6 @@ func (m *Manager) setupFromLastSettlementState() error {
 	m.LastSettlementHeight.Store(latestBatch.EndHeight)
 	m.LastSubmissionTime.Store(latestBatch.CreationTime.UTC().UnixNano())
 
-	return nil
-}
-
-// updateLastFinalizedHeightFromSettlement updates the last finalized height from the Hub
-func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
-	height, err := m.SLClient.GetLatestFinalizedHeight()
-	if errors.Is(err, gerrc.ErrNotFound) {
-		m.logger.Info("No finalized batches for chain found in SL.")
-	} else if err != nil {
-		return fmt.Errorf("getting finalized height. err: %w", err)
-	}
-	m.SettlementValidator.onFinalizedHeight(height)
 	return nil
 }
 
