@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"sync/atomic"
+	"sync"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -16,9 +16,9 @@ import (
 
 // SettlementValidator validates batches from settlement layer with the corresponding blocks from DA and P2P.
 type SettlementValidator struct {
-	logger              types.Logger
-	blockManager        *Manager
-	lastValidatedHeight atomic.Uint64
+	logger       types.Logger
+	blockManager *Manager
+	mu           sync.Mutex
 
 	// immutable: the height the node was started from
 	trustedHeight uint64
@@ -40,7 +40,7 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 	// if SkipValidationHeight is set,  dont validate anything previous to that (used by 2D migration)
 	validationHeight := max(blockManager.Conf.SkipValidationHeight+1, lastValidatedHeight)
 
-	validator.lastValidatedHeight.Store(validationHeight)
+	validator.UpdateLastValidatedHeight(validationHeight)
 
 	return validator
 }
@@ -234,25 +234,30 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 
 // UpdateLastValidatedHeight sets the height saved in the Store if it is higher than the existing height
 // returns OK if the value was updated successfully or did not need to be updated
-func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64) {
-	for {
-		curr := v.lastValidatedHeight.Load()
-		if v.lastValidatedHeight.CompareAndSwap(curr, max(curr, height)) {
-			h := v.lastValidatedHeight.Load()
-			_, err := v.blockManager.Store.SaveValidationHeight(h, nil)
-			if err != nil {
-				v.logger.Error("update validation height: %w", err)
-			}
-
-			metrics.LastValidatedHeight.Set(float64(h))
-			break
-		}
+func (v *SettlementValidator) UpdateLastValidatedHeight(h uint64) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	curr := v.GetLastValidatedHeight()
+	if h <= curr {
+		return
 	}
+	_, err := v.blockManager.Store.SaveValidationHeight(h, nil)
+	if err != nil {
+		v.logger.Error("update validation height: %w", err)
+		return
+	}
+
+	metrics.LastValidatedHeight.Set(float64(h))
 }
 
 // GetLastValidatedHeight returns the most last block height that is validated with settlement state updates.
 func (v *SettlementValidator) GetLastValidatedHeight() uint64 {
-	return v.lastValidatedHeight.Load()
+	h, err := v.blockManager.Store.LoadValidationHeight()
+	if err != nil {
+		v.logger.Error("load validation height: %w", err)
+		return 0
+	}
+	return h
 }
 
 func (v *SettlementValidator) GetTrustedHeight() uint64 {
@@ -261,7 +266,7 @@ func (v *SettlementValidator) GetTrustedHeight() uint64 {
 
 // NextValidationHeight returns the next height that needs to be validated with settlement state updates.
 func (v *SettlementValidator) NextValidationHeight() uint64 {
-	return v.lastValidatedHeight.Load() + 1
+	return v.GetLastValidatedHeight() + 1
 }
 
 // validateDRS compares the DRS version stored for the specific height, obtained from rollapp params.
