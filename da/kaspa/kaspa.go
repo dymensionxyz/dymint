@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -324,6 +325,56 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
+	var currentDelay time.Duration = c.batchRetryDelay
+
+	err := retry.Do(
+		func() error {
+			// First check if transactions are mature enough
+			err := c.client.CheckTransactionMaturity(daMetaData.TxHash)
+			if err != nil {
+				// Check if this is a maturity error with missing confirmations info
+				var maturityErr da.ErrMaturityNotReached
+				if errors.As(err, &maturityErr) {
+					// Calculate dynamic delay based on missing confirmations. Kaspa has 10 blocks per second, so we estimate delay accordingly
+					currentDelay += time.Duration(float64(maturityErr.MissingConfirmations)/client.KaspaBlocksPerSecond) * time.Second
+
+					c.logger.Debug("Transaction not mature yet, retrying with dynamic delay",
+						"txHash", daMetaData.TxHash,
+						"missingConfirmations", maturityErr.MissingConfirmations,
+						"retryDelay", currentDelay)
+				}
+				return err // Return error to trigger retry
+			}
+			return nil // Success
+		},
+		retry.Attempts(c.batchRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
+		retry.DelayType(func(n uint, err error, config *retry.Config) time.Duration {
+			// Use dynamic delay for maturity errors
+			return currentDelay
+		}),
+	)
+	if err != nil {
+		c.logger.Error("checkBatchAvailability", "hash", daMetaData.TxHash, "error", err)
+		var maturityErr da.ErrMaturityNotReached
+		if errors.As(err, &maturityErr) {
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: fmt.Sprintf("Transaction not mature enough after retries, missing %d confirmations", maturityErr.MissingConfirmations),
+					Error:   err,
+				},
+			}
+		} else {
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: fmt.Sprintf("All attempts failed: %v", err),
+					Error:   err,
+				},
+			}
+		}
+	}
+
 	// Check if the transaction exists by trying to fetch it
 	blob, err := c.client.GetBlob(daMetaData.TxHash)
 	if err != nil {
