@@ -28,13 +28,14 @@ func (v *SettlementValidator) trigger() {
 	}
 }
 
-func NewSettlementValidator(logger types.Logger, blockManager *Manager) *SettlementValidator {
+// latestFinalizedHeight : 0 means nothing finalized yet
+func NewSettlementValidator(logger types.Logger, blockManager *Manager, latestFinalizedHeight uint64) *SettlementValidator {
 	validator := &SettlementValidator{
-		logger:       logger,
-		blockManager: blockManager,
-		C:            make(chan struct{}, 1),
+		logger:        logger,
+		blockManager:  blockManager,
+		C:             make(chan struct{}, 1),
+		trustedHeight: latestFinalizedHeight,
 	}
-	validator.trustedHeight = validator.GetLastValidatedHeight()
 
 	return validator
 }
