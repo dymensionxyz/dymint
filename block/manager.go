@@ -235,6 +235,17 @@ func (m *Manager) Setup(ctx context.Context) error {
 		m.logger.Error("Non critical: fetch sequencer set from the Hub", "error", err)
 	}
 
+	lastFinalized, err := m.SLClient.GetLatestFinalizedHeight()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		m.logger.Info("No finalized batches for chain found in SL.")
+	} else if err != nil {
+		return fmt.Errorf("getting finalized height. err: %w", err)
+	}
+	m.SettlementValidator, err = NewSettlementValidator(m.logger, m, lastFinalized)
+	if err != nil {
+		return err
+	}
+
 	// get latest submitted batch from SL
 	latestBatch, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
@@ -245,17 +256,6 @@ func (m *Manager) Setup(ctx context.Context) error {
 	}
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
-		return err
-	}
-
-	lastFinalized, err := m.SLClient.GetLatestFinalizedHeight()
-	if errors.Is(err, gerrc.ErrNotFound) {
-		m.logger.Info("No finalized batches for chain found in SL.")
-	} else if err != nil {
-		return fmt.Errorf("getting finalized height. err: %w", err)
-	}
-	m.SettlementValidator, err = NewSettlementValidator(m.logger, m, lastFinalized)
-	if err != nil {
 		return err
 	}
 
