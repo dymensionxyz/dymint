@@ -26,21 +26,11 @@ type SettlementValidator struct {
 
 // NewSettlementValidator returns a new StateUpdateValidator instance.
 func NewSettlementValidator(logger types.Logger, blockManager *Manager) *SettlementValidator {
-	lastValidatedHeight, err := blockManager.Store.LoadValidationHeight()
-	if err != nil {
-		logger.Debug("validation height not loaded", "err", err)
-	}
-
 	validator := &SettlementValidator{
-		logger:        logger,
-		blockManager:  blockManager,
-		trustedHeight: blockManager.State.LastBlockHeight.Load(),
+		logger:       logger,
+		blockManager: blockManager,
 	}
-
-	// if SkipValidationHeight is set,  dont validate anything previous to that (used by 2D migration)
-	validationHeight := max(blockManager.Conf.SkipValidationHeight+1, lastValidatedHeight)
-
-	validator.UpdateLastValidatedHeight(validationHeight)
+	validator.trustedHeight = validator.GetLastValidatedHeight()
 
 	return validator
 }
@@ -232,8 +222,7 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	return nil
 }
 
-// UpdateLastValidatedHeight sets the height saved in the Store if it is higher than the existing height
-// returns OK if the value was updated successfully or did not need to be updated
+// if h is greater than current value, set it
 func (v *SettlementValidator) UpdateLastValidatedHeight(h uint64) {
 	v.mu.Lock()
 	defer v.mu.Unlock()

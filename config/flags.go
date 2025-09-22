@@ -57,7 +57,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(FlagP2PBootstrapNodes, def.P2PConfig.BootstrapNodes, "P2P bootstrap nodes")
 	cmd.Flags().Duration(FlagP2PBootstrapRetryTime, def.P2PConfig.BootstrapRetryTime, "P2P bootstrap time")
 	cmd.Flags().Uint64(FlagP2PGossipCacheSize, uint64(def.P2PConfig.GossipSubCacheSize), "P2P Gossiped blocks cache size") //nolint:gosec // GossipSubCacheSize should be always positive
-	cmd.Flags().Uint64(FlagSkipValidationHeight, def.SkipValidationHeight, "Full-node validation will be skipped for the specified height")
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
