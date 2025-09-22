@@ -101,9 +101,6 @@ type Manager struct {
 	// channel used to signal the syncing loop when there is a new state update available
 	settlementSyncingC chan struct{}
 
-	// channel used to signal the validation loop when there is a new state update available
-	settlementValidationC chan struct{}
-
 	// notifies when the node has completed syncing
 	syncedFromSettlement *uchannel.Nudger
 
@@ -235,7 +232,7 @@ func (m *Manager) Setup(ctx context.Context) error {
 	}
 
 	// update local state from latest state in settlement
-	err = m.updateFromLastSettlementState()
+	err = m.setupFromLastSettlementState()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
@@ -317,8 +314,8 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSettlementHeight.Load() + 1
 }
 
-// updateFromLastSettlementState retrieves last sequencers and state update from the Hub and updates local state with it
-func (m *Manager) updateFromLastSettlementState() error {
+// setupFromLastSettlementState retrieves last sequencers and state update from the Hub and updates local state with it
+func (m *Manager) setupFromLastSettlementState() error {
 	// Update sequencers list from SL
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
@@ -339,7 +336,6 @@ func (m *Manager) updateFromLastSettlementState() error {
 		return err
 	}
 
-	// update latest finalized height
 	err = m.updateLastFinalizedHeightFromSettlement()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
@@ -364,7 +360,7 @@ func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
 	} else if err != nil {
 		return fmt.Errorf("getting finalized height. err: %w", err)
 	}
-	m.SettlementValidator.UpdateLastValidatedHeight(height)
+	m.SettlementValidator.SetMaxLastValidatedHeight(height)
 
 	return nil
 }

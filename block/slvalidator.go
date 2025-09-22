@@ -238,7 +238,7 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 }
 
 // if h is greater than current value, set it
-func (v *SettlementValidator) UpdateLastValidatedHeight(h uint64) {
+func (v *SettlementValidator) SetMaxLastValidatedHeight(h uint64) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	curr := v.GetLastValidatedHeight()
@@ -310,7 +310,7 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 		m.logger.Error("onNewStateUpdateFinalized", "err", "wrong event data received")
 		return
 	}
-	m.SettlementValidator.UpdateLastValidatedHeight(eventData.EndHeight)
+	m.SettlementValidator.SetMaxLastValidatedHeight(eventData.EndHeight)
 }
 
 // SettlementValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.
@@ -337,8 +337,7 @@ func (v *SettlementValidator) Loop(ctx context.Context) error {
 					return err
 				}
 
-				// update the last validated height to the batch last block height
-				v.UpdateLastValidatedHeight(batch.EndHeight)
+				v.SetMaxLastValidatedHeight(batch.EndHeight)
 
 				v.logger.Info("state info validated", "idx", batch.StateIndex, "start height", batch.StartHeight, "end height", batch.EndHeight)
 			}
