@@ -791,3 +791,33 @@ func (c *Client) ValidateGenesisBridgeData(data rollapptypes.GenesisBridgeData) 
 
 	return nil
 }
+
+// SubmitTEEAttestation submits a TEE attestation to fast-finalize state updates
+func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce) error {
+	account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
+	if err != nil {
+		return fmt.Errorf("get account: %w", err)
+	}
+
+	addr, err := account.Address(addressPrefix)
+	if err != nil {
+		return fmt.Errorf("derive address: %w", err)
+	}
+
+	msg := &rollapptypes.MsgFastFinalizeWithTEE{
+		Creator:          addr,
+		AttestationToken: token,
+		Nonce:            nonce,
+	}
+
+	txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msg)
+	if err != nil {
+		return fmt.Errorf("broadcast TEE attestation tx: %w", err)
+	}
+
+	if txResp.Code != 0 {
+		return fmt.Errorf("TEE attestation tx failed with code %d: %s", txResp.Code, txResp.RawLog)
+	}
+
+	return nil
+}
