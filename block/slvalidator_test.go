@@ -167,8 +167,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10, manager.State.GetProposer().SettlementAddress)
 
 			// Create the StateUpdateValidator
-			validator, err := block.NewSettlementValidator(testutil.NewLogger(t), manager, 0)
-			require.NoError(t, err)
+			validator := block.NewSettlementValidator(testutil.NewLogger(t), manager)
 
 			// in case double signing generate commits for these blocks
 			if tc.doubleSignedBlocks != nil {
@@ -339,8 +338,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			}
 
 			// Create the StateUpdateValidator
-			validator, err := block.NewSettlementValidator(testutil.NewLogger(t), manager, 0)
-			require.NoError(t, err)
+			validator := block.NewSettlementValidator(testutil.NewLogger(t), manager)
 
 			bds, err := getBlockDescriptors(batch)
 			require.NoError(t, err)

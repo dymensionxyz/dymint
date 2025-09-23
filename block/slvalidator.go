@@ -2,90 +2,47 @@ package block
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"sync"
+	"sync/atomic"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/metrics"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
-
-// triggerStateUpdateValidation sends signal to channel used by validation loop
-func (v *SettlementValidator) trigger() {
-	if v == nil {
-		return
-	}
-	select {
-	case v.C <- struct{}{}:
-	default:
-		v.logger.Debug("disregarding new state update, node is still validating")
-	}
-}
-
-// SettlementValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.
-func (v *SettlementValidator) Loop(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-v.C:
-			for h := v.NextValidationHeight(); h <= min(v.manager.LastSettlementHeight.Load(), v.manager.State.Height()); h = v.NextValidationHeight() {
-				// get next batch that needs to be validated from SL
-				batch, err := v.manager.SLClient.GetBatchAtHeight(h)
-				if err != nil {
-					// TODO: should be recoverable. set to unhealthy and continue
-					return err
-				}
-
-				err = v.ValidateStateUpdate(batch)
-				if err != nil {
-					return err
-				}
-
-				v.SetMaxLastValidatedHeight(batch.EndHeight)
-
-				v.logger.Info("state info validated", "idx", batch.StateIndex, "start height", batch.StartHeight, "end height", batch.EndHeight)
-			}
-		}
-	}
-}
-
-// latestFinalizedHeight : 0 means nothing finalized yet
-func NewSettlementValidator(logger types.Logger, m *Manager, latestFinalizedHeight uint64) (*SettlementValidator, error) {
-	validator := &SettlementValidator{
-		logger:        logger,
-		manager:       m,
-		C:             make(chan struct{}, 1),
-		trustedHeight: latestFinalizedHeight,
-	}
-
-	if m.Conf.TeeEnabled && m.runMode() == RunModeFullNode {
-		// want all validations to have run inside the full node
-		// relying on snapshot is not sufficient (TODO: sergi explain)
-		_, err := m.Store.SaveValidationHeight(latestFinalizedHeight, nil)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return validator, nil
-}
 
 // SettlementValidator validates batches from settlement layer with the corresponding blocks from DA and P2P.
 type SettlementValidator struct {
-	logger  types.Logger
-	manager *Manager
-	mu      sync.Mutex
-	C       chan struct{}
+	logger              types.Logger
+	blockManager        *Manager
+	lastValidatedHeight atomic.Uint64
 
-	// immutable: the height the node assumes is validated when it starts
+	// immutable: the height the node was started from
 	trustedHeight uint64
+}
+
+// NewSettlementValidator returns a new StateUpdateValidator instance.
+func NewSettlementValidator(logger types.Logger, blockManager *Manager) *SettlementValidator {
+	lastValidatedHeight, err := blockManager.Store.LoadValidationHeight()
+	if err != nil {
+		logger.Debug("validation height not loaded", "err", err)
+	}
+
+	validator := &SettlementValidator{
+		logger:        logger,
+		blockManager:  blockManager,
+		trustedHeight: blockManager.State.LastBlockHeight.Load(),
+	}
+
+	// if SkipValidationHeight is set,  dont validate anything previous to that (used by 2D migration)
+	validationHeight := max(blockManager.Conf.SkipValidationHeight+1, lastValidatedHeight)
+
+	validator.lastValidatedHeight.Store(validationHeight)
+
+	return validator
 }
 
 // ValidateStateUpdate validates that the blocks from the state info are available in DA,
@@ -94,7 +51,7 @@ type SettlementValidator struct {
 func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
-	daClient, err := v.manager.Store.LoadDA(batch.EndHeight)
+	daClient, err := v.blockManager.Store.LoadDA(batch.EndHeight)
 	if err != nil {
 		return err
 	}
@@ -105,7 +62,7 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 	// loads blocks applied from P2P, if any.
 	p2pBlocks := make(map[uint64]*types.Block)
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
-		source, err := v.manager.Store.LoadBlockSource(height)
+		source, err := v.blockManager.Store.LoadBlockSource(height)
 		if err != nil {
 			v.logger.Error("load block source", "error", err)
 			continue
@@ -116,7 +73,7 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 			continue
 		}
 
-		block, err := v.manager.Store.LoadBlock(height)
+		block, err := v.blockManager.Store.LoadBlock(height)
 		if err != nil {
 			v.logger.Error("load block", "error", err)
 			continue
@@ -127,7 +84,7 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 	// load all DA blocks from the batch to be validated
 	var daBatch da.ResultRetrieveBatch
 	for {
-		daBatch = v.manager.fetchBatch(batch.MetaData)
+		daBatch = v.blockManager.fetchBatch(batch.MetaData)
 		if daBatch.Code == da.StatusSuccess {
 			break
 		}
@@ -142,7 +99,7 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 			return types.NewErrStateUpdateBlobCorruptedFraud(batch.StateIndex, string(batch.MetaData.Client), batch.MetaData.DAPath)
 		}
 
-		retriever := v.manager.GetRetriever(batch.MetaData.Client)
+		retriever := v.blockManager.GetRetriever(batch.MetaData.Client)
 		if retriever == nil {
 			return fmt.Errorf("missing DA in config. DA: %s", batch.MetaData.Client)
 		}
@@ -248,7 +205,7 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	lastDABlock := daBlocks[numSlBDs-1]
 
 	// we get revision for the next state update
-	revision, err := v.manager.getRevisionFromSL(lastDABlock.Header.Height + 1)
+	revision, err := v.blockManager.getRevisionFromSL(lastDABlock.Header.Height + 1)
 	if err != nil {
 		return err
 	}
@@ -260,7 +217,7 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 
 	expectedNextSeqHash := lastDABlock.Header.SequencerHash
 	if slBatch.NextSequencer != slBatch.Sequencer {
-		nextSequencer, found := v.manager.Sequencers.GetByAddress(slBatch.NextSequencer)
+		nextSequencer, found := v.blockManager.Sequencers.GetByAddress(slBatch.NextSequencer)
 		if !found {
 			return fmt.Errorf("next sequencer not found")
 		}
@@ -275,31 +232,27 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	return nil
 }
 
-// if h is greater than current value, set it
-func (v *SettlementValidator) SetMaxLastValidatedHeight(h uint64) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-	curr := v.GetLastValidatedHeight()
-	if h <= curr {
-		return
-	}
-	_, err := v.manager.Store.SaveValidationHeight(h, nil)
-	if err != nil {
-		v.logger.Error("update validation height: %w", err)
-		return
-	}
+// UpdateLastValidatedHeight sets the height saved in the Store if it is higher than the existing height
+// returns OK if the value was updated successfully or did not need to be updated
+func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64) {
+	for {
+		curr := v.lastValidatedHeight.Load()
+		if v.lastValidatedHeight.CompareAndSwap(curr, max(curr, height)) {
+			h := v.lastValidatedHeight.Load()
+			_, err := v.blockManager.Store.SaveValidationHeight(h, nil)
+			if err != nil {
+				v.logger.Error("update validation height: %w", err)
+			}
 
-	metrics.LastValidatedHeight.Set(float64(h))
+			metrics.LastValidatedHeight.Set(float64(h))
+			break
+		}
+	}
 }
 
 // GetLastValidatedHeight returns the most last block height that is validated with settlement state updates.
 func (v *SettlementValidator) GetLastValidatedHeight() uint64 {
-	h, err := v.manager.Store.LoadValidationHeight()
-	if err != nil {
-		v.logger.Error("load validation height: %w", err)
-		return 0
-	}
-	return h
+	return v.lastValidatedHeight.Load()
 }
 
 func (v *SettlementValidator) GetTrustedHeight() uint64 {
@@ -308,12 +261,12 @@ func (v *SettlementValidator) GetTrustedHeight() uint64 {
 
 // NextValidationHeight returns the next height that needs to be validated with settlement state updates.
 func (v *SettlementValidator) NextValidationHeight() uint64 {
-	return v.GetLastValidatedHeight() + 1
+	return v.lastValidatedHeight.Load() + 1
 }
 
 // validateDRS compares the DRS version stored for the specific height, obtained from rollapp params.
 func (v *SettlementValidator) validateDRS(stateIndex uint64, height uint64, version uint32) error {
-	drs, err := v.manager.Store.LoadDRSVersion(height)
+	drs, err := v.blockManager.Store.LoadDRSVersion(height)
 	// it can happen DRS is not found for blocks applied previous to migration, in case of migration from 2D rollapps
 	if errors.Is(err, gerrc.ErrNotFound) {
 		v.logger.Error("Unable to validate BD DRS version. Height:%d Err:%w", height, err)
@@ -338,19 +291,4 @@ func blockHash(block *types.Block) ([]byte, error) {
 	h := sha256.New()
 	h.Write(blockBytes)
 	return h.Sum(nil), nil
-}
-
-// onNewStateUpdateFinalized will update the last validated height with the last finalized height.
-// Unlike pending heights, once heights are finalized, we treat them as validated as there is no point validating finalized heights.
-func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
-	eventData, ok := event.Data().(*settlement.EventDataNewBatch)
-	if !ok {
-		m.logger.Error("onNewStateUpdateFinalized", "err", "wrong event data received")
-		return
-	}
-	m.SettlementValidator.onFinalizedHeight(eventData.EndHeight)
-}
-
-func (v *SettlementValidator) onFinalizedHeight(h uint64) {
-	v.SetMaxLastValidatedHeight(h)
 }

@@ -38,7 +38,8 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 		// update target height used for syncing status rpc
 		m.UpdateTargetHeight(eventData.EndHeight)
 	} else {
-		m.SettlementValidator.trigger()
+		// trigger validation of the last state update available in settlement
+		m.triggerSettlementValidation()
 	}
 }
 
@@ -93,7 +94,8 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSettlementHeight.Load())
 
-				m.SettlementValidator.trigger()
+				// trigger state update validation, after each state update is applied
+				m.triggerSettlementValidation()
 
 			}
 
@@ -126,5 +128,14 @@ func (m *Manager) triggerSettlementSyncing() {
 	case m.settlementSyncingC <- struct{}{}:
 	default:
 		m.logger.Debug("disregarding new state update, node is still syncing")
+	}
+}
+
+// triggerStateUpdateValidation sends signal to channel used by validation loop
+func (m *Manager) triggerSettlementValidation() {
+	select {
+	case m.settlementValidationC <- struct{}{}:
+	default:
+		m.logger.Debug("disregarding new state update, node is still validating")
 	}
 }

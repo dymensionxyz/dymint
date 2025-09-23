@@ -34,6 +34,13 @@ import (
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 )
 
+const (
+	// RunModeProposer represents a node running as a proposer
+	RunModeProposer uint = iota
+	// RunModeFullNode represents a node running as a full node
+	RunModeFullNode
+)
+
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
 	logger types.Logger
@@ -57,9 +64,9 @@ type Manager struct {
 	DAClients map[da.Client]da.DataAvailabilityLayerClient
 	SLClient  settlement.ClientI
 
-	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that. (Nil means not set)
-	RunModeCached *RunMode
-	Cancel        context.CancelFunc
+	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that.
+	RunMode uint
+	Cancel  context.CancelFunc
 
 	// LastSubmissionTime is the time of last batch submitted in SL
 	LastSubmissionTime atomic.Int64
@@ -100,6 +107,9 @@ type Manager struct {
 
 	// channel used to signal the syncing loop when there is a new state update available
 	settlementSyncingC chan struct{}
+
+	// channel used to signal the validation loop when there is a new state update available
+	settlementValidationC chan struct{}
 
 	// notifies when the node has completed syncing
 	syncedFromSettlement *uchannel.Nudger
@@ -160,9 +170,10 @@ func NewManager(
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
-		pruningC:             make(chan int64, 10),   // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
-		settlementSyncingC:   make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing syncing process, but syncing height is updated, which means the ongoing syncing will sync to the new height.
-		syncedFromSettlement: uchannel.NewNudger(),   // used by the sequencer to wait  till the node completes the syncing from settlement.
+		pruningC:              make(chan int64, 10),   // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
+		settlementSyncingC:    make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing syncing process, but syncing height is updated, which means the ongoing syncing will sync to the new height.
+		settlementValidationC: make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing validation process, but validation height is updated, which means the ongoing validation will validate to the new height.
+		syncedFromSettlement:  uchannel.NewNudger(),   // used by the sequencer to wait  till the node completes the syncing from settlement.
 	}
 
 	for _, client := range daClients {
@@ -174,24 +185,20 @@ func NewManager(
 		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
+	m.SettlementValidator = NewSettlementValidator(m.logger, m)
+
 	return m, nil
 }
 
+// Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
-	err := m.Setup(ctx)
-	if err != nil {
-		return err
-	}
-
-	return m.StartLoops(ctx)
-}
-
-// need to fetch latest info from SL up-front before starting the continuous loops
-func (m *Manager) Setup(ctx context.Context) error {
+	// create new, cancelable context for the block manager
 	ctx, m.Cancel = context.WithCancel(ctx)
 	// set the fraud handler to freeze the node in case of fraud
+	// TODO: should be called for fullnode only?
 	m.setFraudHandler(NewFreezeHandler(m))
 
+	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
 
@@ -201,11 +208,13 @@ func (m *Manager) Setup(ctx context.Context) error {
 		}
 	}
 
+	// validate configuration params and rollapp consensus params are in line
 	err := m.ValidateConfigWithRollappParams()
 	if err != nil {
 		return err
 	}
 
+	// update dymint state with next revision info
 	err = m.updateStateForNextRevision()
 	if err != nil {
 		return err
@@ -230,70 +239,51 @@ func (m *Manager) Setup(ctx context.Context) error {
 		}
 	}
 
-	err = m.UpdateSequencerSetFromSL()
+	// checks if the the current node is the proposer either on rollapp or on the hub.
+	// In case of sequencer rotation, there's a phase where proposer rotated on Rollapp but hasn't yet rotated on hub.
+	// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
+	// The hub proposer, after sending the last state update, will panic and restart as full node.
+	amIProposerOnSL, err := m.AmIProposerOnSL()
 	if err != nil {
-		m.logger.Error("Non critical: fetch sequencer set from the Hub", "error", err)
+		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
 
-	lastFinalized, err := m.SLClient.GetLatestFinalizedHeight()
-	if errors.Is(err, gerrc.ErrNotFound) {
-		m.logger.Info("No finalized batches for chain found in SL.")
-	} else if err != nil {
-		return fmt.Errorf("getting finalized height. err: %w", err)
-	}
-	m.SettlementValidator, err = NewSettlementValidator(m.logger, m, lastFinalized)
+	amIProposer := amIProposerOnSL || m.AmIProposerOnRollapp()
+
+	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
+
+	// update local state from latest state in settlement
+	err = m.updateFromLastSettlementState()
 	if err != nil {
-		return err
+		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 
-	// get latest submitted batch from SL
-	latestBatch, err := m.SLClient.GetLatestBatch()
-	if errors.Is(err, gerrc.ErrNotFound) {
-		// The SL hasn't got any batches for this chain yet.
-		m.logger.Info("No batches for chain found in SL.")
-		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1)) //nolint:gosec // height is non-negative and falls in int64
-		return nil
-	}
-	if err != nil {
-		// TODO: separate between fresh rollapp and non-registered rollapp
-		return err
-	}
-
-	m.P2PClient.UpdateLatestSeenHeight(latestBatch.EndHeight)
-	if latestBatch.EndHeight >= m.State.NextHeight() {
-		m.UpdateTargetHeight(latestBatch.EndHeight)
-	}
-
-	m.LastSettlementHeight.Store(latestBatch.EndHeight)
-	m.LastSubmissionTime.Store(latestBatch.CreationTime.UTC().UnixNano())
-
-	return nil
-}
-
-func (m *Manager) StartLoops(ctx context.Context) error {
-	m.logger.Info("starting block manager", "mode", m.runMode())
-	// we only trigger validation if no syncing is required (otherwise it may cause race condition). TODO: what race cond?
+	// we only trigger validation if no syncing is required (otherwise it may cause race condition).
 	// syncing loop will trigger validation after each batch synced.
 	if m.LastSettlementHeight.Load() > m.State.Height() {
 		// send signal to syncing loop with last settlement state update
 		m.triggerSettlementSyncing()
-	} else if m.runMode() == RunModeFullNode {
+	} else {
 		// send signal to validation loop with last settlement state update
-		m.SettlementValidator.trigger()
+		m.triggerSettlementValidation()
 	}
 
 	// This error group is used to control the lifetime of the block manager.
 	// when one of the loops exits with error, the block manager exits
 	eg, ctx := errgroup.WithContext(ctx)
 
+	// Start the pruning loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.PruningLoop(ctx)
 	})
 
+	// Start the settlement sync loop in the background
+	// TODO: should be called for fullnode only? it's triggered by p2p callback anyhow
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SettlementSyncLoop(ctx)
 	})
 
+	// Monitor sequencer set updates
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorSequencerSetUpdates(ctx)
 	})
@@ -306,14 +296,17 @@ func (m *Manager) StartLoops(ctx context.Context) error {
 		return m.MonitorBalances(ctx)
 	})
 
-	var err error
-	if m.runMode() == RunModeFullNode {
+	// run based on the node role
+	if !amIProposer {
 		err = m.runAsFullNode(ctx, eg)
+		if err != nil {
+			return err
+		}
 	} else {
 		err = m.runAsProposer(ctx, eg)
-	}
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	go func() {
@@ -337,6 +330,58 @@ func (m *Manager) StartLoops(ctx context.Context) error {
 
 func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSettlementHeight.Load() + 1
+}
+
+// updateFromLastSettlementState retrieves last sequencers and state update from the Hub and updates local state with it
+func (m *Manager) updateFromLastSettlementState() error {
+	// Update sequencers list from SL
+	err := m.UpdateSequencerSetFromSL()
+	if err != nil {
+		// this error is not critical
+		m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
+	}
+
+	// get latest submitted batch from SL
+	latestBatch, err := m.SLClient.GetLatestBatch()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		// The SL hasn't got any batches for this chain yet.
+		m.logger.Info("No batches for chain found in SL.")
+		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1)) //nolint:gosec // height is non-negative and falls in int64
+		return nil
+	}
+	if err != nil {
+		// TODO: separate between fresh rollapp and non-registered rollapp
+		return err
+	}
+
+	// update latest finalized height
+	err = m.updateLastFinalizedHeightFromSettlement()
+	if err != nil {
+		return fmt.Errorf("sync block manager from settlement: %w", err)
+	}
+
+	m.P2PClient.UpdateLatestSeenHeight(latestBatch.EndHeight)
+	if latestBatch.EndHeight >= m.State.NextHeight() {
+		m.UpdateTargetHeight(latestBatch.EndHeight)
+	}
+
+	m.LastSettlementHeight.Store(latestBatch.EndHeight)
+	m.LastSubmissionTime.Store(latestBatch.CreationTime.UTC().UnixNano())
+
+	return nil
+}
+
+// updateLastFinalizedHeightFromSettlement updates the last finalized height from the Hub
+func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
+	height, err := m.SLClient.GetLatestFinalizedHeight()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		m.logger.Info("No finalized batches for chain found in SL.")
+	} else if err != nil {
+		return fmt.Errorf("getting finalized height. err: %w", err)
+	}
+	m.SettlementValidator.UpdateLastValidatedHeight(height)
+
+	return nil
 }
 
 func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {

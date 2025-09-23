@@ -36,7 +36,7 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 			return nil
 		case retainHeight := <-m.pruningC:
 			var pruningHeight uint64
-			if m.runMode() == RunModeProposer { // do not delete anything that we might submit in future
+			if m.RunMode == RunModeProposer { // do not delete anything that we might submit in future
 				pruningHeight = min(m.LastSettlementHeight.Load(), uint64(retainHeight))
 			} else { // do not delete anything that is not validated yet
 				pruningHeight = min(m.SettlementValidator.NextValidationHeight(), uint64(retainHeight))
