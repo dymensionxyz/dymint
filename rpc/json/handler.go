@@ -55,7 +55,7 @@ func (h *handler) serveJSONRPC(w http.ResponseWriter, r *http.Request) {
 	h.serveJSONRPCforWS(w, r, nil)
 }
 
-// serveJSONRPC serves HTTP request
+// serveJSONRPCforWS serves HTTP request
 // implementation is highly inspired by Gorilla RPC v2 (but simplified a lot)
 func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsConn *wsConn) {
 	// Create a new codec request.
