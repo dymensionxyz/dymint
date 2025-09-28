@@ -544,7 +544,7 @@ func (c *Client) blockSyncReceived(block *BlockData) {
 	c.blocksReceived.AddBlockReceived(block.Block.Header.Height)
 }
 
-// blockSyncReceived is called on reception of new block via gossip protocol
+// blockGossipReceived is called on reception of new block via gossip protocol
 func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 	var gossipedBlock BlockData
 	if err := gossipedBlock.UnmarshalBinary(block); err != nil {
