@@ -20,7 +20,7 @@ repos:
     #   and are NOT provided the list of staged files,
     #
     # My-Cmd-* Hooks
-    #   Allow you to invoke custom tools in varous contexts.
+    #   Allow you to invoke custom tools in various contexts.
     #   Can be useful if your favorite tool(s) are not built-in (yet)
     #
     # Hook Suffixes
