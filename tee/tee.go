@@ -114,7 +114,7 @@ func queryFullNodeTEE(client *http.Client, url string) (*TEEResponse, error) {
 	request := jsonRPCRequest{
 		JSONRPC: "2.0",
 		Method:  "tee",
-		Params:  map[string]any{"dry": true},
+		Params:  map[string]any{"dry": false},
 		ID:      1,
 	}
 
