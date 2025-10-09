@@ -66,6 +66,8 @@ type BlockManagerConfig struct {
 	SkipValidationHeight uint64 `mapstructure:"skip_validation_height"`
 	// TEE configuration for attestation submission
 	TeeEnabled bool `mapstructure:"tee_enabled"`
+	// Actually require a GCP attestation token?
+	TeeDry bool `mapstructure:"tee_dry"`
 	// TeeSidecarURL is the URL of the TEE sidecar's RPC endpoint
 	TeeSidecarURL string `mapstructure:"tee_sidecar_url"`
 	// TeeInterval is how often to fetch and submit attestations

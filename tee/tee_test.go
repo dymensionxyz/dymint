@@ -13,7 +13,7 @@ func TestQueryFullNodeTEEWithRealEndpoint(t *testing.T) {
 	url := "https://rpc.dan2.team.rollapp.network:443"
 	client := &http.Client{}
 
-	result, err := queryFullNodeTEE(client, url)
+	result, err := queryFullNodeTEE(client, url, false)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
