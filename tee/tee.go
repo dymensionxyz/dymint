@@ -87,10 +87,10 @@ func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
 }
 
 func (f *TEEFinalizer) queryFullNodeTEE() (*TEEResponse, error) {
-	return queryFullNodeTEE(f.sidecarClient, f.config.TeeSidecarURL)
+	return queryFullNodeTEE(f.sidecarClient, f.config.TeeSidecarURL, f.config.TeeDry)
 }
 
-func queryFullNodeTEE(client *http.Client, url string) (*TEEResponse, error) {
+func queryFullNodeTEE(client *http.Client, url string, dry bool) (*TEEResponse, error) {
 	// JSON-RPC request structure
 	type jsonRPCRequest struct {
 		JSONRPC string         `json:"jsonrpc"`
@@ -114,7 +114,7 @@ func queryFullNodeTEE(client *http.Client, url string) (*TEEResponse, error) {
 	request := jsonRPCRequest{
 		JSONRPC: "2.0",
 		Method:  "tee",
-		Params:  map[string]any{"dry": false},
+		Params:  map[string]any{"dry": dry},
 		ID:      1,
 	}
 
