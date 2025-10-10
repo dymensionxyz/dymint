@@ -36,7 +36,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.10.1
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.3
 	github.com/multiformats/go-multiaddr v0.12.2
-	github.com/prometheus/client_golang v1.18.0
+	github.com/prometheus/client_golang v1.19.1
 	github.com/rs/cors v1.9.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.15.0
@@ -167,8 +167,8 @@ require (
 	github.com/minio/highwayhash v1.0.2 // indirect
 	github.com/onsi/ginkgo/v2 v2.15.0 // indirect
 	github.com/pierrec/xxHash v0.1.5 // indirect
-	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/quic-go v0.42.0 // indirect
+	github.com/quic-go/qpack v0.5.1 // indirect
+	github.com/quic-go/quic-go v0.49.1 // indirect
 	github.com/quic-go/webtransport-go v0.6.0 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
@@ -351,10 +351,10 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/linxGnu/grocksdb v1.8.12 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/prometheus/common v0.47.0 // indirect
+	github.com/prometheus/common v0.48.0 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f // indirect
-	go.uber.org/mock v0.4.0 // indirect
+	go.uber.org/mock v0.5.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
 	pgregory.net/rapid v1.1.0
 )
