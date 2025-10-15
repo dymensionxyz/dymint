@@ -177,7 +177,7 @@ func (c *Client) generateAndSubmitBlobTxs(blob []byte) (string, error) {
 		payload := append([]byte{byte(len(txSigBytes))}, txSigBytes...)
 		payload = append(payload, data...)
 
-		// it creates the instruction with the payload (blob chunck) as input data
+		// it creates the instruction with the payload (blob chunk) as input data
 		instruction := solana.NewInstruction(
 			*c.programId,
 			[]*solana.AccountMeta{},
