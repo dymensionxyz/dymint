@@ -1,5 +1,4 @@
 with-expecter: true
-recursive: true
 packages:
   github.com/dymensionxyz/dymint/store:
     interfaces:
