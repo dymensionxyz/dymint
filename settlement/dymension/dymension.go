@@ -810,14 +810,18 @@ func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce)
 		Nonce:            nonce,
 	}
 
-	txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msg)
-	if err != nil {
-		return fmt.Errorf("broadcast TEE attestation tx: %w", err)
-	}
+	err = c.RunWithRetry(func() error {
 
-	if txResp.Code != 0 {
-		return fmt.Errorf("TEE attestation tx failed with code %d: %s", txResp.Code, txResp.RawLog)
-	}
+		txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msg)
+		if err != nil {
+			return fmt.Errorf("broadcast TEE attestation tx: %w", err)
+		}
 
-	return nil
+		if txResp.Code != 0 {
+			return fmt.Errorf("TEE attestation tx failed with code %d: %s", txResp.Code, txResp.RawLog)
+		}
+		return err
+	})
+
+	return err
 }
