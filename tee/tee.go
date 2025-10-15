@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,7 +14,6 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // TEEResponse represents the response from the full node's /tee endpoint
@@ -67,12 +65,9 @@ func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
 		return fmt.Errorf("query full node TEE: %w", err)
 	}
 
-	latestFinalizedHeight, err := f.hubClient.GetLatestFinalizedHeight()
+	latestFinalizedHeight, err := f.hubClient.GetLatestFinalizedHeightOrZero()
 	if err != nil {
-		if !errors.Is(err, gerrc.ErrNotFound) {
-			return fmt.Errorf("get latest finalized height: %w", err)
-		}
-		latestFinalizedHeight = 0
+		return fmt.Errorf("get latest finalized height: %w", err)
 	}
 	if attestation.Nonce.CurrHeight <= latestFinalizedHeight {
 		return fmt.Errorf("attestation height is not greater than latest finalized height")

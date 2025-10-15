@@ -85,6 +85,8 @@ type ClientI interface {
 	GetLatestHeight() (uint64, error)
 	// GetLatestFinalizedHeight returns the latest finalized height from the settlement layer.
 	GetLatestFinalizedHeight() (uint64, error)
+	// GetLatestFinalizedHeightOrZero returns the latest finalized height from the settlement layer or zero if not found.
+	GetLatestFinalizedHeightOrZero() (uint64, error)
 	// GetAllSequencers returns all sequencers for this rollapp (bonded and not bonded).
 	GetAllSequencers() ([]types.Sequencer, error)
 	// GetBondedSequencers returns the list of the bonded sequencers for this rollapp.
