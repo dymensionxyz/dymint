@@ -22,6 +22,10 @@ type Revision struct {
 	Revision    tmstate.Version
 }
 
+func (r *Revision) GetRevisionNumber() uint64 {
+	return r.Revision.Consensus.App
+}
+
 // State contains information about current state of the blockchain.
 type State struct {
 	Revisions []Revision
@@ -124,15 +128,8 @@ func (s *State) GetRevisions() []Revision {
 	return s.Revisions
 }
 
-func (s *State) GetLastRevision() tmstate.Version {
-	return s.Revisions[len(s.Revisions)-1].Revision
-}
-
-func (s *State) GetRevision() uint64 {
-	if len(s.Revisions) == 0 {
-		return 0
-	}
-	return s.Revisions[len(s.Revisions)-1].Revision.Consensus.App
+func (s *State) GetLastRevision() Revision {
+	return s.Revisions[len(s.Revisions)-1]
 }
 
 func (s *State) GetVersion() tmstate.Version {
@@ -144,6 +141,19 @@ func (s *State) GetVersion() tmstate.Version {
 
 func (s *State) SetRevision(revisions []Revision) {
 	s.Revisions = revisions
+}
+
+func (s *State) GetRevisionByHeight(height uint64) Revision {
+	if len(s.Revisions) == 0 {
+		panic("no revisions in state")
+	}
+	rev := s.Revisions[0]
+	for i := 1; i < len(s.Revisions); i++ {
+		if height >= s.Revisions[i].StartHeight {
+			rev = s.Revisions[i]
+		}
+	}
+	return rev
 }
 
 func (s *State) ValidateRevision(height uint64, version Version) error {

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 
 	"github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/store"
@@ -167,7 +168,7 @@ func TestMonitorForkUpdate(t *testing.T) {
 	state.LastBlockHeight.Store(uint64(100))
 	mockSL.On("GetRollapp").Return(&types.Rollapp{
 		Revisions: []types.Revision{{
-			Number:      2,
+			Revision:    tmstate.Version{Consensus: types.Consensus{App: 2}},
 			StartHeight: 100,
 		}},
 	}, nil)
