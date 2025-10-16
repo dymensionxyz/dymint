@@ -215,10 +215,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	// update dymint state with next revision info
-	/*err = m.updateStateForNextRevision()
+	err = m.updateStateWithRevisions()
 	if err != nil {
 		return err
-	}*/
+	}
 
 	// Check if a proposer on the rollapp is set. In case no proposer is set on the Rollapp, fallback to the hub proposer (If such exists).
 	// No proposer on the rollapp means that at some point there was no available proposer.

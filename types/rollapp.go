@@ -27,6 +27,10 @@ func (r Rollapp) GetRevisionForHeight(height uint64) Revision {
 	return Revision{}
 }
 
+func (r Rollapp) GetRevisions() []Revision {
+	return r.Revisions
+}
+
 func RollappFromProto(pb rollapptypes.Rollapp) Rollapp {
 	revisions := make([]Revision, 0, len(pb.Revisions))
 	for _, pbRevision := range pb.Revisions {

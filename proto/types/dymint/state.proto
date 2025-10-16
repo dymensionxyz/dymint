@@ -12,11 +12,6 @@ import "types/tendermint/types/validator.proto";
 
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dymint";
 
-message Revision {
-  uint64 start_height = 1;
-  tendermint.state.Version revision = 2;
-}
-
 message State {
   reserved 1;
   string chain_id = 2;
@@ -55,8 +50,6 @@ message State {
   Sequencer proposer = 20;
 
   reserved 21;
-
-  repeated Revision revisions = 22;
 }
 
 //rollapp params defined in genesis and updated via gov proposal
