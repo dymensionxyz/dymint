@@ -84,13 +84,9 @@ func (b *Block) ValidateWithState(state *State) error {
 		return NewErrTimeFraud(b, currentTime)
 	}
 
-	if err = state.ValidateRevision(b.Header.Height, b.Header.Version); err != nil {
+	if err = validateRevision(b.Header, state); err != nil {
 		return ErrVersionMismatch
 	}
-	/*if b.Header.Version.App != state.GetRevision() ||
-		b.Header.Version.Block != state.Version.Consensus.Block {
-		return ErrVersionMismatch
-	}*/
 
 	nextHeight := state.NextHeight()
 	if b.Header.Height != nextHeight {
@@ -180,5 +176,13 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 		return NewErrInvalidHeaderHashFraud(c.HeaderHash, header)
 	}
 
+	return nil
+}
+
+func validateRevision(header Header, state *State) error {
+	revision := state.GetRevisionByHeight(header.Height)
+	if header.Version.App != revision.Revision.Consensus.App || header.Version.Block != revision.Revision.Consensus.Block {
+		return ErrVersionMismatch
+	}
 	return nil
 }

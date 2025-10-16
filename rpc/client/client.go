@@ -770,8 +770,8 @@ func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 	}
 	defaultProtocolVersion := p2p.NewProtocolVersion(
 		tm_version.P2PProtocol,
-		state.Version.Consensus.Block,
-		state.Version.Consensus.App,
+		state.GetLastRevision().Revision.Consensus.Block,
+		state.GetLastRevision().Revision.Consensus.App,
 	)
 	id, addr, network := c.node.P2P.Info()
 	txIndexerStatus := "on"
