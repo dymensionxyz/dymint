@@ -166,9 +166,9 @@ func (t *TEEResponse) UnmarshalJSON(data []byte) error {
 	var aux struct {
 		Token string `json:"token"`
 		Nonce struct {
-			RollappId       string `json:"rollapp_id"`
-			CurrHeight      string `json:"curr_height,omitempty"`
-			FinalizedHeight string `json:"finalized_height,omitempty"`
+			RollappId  string `json:"rollapp_id"`
+			CurrHeight string `json:"curr_height,omitempty"`
+			HubChainId string `json:"hub_chain_id"`
 		} `json:"nonce"`
 	}
 
@@ -179,25 +179,17 @@ func (t *TEEResponse) UnmarshalJSON(data []byte) error {
 	if aux.Nonce.CurrHeight == "" {
 		aux.Nonce.CurrHeight = "0"
 	}
-	if aux.Nonce.FinalizedHeight == "" {
-		aux.Nonce.FinalizedHeight = "0"
-	}
 
 	currHeight, err := strconv.ParseUint(aux.Nonce.CurrHeight, 10, 64)
 	if err != nil {
 		return fmt.Errorf("parse curr_height: %w", err)
 	}
 
-	finalizedHeight, err := strconv.ParseUint(aux.Nonce.FinalizedHeight, 10, 64)
-	if err != nil {
-		return fmt.Errorf("parse finalized_height: %w", err)
-	}
-
 	t.Token = aux.Token
 	t.Nonce = rollapptypes.TEENonce{
-		RollappId:       aux.Nonce.RollappId,
-		CurrHeight:      currHeight,
-		FinalizedHeight: finalizedHeight,
+		RollappId:  aux.Nonce.RollappId,
+		CurrHeight: currHeight,
+		HubChainId: aux.Nonce.HubChainId,
 	}
 
 	return nil

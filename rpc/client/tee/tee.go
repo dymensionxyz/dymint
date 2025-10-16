@@ -35,9 +35,9 @@ func GetToken(node *node.Node, dry bool) (tee.TEEResponse, error) {
 	}
 
 	nonce := rollapptypes.TEENonce{
-		RollappId:       node.BlockManager.State.ChainID,
-		CurrHeight:      lastValidatedHeight,
-		FinalizedHeight: validator.GetTrustedHeight(),
+		RollappId:  node.BlockManager.State.ChainID,
+		CurrHeight: lastValidatedHeight,
+		HubChainId: node.BlockManager.SLClient.,
 	}
 
 	var token string
