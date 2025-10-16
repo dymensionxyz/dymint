@@ -26,15 +26,15 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 	defer ticker.Stop()
 
 	for {
-		if err := m.checkForkUpdate(ForkMonitorMessage); err != nil {
-			if errors.Is(err, ErrNonRecoverable) {
-				return err
-			}
-		}
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
+			if err := m.checkForkUpdate(ForkMonitorMessage); err != nil {
+				if errors.Is(err, ErrNonRecoverable) {
+					return err
+				}
+			}
 		}
 	}
 }
@@ -109,6 +109,15 @@ func (m *Manager) getRevisionFromSL(height uint64) (types.Revision, error) {
 		return types.Revision{}, err
 	}
 	return rollapp.GetRevisionForHeight(height), nil
+}
+
+// getRevisionFromSL returns revision data for the specific height
+func (m *Manager) getRevisions() ([]types.Revision, error) {
+	rollapp, err := m.SLClient.GetRollapp()
+	if err != nil {
+		return []types.Revision{}, err
+	}
+	return rollapp.GetRevisions(), nil
 }
 
 // doFork creates fork blocks and submits a new batch with them
@@ -237,27 +246,19 @@ func (m *Manager) submitForkBatch(height uint64) error {
 }
 
 // updateStateForNextRevision updates dymint stored state in case next height corresponds to a new revision, to enable syncing (and validation) for rollapps with multiple revisions.
-/*func (m *Manager) updateStateForNextRevision() error {
+func (m *Manager) updateStateWithRevisions() error {
 	// in case fork is detected dymint state needs to be updated
 
 	// get next revision according to node height
-	nextRevision, err := m.getRevisionFromSL(m.State.NextHeight())
+	revisions, err := m.getRevisions()
 	if err != nil {
 		return err
 	}
 
-	// if next height is revision start height, update local state
-	if nextRevision.StartHeight == m.State.NextHeight() {
-		// Set proposer to nil to force updating it from SL
-		m.State.SetProposer(nil)
-		m.State.SetRevision(nextRevisionexpectedRevision.GetRevisionNumber())
-
-		// update stored state
-		_, err = m.Store.SaveState(m.State, nil)
-		return err
-	}
+	m.State.SetRevision(revisions)
 	return nil
-}*/
+
+}
 
 // doForkWhenNewRevision creates and submit to SL fork blocks according to next revision start height.
 func (m *Manager) doForkWhenNewRevision() error {
