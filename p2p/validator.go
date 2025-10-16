@@ -14,7 +14,7 @@ import (
 
 type StateGetter interface {
 	SafeProposerPubKey() (tmcrypto.PubKey, error)
-	GetRevision() uint64
+	GetRevisionNumberByHeight(height uint64) uint64
 }
 
 // GossipValidator is a callback function type.
@@ -85,7 +85,7 @@ func (v *Validator) BlockValidator() GossipValidator {
 			v.logger.Error("Deserialize gossiped block.", "error", err)
 			return pubsub.ValidationReject
 		}
-		if v.stateGetter.GetRevision() != gossipedBlock.Block.GetRevision() {
+		if v.stateGetter.GetRevisionNumberByHeight(gossipedBlock.Block.Header.Height) != gossipedBlock.Block.GetRevision() {
 			return pubsub.ValidationReject
 		}
 		propKey, err := v.stateGetter.SafeProposerPubKey()

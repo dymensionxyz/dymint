@@ -51,7 +51,7 @@ func (m *Manager) checkForkUpdate(msg string) error {
 
 	var (
 		nextHeight       = m.State.NextHeight()
-		actualRevision   = m.State.GetRevision()
+		actualRevision   = m.State.GetLastRevisionNumber()
 		expectedRevision = rollapp.GetRevisionForHeight(nextHeight)
 	)
 
@@ -286,8 +286,8 @@ func (m *Manager) doForkWhenNewRevision() error {
 	}
 
 	// this cannot happen. it means the revision number obtained is not the same or the next revision. unable to fork.
-	if expectedRevision.GetRevisionNumber() != m.State.GetRevision() {
-		return fmt.Errorf("inconsistent expected revision number from Hub (%d != %d). Unable to fork", expectedRevision.GetRevisionNumber(), m.State.GetRevision())
+	if expectedRevision.GetRevisionNumber() != m.State.GetLastRevisionNumber() {
+		return fmt.Errorf("inconsistent expected revision number from Hub (%d != %d). Unable to fork", expectedRevision.GetRevisionNumber(), m.State.GetLastRevisionNumber())
 	}
 
 	// remove instruction file after fork

@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 
 	"github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/store"
@@ -30,7 +31,7 @@ func TestShouldStopNode(t *testing.T) {
 			name: "should stop - current height greater than revision start height and lower revision",
 			rollapp: &types.Rollapp{
 				Revisions: []types.Revision{{
-					Number:      2,
+					Revision:    tmstate.Version{Consensus: tmversion.Consensus{App: 2}},
 					StartHeight: 100,
 				}},
 			},
@@ -49,7 +50,7 @@ func TestShouldStopNode(t *testing.T) {
 			name: "should not stop - current height less than revision start height",
 			rollapp: &types.Rollapp{
 				Revisions: []types.Revision{{
-					Number:      2,
+					Revision:    tmstate.Version{Consensus: tmversion.Consensus{App: 2}},
 					StartHeight: 100,
 				}},
 			},
@@ -68,7 +69,7 @@ func TestShouldStopNode(t *testing.T) {
 			name: "should not stop - same revision",
 			rollapp: &types.Rollapp{
 				Revisions: []types.Revision{{
-					Number:      2,
+					Revision:    tmstate.Version{Consensus: tmversion.Consensus{App: 2}},
 					StartHeight: 100,
 				}},
 			},
@@ -106,10 +107,12 @@ func TestCheckForkUpdate(t *testing.T) {
 				mockState.LastBlockHeight.Store(uint64(100))
 
 				mockSL.On("GetRollapp").Return(&types.Rollapp{
-					Revisions: []types.Revision{{
-						Number:      1,
-						StartHeight: 200,
-					}},
+					Revisions: []types.Revision{
+						{
+							Revision:    tmstate.Version{Consensus: tmversion.Consensus{App: 2}},
+							StartHeight: 100,
+						},
+					},
 				}, nil)
 
 				mockStore.On("LoadBlock", uint64(100)).Return(&types.Block{
@@ -168,7 +171,7 @@ func TestMonitorForkUpdate(t *testing.T) {
 	state.LastBlockHeight.Store(uint64(100))
 	mockSL.On("GetRollapp").Return(&types.Rollapp{
 		Revisions: []types.Revision{{
-			Revision:    tmstate.Version{Consensus: types.Consensus{App: 2}},
+			Revision:    tmstate.Version{Consensus: tmversion.Consensus{App: 2}},
 			StartHeight: 100,
 		}},
 	}, nil)
@@ -225,7 +228,7 @@ func TestCreateInstruction(t *testing.T) {
 			name: "successful instruction creation",
 			rollapp: &types.Rollapp{
 				Revisions: []types.Revision{{
-					Number:      2,
+					Revision:    tmstate.Version{Consensus: tmversion.Consensus{App: 2}},
 					StartHeight: 100,
 				}},
 			},
@@ -247,7 +250,7 @@ func TestCreateInstruction(t *testing.T) {
 			mockSL.On("GetObsoleteDrs").Return([]uint32{}, nil)
 			mockSL.On("GetRollapp").Return(&types.Rollapp{
 				Revisions: []types.Revision{{
-					Number:      2,
+					Revision:    tmstate.Version{Consensus: tmversion.Consensus{App: 2}},
 					StartHeight: 100,
 				}},
 			}, nil)
