@@ -412,3 +412,8 @@ func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce)
 	// Stub implementation for grpc settlement layer
 	return nil
 }
+
+// GetChainID returns the chain ID of the settlement layer.
+func (c *Client) GetChainID() string {
+	return "grpc-settlement-layer"
+}
