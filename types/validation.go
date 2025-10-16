@@ -84,10 +84,13 @@ func (b *Block) ValidateWithState(state *State) error {
 		return NewErrTimeFraud(b, currentTime)
 	}
 
-	if b.Header.Version.App != state.GetRevision() ||
-		b.Header.Version.Block != state.Version.Consensus.Block {
+	if err = state.ValidateRevision(b.Header.Height, b.Header.Version); err != nil {
 		return ErrVersionMismatch
 	}
+	/*if b.Header.Version.App != state.GetRevision() ||
+		b.Header.Version.Block != state.Version.Consensus.Block {
+		return ErrVersionMismatch
+	}*/
 
 	nextHeight := state.NextHeight()
 	if b.Header.Height != nextHeight {

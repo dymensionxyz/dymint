@@ -22,10 +22,15 @@ func TestBlock_ValidateWithState(t *testing.T) {
 	proposerHash := proposer.MustHash()
 	currentTime := time.Now().UTC()
 	validState := &State{
-		Version: tmstate.Version{
-			Consensus: version.Consensus{
-				Block: 1,
-				App:   1,
+		Revisions: []Revision{
+			{
+				StartHeight: 0,
+				Revision: tmstate.Version{
+					Consensus: version.Consensus{
+						Block: 1,
+						App:   1,
+					},
+				},
 			},
 		},
 		LastBlockHeight: atomic.Uint64{},

@@ -110,12 +110,17 @@ func TestStateRoundTrip(t *testing.T) {
 		{
 			name: "with all fields set",
 			state: types.State{
-				Version: tmstate.Version{
-					Consensus: tmversion.Consensus{
-						Block: 123,
-						App:   456,
+				Revisions: []types.Revision{
+					{
+						StartHeight: 0,
+						Revision: tmstate.Version{
+							Consensus: tmversion.Consensus{
+								Block: 123,
+								App:   456,
+							},
+							Software: "dymint",
+						},
 					},
-					Software: "dymint",
 				},
 				ChainID:       "testchain",
 				InitialHeight: 987,
