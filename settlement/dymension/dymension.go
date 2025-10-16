@@ -821,3 +821,8 @@ func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce)
 
 	return nil
 }
+
+// GetChainID returns the chain ID of the settlement layer.
+func (c *Client) GetChainID() string {
+	return c.cosmosClient.GetChainID()
+}
