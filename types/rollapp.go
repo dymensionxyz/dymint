@@ -3,6 +3,7 @@ package types
 import (
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	"github.com/tendermint/tendermint/version"
 )
 
 type Rollapp struct {
@@ -36,6 +37,7 @@ func RollappFromProto(pb rollapptypes.Rollapp) Rollapp {
 	for _, pbRevision := range pb.Revisions {
 		revision := tmstate.Version{}
 		revision.Consensus.App = pbRevision.Number
+		revision.Consensus.Block = version.BlockProtocol
 		revisions = append(revisions, Revision{
 			Revision:    revision,
 			StartHeight: pbRevision.StartHeight,
