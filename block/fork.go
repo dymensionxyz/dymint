@@ -277,7 +277,7 @@ func (m *Manager) doForkWhenNewRevision() error {
 			return err
 		}
 		// update revision with revision after fork
-		m.State.SetRevision(instruction.Revision)
+		//m.State.SetRevision(instruction.Revision)
 		// create and submit fork batch
 		err = m.doFork(instruction)
 		if err != nil {

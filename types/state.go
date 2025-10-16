@@ -124,8 +124,8 @@ func (s *State) GetRevisions() []Revision {
 	return s.Revisions
 }
 
-func (s *State) GetLastRevision() uint64 {
-	return s.Revisions[len(s.Revisions)-1].Revision.Consensus.App
+func (s *State) GetLastRevision() tmstate.Version {
+	return s.Revisions[len(s.Revisions)-1].Revision
 }
 
 func (s *State) GetRevision() uint64 {
@@ -154,8 +154,6 @@ func (s *State) ValidateRevision(height uint64, version Version) error {
 	for i := 1; i < len(s.Revisions); i++ {
 		if height >= s.Revisions[i].StartHeight {
 			rev = s.Revisions[i]
-		} else {
-			break
 		}
 	}
 	if version.App != rev.Revision.Consensus.App || version.Block != rev.Revision.Consensus.Block {
