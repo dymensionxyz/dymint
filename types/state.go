@@ -128,8 +128,12 @@ func (s *State) GetRevisions() []Revision {
 	return s.Revisions
 }
 
-func (s *State) GetLastRevision() Revision {
-	return s.Revisions[len(s.Revisions)-1]
+func (s *State) GetLastRevision() tmstate.Version {
+	return s.Revisions[len(s.Revisions)-1].Revision
+}
+
+func (s *State) GetLastRevisionNumber() uint64 {
+	return s.GetLastRevision().Consensus.App
 }
 
 func (s *State) GetVersion() tmstate.Version {

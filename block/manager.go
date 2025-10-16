@@ -392,8 +392,8 @@ func (m *Manager) SafeProposerPubKey() (tmcrypto.PubKey, error) {
 	return m.State.SafeProposerPubKey()
 }
 
-func (m *Manager) GetRevision() uint64 {
-	return m.State.GetRevision()
+func (m *Manager) GetRevisionNumberByHeight(height uint64) uint64 {
+	return m.State.GetRevisionByHeight(height).Revision.Consensus.App
 }
 
 func (m *Manager) UpdateTargetHeight(h uint64) {
