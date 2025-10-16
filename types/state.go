@@ -17,10 +17,14 @@ import (
 
 const rollappparams_modulename = "rollappparams"
 
+type Revision struct {
+	StartHeight uint64
+	Revision    tmstate.Version
+}
+
 // State contains information about current state of the blockchain.
 type State struct {
-	Version             tmstate.Version
-	RevisionStartHeight uint64
+	Revisions []Revision
 	// immutable
 	ChainID       string
 	InitialHeight uint64 // should be 1, not 0, when starting from height 1
@@ -116,10 +120,46 @@ func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
 	return nil
 }
 
-func (s *State) GetRevision() uint64 {
-	return s.Version.Consensus.App
+func (s *State) GetRevisions() []Revision {
+	return s.Revisions
 }
 
-func (s *State) SetRevision(revision uint64) {
-	s.Version.Consensus.App = revision
+func (s *State) GetLastRevision() uint64 {
+	return s.Revisions[len(s.Revisions)-1].Revision.Consensus.App
+}
+
+func (s *State) GetRevision() uint64 {
+	if len(s.Revisions) == 0 {
+		return 0
+	}
+	return s.Revisions[len(s.Revisions)-1].Revision.Consensus.App
+}
+
+func (s *State) GetVersion() tmstate.Version {
+	if len(s.Revisions) == 0 {
+		return tmstate.Version{}
+	}
+	return s.Revisions[len(s.Revisions)-1].Revision
+}
+
+func (s *State) SetRevision(revisions []Revision) {
+	s.Revisions = revisions
+}
+
+func (s *State) ValidateRevision(height uint64, version Version) error {
+	if len(s.Revisions) == 0 {
+		panic("no revisions in state")
+	}
+	rev := s.Revisions[0]
+	for i := 1; i < len(s.Revisions); i++ {
+		if height >= s.Revisions[i].StartHeight {
+			rev = s.Revisions[i]
+		} else {
+			break
+		}
+	}
+	if version.App != rev.Revision.Consensus.App || version.Block != rev.Revision.Consensus.Block {
+		return ErrVersionMismatch
+	}
+	return nil
 }
