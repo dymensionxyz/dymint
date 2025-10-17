@@ -135,6 +135,14 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// 2. Update the proposer in the state in case of rotation happened on the rollapp level (not necessarily on the hub yet).
 	isProposerUpdated := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
 
+	if m.State.GetProposer() == nil {
+		proposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
+		if err != nil {
+			return fmt.Errorf("save proposer: %w", err)
+		}
+		m.State.SetProposer(proposer)
+	}
+
 	// 3. Save the state to the store (independently of the height). Here the proposer might differ from (1).
 	batch, err = m.Store.SaveState(m.State, batch)
 	if err != nil {

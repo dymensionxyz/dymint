@@ -247,16 +247,17 @@ func (m *Manager) submitForkBatch(height uint64) error {
 
 // updateStateForNextRevision updates dymint stored state in case next height corresponds to a new revision, to enable syncing (and validation) for rollapps with multiple revisions.
 func (m *Manager) updateStateWithRevisions() error {
-	// in case fork is detected dymint state needs to be updated
 
-	// get next revision according to node height
+	// get revisions for rollapp from SL
 	revisions, err := m.getRevisions()
 	if err != nil {
 		return err
 	}
 
+	// store revisions to dymint state
 	m.State.SetRevision(revisions)
-	return nil
+	_, err = m.Store.SaveState(m.State, nil)
+	return err
 
 }
 
