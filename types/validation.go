@@ -94,7 +94,7 @@ func (b *Block) ValidateWithState(state *State) error {
 	}
 
 	proposerHash := state.GetProposerHash()
-	if !bytes.Equal(b.Header.SequencerHash[:], proposerHash) && !state.isForkHeight(b.Header.Height) {
+	if !bytes.Equal(b.Header.SequencerHash[:], proposerHash) {
 		return NewErrInvalidSequencerHashFraud([32]byte(proposerHash), b.Header.SequencerHash[:], &b.Header)
 	}
 

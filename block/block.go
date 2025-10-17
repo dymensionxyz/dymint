@@ -12,6 +12,15 @@ import (
 // validateAndApplyBlock calls validateBlockBeforeApply and applyBlock.
 func (m *Manager) validateAndApplyBlock(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
 	if m.Conf.SkipValidationHeight != block.Header.Height {
+
+		if m.State.IsForkHeight(block.Header.Height) {
+			proposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
+			if err != nil {
+				return fmt.Errorf("save proposer: %w", err)
+			}
+			m.State.SetProposer(proposer)
+		}
+
 		if err := m.validateBlockBeforeApply(block, commit); err != nil {
 			m.blockCache.Delete(block.Header.Height)
 			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
@@ -179,7 +188,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// If so, restart so I can start as the proposer.
 	// For current proposer, we don't want to restart because we still need to send the last batch.
 	// This will be done as part of the `rotate` function.
-	if isProposerUpdated && m.AmIProposerOnRollapp() {
+	if isProposerUpdated && m.AmIProposerOnRollapp() && m.RunMode == RunModeFullNode {
 		panic("I'm the new Proposer now. restarting as a proposer")
 	}
 
