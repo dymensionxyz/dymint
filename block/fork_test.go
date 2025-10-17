@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	"github.com/tendermint/tendermint/proto/tendermint/version"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 
 	"github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
@@ -138,7 +139,12 @@ func TestCheckForkUpdate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSL := new(settlement.MockClientI)
 			mockStore := new(store.MockStore)
-			mockState := &types.State{}
+			mockState := &types.State{
+				Revisions: []types.Revision{
+					{Revision: tmstate.Version{Consensus: version.Consensus{App: 1, Block: 11}}, StartHeight: 0},
+					{Revision: tmstate.Version{Consensus: version.Consensus{App: 2, Block: 11}}, StartHeight: 101},
+				},
+			}
 
 			tt.setupMocks(mockSL, mockStore, mockState)
 
