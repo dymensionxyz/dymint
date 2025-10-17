@@ -57,7 +57,9 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	}
 
 	s := types.State{
-		Version:         InitStateVersion,
+		Revisions: []types.Revision{
+			{StartHeight: uint64(genDoc.InitialHeight), Revision: InitStateVersion},
+		},
 		ChainID:         genDoc.ChainID,
 		InitialHeight:   uint64(genDoc.InitialHeight), //nolint:gosec // height is non-negative and falls in int64
 		ConsensusParams: *genDoc.ConsensusParams,

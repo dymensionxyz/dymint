@@ -150,8 +150,8 @@ func (e *Executor) CreateBlock(
 	block := &types.Block{
 		Header: types.Header{
 			Version: types.Version{
-				Block: state.Version.Consensus.Block,
-				App:   state.Version.Consensus.App,
+				Block: state.GetLastRevision().Consensus.Block,
+				App:   state.GetLastRevision().Consensus.App,
 			},
 			ChainID:         e.chainID,
 			Height:          height,
