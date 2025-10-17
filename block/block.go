@@ -15,7 +15,9 @@ func (m *Manager) validateAndApplyBlock(block *types.Block, commit *types.Commit
 
 		// in case of fork, update proposer from SL to validate the block, otherwise previous block next proposer may not be valid.
 		if m.State.IsForkHeight(block.Header.Height) {
-			m.UpdateProposerFromSL()
+			if err := m.UpdateProposerFromSL(); err != nil {
+				return err
+			}
 		}
 
 		if err := m.validateBlockBeforeApply(block, commit); err != nil {
@@ -143,7 +145,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// in case of empty proposer after fork, update from SL
 	if m.State.GetProposer() == nil {
-		m.UpdateProposerFromSL()
+		if err := m.UpdateProposerFromSL(); err != nil {
+			return err
+		}
 	}
 
 	// 3. Save the state to the store (independently of the height). Here the proposer might differ from (1).
