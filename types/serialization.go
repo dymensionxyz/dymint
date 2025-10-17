@@ -267,8 +267,15 @@ func (s *State) ToProto() (*pb.State, error) {
 			return nil, err
 		}
 	}
-
+	pbRevisions := make([]*pb.Revision, len(s.Revisions))
+	for i, rev := range s.Revisions {
+		pbRevisions[i] = &pb.Revision{
+			StartHeight: rev.StartHeight,
+			Revision:    &rev.Revision,
+		}
+	}
 	return &pb.State{
+		Revisions:       pbRevisions,
 		ChainId:         s.ChainID,
 		InitialHeight:   int64(s.InitialHeight), //nolint:gosec // height is non-negative and falls in int64
 		LastBlockHeight: int64(s.Height()),      //nolint:gosec // height is non-negative and falls in int64
@@ -283,6 +290,14 @@ func (s *State) ToProto() (*pb.State, error) {
 
 // FromProto fills State with data from its protobuf representation.
 func (s *State) FromProto(other *pb.State) error {
+	// Deserialize revisions
+	s.Revisions = make([]Revision, len(other.Revisions))
+	for i, pbRev := range other.Revisions {
+		s.Revisions[i] = Revision{
+			StartHeight: pbRev.StartHeight,
+			Revision:    *pbRev.Revision,
+		}
+	}
 	s.ChainID = other.ChainId
 	s.InitialHeight = uint64(other.InitialHeight) //nolint:gosec // height is non-negative and falls in int64
 	s.SetHeight(uint64(other.LastBlockHeight))    //nolint:gosec // height is non-negative and falls in int64
