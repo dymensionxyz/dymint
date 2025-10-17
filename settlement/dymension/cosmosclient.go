@@ -33,6 +33,7 @@ type CosmosClient interface {
 	GetSequencerClient() sequencertypes.QueryClient
 	GetAccount(accountName string) (cosmosaccount.Account, error)
 	GetBalance(ctx context.Context, accountName string, denom string) (*sdktypes.Coin, error)
+	GetChainID() string
 }
 
 type cosmosClient struct {
@@ -95,4 +96,8 @@ func (c *cosmosClient) GetBalance(ctx context.Context, address string, denom str
 	}
 
 	return balance.Balance, nil
+}
+
+func (c *cosmosClient) GetChainID() string {
+	return c.Client.Context().ChainID
 }

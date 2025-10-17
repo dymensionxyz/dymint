@@ -106,4 +106,6 @@ type ClientI interface {
 	ValidateGenesisBridgeData(data rollapp.GenesisBridgeData) error
 	// SubmitTEEAttestation submits a TEE attestation to fast-finalize state updates
 	SubmitTEEAttestation(token string, nonce rollapp.TEENonce) error
+	// GetChainID returns the chain ID of the settlement layer.
+	GetChainID() string
 }

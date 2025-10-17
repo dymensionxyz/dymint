@@ -362,3 +362,8 @@ func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce)
 	// Stub implementation for local settlement layer
 	return nil
 }
+
+// GetChainID returns the chain ID of the settlement layer.
+func (c *Client) GetChainID() string {
+	return "local-settlement-layer"
+}
