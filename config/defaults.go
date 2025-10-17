@@ -31,7 +31,6 @@ func DefaultConfig(home string) *NodeConfig {
 			MaxSkewTime:                24 * 7 * time.Hour,
 			BatchSubmitBytes:           500000,
 			SequencerSetUpdateInterval: DefaultSequencerSetUpdateInterval,
-			SkipValidationHeight:       0,
 		},
 		SettlementLayer: "mock",
 		Instrumentation: &InstrumentationConfig{

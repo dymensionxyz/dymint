@@ -15,7 +15,7 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 		m.logger.Error("onNewStateUpdateFinalized", "err", "wrong event data received")
 		return
 	}
-	m.SettlementValidator.UpdateLastValidatedHeight(eventData.EndHeight)
+	m.SettlementValidator.UpdateLastValidatedHeight(eventData.EndHeight, false)
 }
 
 // SettlementValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.
@@ -43,7 +43,7 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 				}
 
 				// update the last validated height to the batch last block height
-				m.SettlementValidator.UpdateLastValidatedHeight(batch.EndHeight)
+				m.SettlementValidator.UpdateLastValidatedHeight(batch.EndHeight, false)
 
 				m.logger.Info("state info validated", "idx", batch.StateIndex, "start height", batch.StartHeight, "end height", batch.EndHeight)
 			}
