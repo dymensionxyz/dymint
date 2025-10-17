@@ -160,6 +160,15 @@ func (s *State) GetRevisionByHeight(height uint64) Revision {
 	return rev
 }
 
+func (s *State) isForkHeight(height uint64) bool {
+	for _, rev := range s.Revisions {
+		if rev.StartHeight == height {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *State) ValidateRevision(height uint64, version Version) error {
 	if len(s.Revisions) == 0 {
 		panic("no revisions in state")
