@@ -214,7 +214,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		return err
 	}
 
-	// update dymint state with next revision info
+	// update dymint state with revisions info
 	err = m.updateStateWithRevisions()
 	if err != nil {
 		return err

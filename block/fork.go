@@ -81,7 +81,7 @@ func (m *Manager) createInstruction(expectedRevision types.Revision) (types.Inst
 	}
 
 	instruction := types.Instruction{
-		Revision:            expectedRevision.Revision.Consensus.App,
+		Revision:            expectedRevision.GetRevisionNumber(),
 		RevisionStartHeight: expectedRevision.StartHeight,
 		FaultyDRS:           obsoleteDrs,
 	}
@@ -111,7 +111,7 @@ func (m *Manager) getRevisionFromSL(height uint64) (types.Revision, error) {
 	return rollapp.GetRevisionForHeight(height), nil
 }
 
-// getRevisionFromSL returns revision data for the specific height
+// getRevisions returns revision data for the rollapp
 func (m *Manager) getRevisions() ([]types.Revision, error) {
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
@@ -245,7 +245,7 @@ func (m *Manager) submitForkBatch(height uint64) error {
 	return nil
 }
 
-// updateStateForNextRevision updates dymint stored state in case next height corresponds to a new revision, to enable syncing (and validation) for rollapps with multiple revisions.
+// updateStateWithRevisions updates dymint stored state with rollapp forks revisions, to enable syncing (and validation) for rollapps with multiple revisions.
 func (m *Manager) updateStateWithRevisions() error {
 
 	// get revisions for rollapp from SL
@@ -255,7 +255,7 @@ func (m *Manager) updateStateWithRevisions() error {
 	}
 
 	// store revisions to dymint state
-	m.State.SetRevision(revisions)
+	m.State.SetRevisions(revisions)
 	_, err = m.Store.SaveState(m.State, nil)
 	return err
 
@@ -278,8 +278,6 @@ func (m *Manager) doForkWhenNewRevision() error {
 		if err != nil {
 			return err
 		}
-		// update revision with revision after fork
-		//m.State.SetRevision(instruction.Revision)
 		// create and submit fork batch
 		err = m.doFork(instruction)
 		if err != nil {

@@ -124,18 +124,27 @@ func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
 	return nil
 }
 
+// SetRevisions sets the revisions (forks) in the state
+func (s *State) SetRevisions(revisions []Revision) {
+	s.Revisions = revisions
+}
+
+// GetRevisions returns all revisions (forks)
 func (s *State) GetRevisions() []Revision {
 	return s.Revisions
 }
 
+// GetLastRevision returns the last revision
 func (s *State) GetLastRevision() tmstate.Version {
 	return s.Revisions[len(s.Revisions)-1].Revision
 }
 
+// GetLastRevisionNumber returns the last revision number
 func (s *State) GetLastRevisionNumber() uint64 {
 	return s.GetLastRevision().Consensus.App
 }
 
+// GetVersion returns the current revision version stored
 func (s *State) GetVersion() tmstate.Version {
 	if len(s.Revisions) == 0 {
 		return tmstate.Version{}
@@ -143,10 +152,7 @@ func (s *State) GetVersion() tmstate.Version {
 	return s.Revisions[len(s.Revisions)-1].Revision
 }
 
-func (s *State) SetRevision(revisions []Revision) {
-	s.Revisions = revisions
-}
-
+// GetRevisionByHeight returns the revision for a given height
 func (s *State) GetRevisionByHeight(height uint64) Revision {
 	if len(s.Revisions) == 0 {
 		panic("no revisions in state")
@@ -160,6 +166,7 @@ func (s *State) GetRevisionByHeight(height uint64) Revision {
 	return rev
 }
 
+// IsForkHeight checks if the given height is a fork height
 func (s *State) IsForkHeight(height uint64) bool {
 	for _, rev := range s.Revisions {
 		if rev.StartHeight == height {
@@ -167,20 +174,4 @@ func (s *State) IsForkHeight(height uint64) bool {
 		}
 	}
 	return false
-}
-
-func (s *State) ValidateRevision(height uint64, version Version) error {
-	if len(s.Revisions) == 0 {
-		panic("no revisions in state")
-	}
-	rev := s.Revisions[0]
-	for i := 1; i < len(s.Revisions); i++ {
-		if height >= s.Revisions[i].StartHeight {
-			rev = s.Revisions[i]
-		}
-	}
-	if version.App != rev.Revision.Consensus.App || version.Block != rev.Revision.Consensus.Block {
-		return ErrVersionMismatch
-	}
-	return nil
 }
