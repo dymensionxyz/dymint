@@ -160,7 +160,7 @@ func (s *State) GetRevisionByHeight(height uint64) Revision {
 	return rev
 }
 
-func (s *State) isForkHeight(height uint64) bool {
+func (s *State) IsForkHeight(height uint64) bool {
 	for _, rev := range s.Revisions {
 		if rev.StartHeight == height {
 			return true
