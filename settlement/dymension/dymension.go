@@ -317,6 +317,15 @@ func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
 	return res.Height, nil
 }
 
+// GetLatestFinalizedHeightOrZero returns the latest finalized height from the settlement layer.
+func (c *Client) GetLatestFinalizedHeightOrZero() (uint64, error) {
+	res, err := c.GetLatestFinalizedHeight()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		return uint64(0), nil
+	}
+	return res, err
+}
+
 // GetProposerAtHeight return the proposer at height.
 // In case of negative height, it will return the latest proposer.
 func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
