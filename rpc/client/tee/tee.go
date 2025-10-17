@@ -34,6 +34,16 @@ func GetToken(node *node.Node, dry bool) (tee.TEEResponse, error) {
 		return tee.TEEResponse{}, fmt.Errorf("no blocks validated yet")
 	}
 
+	heightThisNodeImplicitlyTrusts := validator.GetTrustedHeight()
+	finalizedHeight, err := node.BlockManager.SLClient.GetLatestFinalizedHeightOrZero()
+	if err != nil {
+		return tee.TEEResponse{}, fmt.Errorf("get latest finalized height: %w", err)
+	}
+	// NOTE: this line is crucial for security
+	if finalizedHeight < heightThisNodeImplicitlyTrusts {
+		return tee.TEEResponse{}, fmt.Errorf("trusted height is greater than finalized height, must relaunch tee node from an earlier height or wait for finalization")
+	}
+
 	nonce := rollapptypes.TEENonce{
 		RollappId:       node.BlockManager.State.ChainID,
 		CurrHeight:      lastValidatedHeight,

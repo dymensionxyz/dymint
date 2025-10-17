@@ -65,7 +65,7 @@ func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
 		return fmt.Errorf("query full node TEE: %w", err)
 	}
 
-	latestFinalizedHeight, err := f.hubClient.GetLatestFinalizedHeight()
+	latestFinalizedHeight, err := f.hubClient.GetLatestFinalizedHeightOrZero()
 	if err != nil {
 		return fmt.Errorf("get latest finalized height: %w", err)
 	}
