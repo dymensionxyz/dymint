@@ -32,17 +32,7 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 		trustedHeight: blockManager.State.LastBlockHeight.Load(),
 	}
 	if blockManager.Conf.TeeEnabled {
-		finalizedHeight, err := v.blockManager.SLClient.GetLatestFinalizedHeightOrZero()
-		if err != nil {
-			err = fmt.Errorf("get latest finalized height: %w", err)
-			panic(err)
-		}
-		if finalizedHeight < v.GetTrustedHeight() {
-			err = fmt.Errorf("trusted height is greater than finalized height, must relaunch tee node from an earlier height or wait for finalization")
-			panic(err)
-		}
 		v.UpdateLastValidatedHeight(v.GetTrustedHeight(), true)
-
 	}
 
 	return v
