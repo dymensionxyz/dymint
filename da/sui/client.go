@@ -192,7 +192,7 @@ func (c *DataAvailabilityLayerClient) collectChunks(inputs []models.SuiCallArg) 
 		// Decode from base64
 		rawValue, err := mystenbcs.FromBase64(rawValueBase64)
 		if err != nil {
-			return nil, fmt.Errorf("invalid input value: expected base64-encoded sting, got %s", input["value"])
+			return nil, fmt.Errorf("invalid input value: expected base64-encoded string, got %s", input["value"])
 		}
 
 		// Unmarshal the BCS-encoded bytes to get the actual chunk data
