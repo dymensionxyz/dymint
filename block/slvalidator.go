@@ -237,6 +237,7 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 
 // UpdateLastValidatedHeight sets the height saved in the Store if it is higher than the existing height
 // returns OK if the value was updated successfully or did not need to be updated
+// force = true means to allow updating to a lower height than currently stored
 func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64, force bool) {
 	v.lastValidatedHeightMu.Lock()
 	defer v.lastValidatedHeightMu.Unlock()
