@@ -54,7 +54,7 @@ type BlockManagerConfig struct {
 	MaxIdleTime time.Duration `mapstructure:"max_idle_time"`
 	// MaxProofTime defines the max time to be idle, if txs that requires proof were included in last block
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
-	// BatchSubmitMaxTime is how long should block manager wait for before submitting batch
+	// BatchSubmitTime is how long should block manager wait for before submitting batch
 	BatchSubmitTime time.Duration `mapstructure:"batch_submit_time"`
 	// MaxSkewTime is the number of batches waiting to be submitted. Block production will be paused if this limit is reached.
 	MaxSkewTime time.Duration `mapstructure:"max_skew_time"`
