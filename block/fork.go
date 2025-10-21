@@ -26,15 +26,15 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 	defer ticker.Stop()
 
 	for {
+		if err := m.checkForkUpdate(ForkMonitorMessage); err != nil {
+			if errors.Is(err, ErrNonRecoverable) {
+				return err
+			}
+		}
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			if err := m.checkForkUpdate(ForkMonitorMessage); err != nil {
-				if errors.Is(err, ErrNonRecoverable) {
-					return err
-				}
-			}
 		}
 	}
 }

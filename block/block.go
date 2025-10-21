@@ -224,9 +224,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		if !blockExists {
 			break
 		}
-		/*if cachedBlock.Block.GetRevision() != m.State.GetRevision() {
-			break
-		}*/
+
 		err := m.validateAndApplyBlock(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
