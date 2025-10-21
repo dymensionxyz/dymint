@@ -50,7 +50,7 @@ func GetToken(node *node.Node, dry bool) (tee.TEEResponse, error) {
 		RollappId:       node.BlockManager.State.ChainID,
 		CurrHeight:      lastValidatedHeight,
 		HubChainId:      node.BlockManager.SLClient.GetChainID(),
-		FinalizedHeight: validator.GetTrustedHeight(),
+		FinalizedHeight: validator.GetTrustedHeight(), // hub also confirms this is finalized
 		StateRoot:       root,
 	}
 
