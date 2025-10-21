@@ -379,7 +379,7 @@ func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
 	} else if err != nil {
 		return fmt.Errorf("getting finalized height. err: %w", err)
 	}
-	m.SettlementValidator.UpdateLastValidatedHeight(height)
+	m.SettlementValidator.UpdateLastValidatedHeight(height, false)
 
 	return nil
 }
