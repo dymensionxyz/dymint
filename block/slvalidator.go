@@ -26,6 +26,7 @@ type SettlementValidator struct {
 	// state root / app hash contained in the header of the last validated block
 	// we cache it here to because we need it to produce tee attestations, and at the time
 	// of the attestation request the block might have already been pruned
+	// note: can be nil to simplify genesis setup
 	lastValidatedHeightBlockHeaderAppHash []byte
 }
 
@@ -245,16 +246,21 @@ func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64, force boo
 	}
 	block, err := v.blockManager.Store.LoadBlock(height)
 	if err != nil {
-		err = fmt.Errorf("update last validated height: load block: %w", err)
-		panic(err)
+		v.logger.Error("update last validated height: load block: %w", err)
+		// note: cannot generate attestation for this height in this case
+		v.lastValidatedHeightBlockHeaderAppHash = nil
+	} else {
+		v.lastValidatedHeightBlockHeaderAppHash = block.Header.AppHash[:]
 	}
-	v.lastValidatedHeightBlockHeaderAppHash = block.Header.AppHash[:]
 
 	metrics.LastValidatedHeight.Set(float64(height))
 }
 
-func (v *SettlementValidator) GetLastValidatedHeightBlockHeaderAppHash() []byte {
-	return v.lastValidatedHeightBlockHeaderAppHash
+func (v *SettlementValidator) GetLastValidatedHeightBlockHeaderAppHash() ([]byte, error) {
+	if v.lastValidatedHeightBlockHeaderAppHash == nil {
+		return nil, gerrc.ErrNotFound
+	}
+	return v.lastValidatedHeightBlockHeaderAppHash, nil
 }
 
 func (v *SettlementValidator) GetLastValidatedHeight() uint64 {

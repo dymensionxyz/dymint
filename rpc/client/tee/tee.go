@@ -11,6 +11,7 @@ import (
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/tee"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 const (
@@ -44,7 +45,10 @@ func GetToken(node *node.Node, dry bool) (tee.TEEResponse, error) {
 		return tee.TEEResponse{}, fmt.Errorf("trusted height is greater than finalized height, must relaunch tee node from an earlier height or wait for finalization")
 	}
 
-	root := validator.GetLastValidatedHeightBlockHeaderAppHash()
+	root, err := validator.GetLastValidatedHeightBlockHeaderAppHash()
+	if err != nil {
+		return tee.TEEResponse{}, gerrc.ErrNotFound.Wrap("last validated height block header app hash not available")
+	}
 
 	nonce := rollapptypes.TEENonce{
 		RollappId:       node.BlockManager.State.ChainID,
