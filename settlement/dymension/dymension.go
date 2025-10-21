@@ -820,7 +820,6 @@ func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce)
 	}
 
 	err = c.RunWithRetry(func() error {
-
 		txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msg)
 		if err != nil {
 			return fmt.Errorf("broadcast TEE attestation tx: %w", err)
