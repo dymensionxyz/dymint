@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/proto/tendermint/version"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 
 	"github.com/dymensionxyz/dymint/block"
@@ -98,6 +99,7 @@ func TestStateRoundTrip(t *testing.T) {
 		{
 			name: "with max bytes",
 			state: types.State{
+				Revisions: []types.Revision{{Revision: tmstate.Version{Consensus: version.Consensus{App: 0, Block: 1}}, StartHeight: 0}},
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
 						MaxBytes:   123,
@@ -110,12 +112,17 @@ func TestStateRoundTrip(t *testing.T) {
 		{
 			name: "with all fields set",
 			state: types.State{
-				Version: tmstate.Version{
-					Consensus: tmversion.Consensus{
-						Block: 123,
-						App:   456,
+				Revisions: []types.Revision{
+					{
+						StartHeight: 0,
+						Revision: tmstate.Version{
+							Consensus: tmversion.Consensus{
+								Block: 123,
+								App:   456,
+							},
+							Software: "dymint",
+						},
 					},
-					Software: "dymint",
 				},
 				ChainID:       "testchain",
 				InitialHeight: 987,

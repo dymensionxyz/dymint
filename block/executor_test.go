@@ -24,6 +24,8 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	"github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -34,6 +36,8 @@ import (
 
 	"github.com/dymensionxyz/dymint/types"
 )
+
+var test_revisions = []types.Revision{{Revision: tmstate.Version{Consensus: version.Consensus{App: 0, Block: 1}}, StartHeight: 0}}
 
 // TODO: test UpdateProposerFromBlock
 func TestCreateBlock(t *testing.T) {
@@ -65,6 +69,7 @@ func TestCreateBlock(t *testing.T) {
 	// Init state
 	state := &types.State{}
 	state.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
+	state.SetRevisions(test_revisions)
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
 	// empty block
@@ -163,7 +168,7 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 	state.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
-
+	state.SetRevisions(test_revisions)
 	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()[:]), state, maxBytes)
 
 	require.NotNil(block)
@@ -301,6 +306,7 @@ func TestApplyBlock(t *testing.T) {
 	// Init state
 	state := &types.State{}
 	state.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
+	state.SetRevisions(test_revisions)
 	state.InitialHeight = 1
 	state.ChainID = chainID
 	state.SetHeight(0)

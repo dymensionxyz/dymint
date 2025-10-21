@@ -625,8 +625,8 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 				if ok {
 					continue
 				}
-				c.logger.Debug("Blocksync getting block.", "height", h, "revision", state.GetRevision())
-				id, err := c.GetBlockIdFromDHT(ctx, h, state.GetRevision())
+				c.logger.Debug("Blocksync getting block.", "height", h, "revision", state.GetLastRevisionNumber())
+				id, err := c.GetBlockIdFromDHT(ctx, h, state.GetLastRevision().Consensus.App)
 				if err != nil || id == cid.Undef {
 					continue
 				}
