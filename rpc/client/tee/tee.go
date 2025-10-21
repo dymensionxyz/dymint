@@ -44,7 +44,7 @@ func GetToken(node *node.Node, dry bool) (tee.TEEResponse, error) {
 		return tee.TEEResponse{}, fmt.Errorf("trusted height is greater than finalized height, must relaunch tee node from an earlier height or wait for finalization")
 	}
 
-	var root []byte
+	root := validator.GetLastValidatedHeightBlockHeaderAppHash()
 
 	nonce := rollapptypes.TEENonce{
 		RollappId:       node.BlockManager.State.ChainID,

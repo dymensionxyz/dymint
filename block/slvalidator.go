@@ -22,6 +22,11 @@ type SettlementValidator struct {
 	// immutable: the height the node was started from
 	trustedHeight         uint64
 	lastValidatedHeightMu sync.Mutex
+
+	// state root / app hash contained in the header of the last validated block
+	// we cache it here to because we need it to produce tee attestations, and at the time
+	// of the attestation request the block might have already been pruned
+	lastValidatedHeightBlockHeaderAppHash []byte
 }
 
 // NewSettlementValidator returns a new StateUpdateValidator instance.
@@ -238,8 +243,18 @@ func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64, force boo
 	if err != nil {
 		v.logger.Error("update validation height: %w", err)
 	}
+	block, err := v.blockManager.Store.LoadBlock(height)
+	if err != nil {
+		err = fmt.Errorf("update last validated height: load block: %w", err)
+		panic(err)
+	}
+	v.lastValidatedHeightBlockHeaderAppHash = block.Header.AppHash[:]
 
 	metrics.LastValidatedHeight.Set(float64(height))
+}
+
+func (v *SettlementValidator) GetLastValidatedHeightBlockHeaderAppHash() []byte {
+	return v.lastValidatedHeightBlockHeaderAppHash
 }
 
 func (v *SettlementValidator) GetLastValidatedHeight() uint64 {
