@@ -57,8 +57,8 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
 		source, err := v.blockManager.Store.LoadBlockSource(height)
 		if err != nil {
-			v.logger.Error("load block source", "error", err)
-			continue
+			err = fmt.Errorf("validate state update: load block source: %w", err)
+			panic(err)
 		}
 
 		// if block is not P2P block, skip
@@ -68,8 +68,8 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 
 		block, err := v.blockManager.Store.LoadBlock(height)
 		if err != nil {
-			v.logger.Error("load block", "error", err)
-			continue
+			err = fmt.Errorf("validate state update: load block: %w", err)
+			panic(err)
 		}
 		p2pBlocks[block.Header.Height] = block
 	}
