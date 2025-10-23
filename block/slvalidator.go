@@ -22,6 +22,12 @@ type SettlementValidator struct {
 	// immutable: the height the node was started from
 	trustedHeight         uint64
 	lastValidatedHeightMu sync.Mutex
+
+	// state root / app hash contained in the header of the last validated block
+	// we cache it here to because we need it to produce tee attestations, and at the time
+	// of the attestation request the block might have already been pruned
+	// note: can be nil to simplify genesis setup
+	lastValidatedHeightBlockHeaderAppHash []byte
 }
 
 // NewSettlementValidator returns a new StateUpdateValidator instance.
@@ -57,8 +63,8 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
 		source, err := v.blockManager.Store.LoadBlockSource(height)
 		if err != nil {
-			v.logger.Error("load block source", "error", err)
-			continue
+			err = fmt.Errorf("validate state update: load block source: %w", err)
+			panic(err)
 		}
 
 		// if block is not P2P block, skip
@@ -68,8 +74,8 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 
 		block, err := v.blockManager.Store.LoadBlock(height)
 		if err != nil {
-			v.logger.Error("load block", "error", err)
-			continue
+			err = fmt.Errorf("validate state update: load block: %w", err)
+			panic(err)
 		}
 		p2pBlocks[block.Header.Height] = block
 	}
@@ -238,8 +244,23 @@ func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64, force boo
 	if err != nil {
 		v.logger.Error("update validation height: %w", err)
 	}
+	block, err := v.blockManager.Store.LoadBlock(height)
+	if err != nil {
+		v.logger.Error("update last validated height: load block: %w", err)
+		// note: cannot generate attestation for this height in this case
+		v.lastValidatedHeightBlockHeaderAppHash = nil
+	} else {
+		v.lastValidatedHeightBlockHeaderAppHash = block.Header.AppHash[:]
+	}
 
 	metrics.LastValidatedHeight.Set(float64(height))
+}
+
+func (v *SettlementValidator) GetLastValidatedHeightBlockHeaderAppHash() ([]byte, error) {
+	if v.lastValidatedHeightBlockHeaderAppHash == nil {
+		return nil, gerrc.ErrNotFound
+	}
+	return v.lastValidatedHeightBlockHeaderAppHash, nil
 }
 
 func (v *SettlementValidator) GetLastValidatedHeight() uint64 {
