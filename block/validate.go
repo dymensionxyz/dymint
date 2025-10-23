@@ -15,7 +15,10 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 		m.logger.Error("onNewStateUpdateFinalized", "err", "wrong event data received")
 		return
 	}
-	m.SettlementValidator.UpdateLastValidatedHeight(eventData.EndHeight)
+	if !m.Conf.TeeEnabled {
+		// in tee: last validated has to have been applied | TODO: revisit, maybe can/should remove for all modes
+		m.SettlementValidator.UpdateLastValidatedHeight(eventData.EndHeight, false)
+	}
 }
 
 // SettlementValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.
