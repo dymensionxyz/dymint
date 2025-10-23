@@ -325,7 +325,7 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
-	var currentDelay time.Duration = c.batchRetryDelay
+	currentDelay := c.batchRetryDelay
 
 	err := retry.Do(
 		func() error {
