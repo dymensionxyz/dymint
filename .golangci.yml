@@ -39,9 +39,7 @@ linters:
     paths:
     # mempool and indexer code is borrowed from Tendermint
     - mempool
-    - state/indexer
-    - state/txindex
-    - da/celestia/mock/server.go
+    - indexers
     - ".*_test\\.go" # TODO: bring back
     rules:
     - linters:
@@ -77,7 +75,4 @@ formatters:
     paths:
     # mempool and indexer code is borrowed from Tendermint
     - mempool
-    - state/indexer
-    - state/txindex
-    - da/celestia/mock/server.go
-    - ".*_test\\.go" # TODO: bring back
+    - indexers
