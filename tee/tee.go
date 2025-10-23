@@ -170,6 +170,7 @@ func (t *TEEResponse) UnmarshalJSON(data []byte) error {
 			CurrHeight      string `json:"curr_height,omitempty"`
 			HubChainId      string `json:"hub_chain_id"`
 			FinalizedHeight string `json:"finalized_height,omitempty"`
+			StateRoot       string `json:"state_root"`
 		} `json:"nonce"`
 	}
 
@@ -200,6 +201,7 @@ func (t *TEEResponse) UnmarshalJSON(data []byte) error {
 		CurrHeight:      currHeight,
 		HubChainId:      aux.Nonce.HubChainId,
 		FinalizedHeight: finalizedHeight,
+		StateRoot:       []byte(aux.Nonce.StateRoot),
 	}
 
 	return nil
