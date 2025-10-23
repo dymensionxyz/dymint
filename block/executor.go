@@ -313,7 +313,7 @@ func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block
 			TxResult: abci.TxResult{
 				Height: int64(block.Header.Height), //nolint:gosec // block height is within int64 range
 				Index:  uint32(i),                  //nolint:gosec // num of deliver txs is less than 2^32
-				Tx:     abciBlock.Txs[i],
+				Tx:     abciBlock.Data.Txs[i],
 				Result: *dtx,
 			},
 		}))

@@ -358,7 +358,7 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 				return nil, fmt.Errorf("get batch at height: %w", err)
 			}
 		} else {
-			proposerAddr = res.Sequencer
+			proposerAddr = res.Batch.Sequencer
 		}
 	}
 
@@ -722,7 +722,7 @@ func (c *Client) pollForBatchInclusion(batchEndHeight uint64) (bool, error) {
 		return false, fmt.Errorf("get latest batch: %w", err)
 	}
 
-	return latestBatch.EndHeight == batchEndHeight, nil
+	return latestBatch.Batch.EndHeight == batchEndHeight, nil
 }
 
 func (c *Client) getLatestProposer() (string, error) {

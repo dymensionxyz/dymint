@@ -104,14 +104,14 @@ func NewNode(
 	var baseKV store.KV
 	var dstore datastore.Datastore
 
-	if conf.InMemory || (conf.RootDir == "" && conf.DBPath == "") { // this is used for testing
+	if conf.DBConfig.InMemory || (conf.RootDir == "" && conf.DBPath == "") { // this is used for testing
 		logger.Info("WARNING: working in in-memory mode")
 		baseKV = store.NewDefaultInMemoryKVStore()
 		dstore = datastore.NewMapDatastore()
 	} else {
 		// TODO(omritoptx): Move dymint to const
 		baseKV = store.NewKVStore(conf.RootDir, conf.DBPath, "dymint",
-			store.BadgerOpts{SyncWrites: conf.SyncWrites, NumCompactors: conf.BadgerCompactors}, logger)
+			store.BadgerOpts{SyncWrites: conf.DBConfig.SyncWrites, NumCompactors: conf.DBConfig.BadgerCompactors}, logger)
 		path := filepath.Join(store.Rootify(conf.RootDir, conf.DBPath), "blocksync")
 		var err error
 		dstore, err = leveldb.NewDatastore(path, &leveldb.Options{})

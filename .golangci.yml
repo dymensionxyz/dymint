@@ -48,6 +48,9 @@ linters:
       - staticcheck
       text: "^.*SA1019.*$"
     - linters:
+      - staticcheck
+      text: "^.*QF1008.*$"
+    - linters:
       - errcheck
       text: "^.*value of .*it.*Close.* is not checked"
     - linters:
