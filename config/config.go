@@ -54,7 +54,7 @@ type BlockManagerConfig struct {
 	MaxIdleTime time.Duration `mapstructure:"max_idle_time"`
 	// MaxProofTime defines the max time to be idle, if txs that requires proof were included in last block
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
-	// BatchSubmitMaxTime is how long should block manager wait for before submitting batch
+	// BatchSubmitTime is how long should block manager wait for before submitting batch
 	BatchSubmitTime time.Duration `mapstructure:"batch_submit_time"`
 	// MaxSkewTime is the number of batches waiting to be submitted. Block production will be paused if this limit is reached.
 	MaxSkewTime time.Duration `mapstructure:"max_skew_time"`
@@ -62,8 +62,14 @@ type BlockManagerConfig struct {
 	BatchSubmitBytes uint64 `mapstructure:"batch_submit_bytes"`
 	// SequencerSetUpdateInterval defines the interval at which to fetch sequencer updates from the settlement layer
 	SequencerSetUpdateInterval time.Duration `mapstructure:"sequencer_update_interval"`
-	// SkipValidationHeight can be used to skip fraud validation for a specific height (used to bypass backward compatibility issues between versions)
-	SkipValidationHeight uint64 `mapstructure:"skip_validation_height"`
+	// TEE configuration for attestation submission
+	TeeEnabled bool `mapstructure:"tee_enabled"`
+	// Actually require a GCP attestation token?
+	TeeDry bool `mapstructure:"tee_dry"`
+	// TeeSidecarURL is the URL of the TEE sidecar's RPC endpoint
+	TeeSidecarURL string `mapstructure:"tee_sidecar_url"`
+	// TeeInterval is how often to fetch and submit attestations
+	TeeInterval time.Duration `mapstructure:"tee_interval"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.

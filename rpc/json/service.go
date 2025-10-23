@@ -17,6 +17,7 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 
 	"github.com/dymensionxyz/dymint/rpc/client"
+	teetypes "github.com/dymensionxyz/dymint/tee"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -115,6 +116,7 @@ func newService(c *client.Client, l types.Logger, opts ...option) *service {
 		"eth_getBlockByNumber": newMethod(s.EthGetBlockByNumber),
 		"eth_blockNumber":      newMethod(s.EthBlockNumber),
 		"eth_getBalance":       newMethod(s.EthGetBalance),
+		"tee":                  newMethod(s.Tee),
 	}
 
 	for _, opt := range opts {
@@ -327,4 +329,8 @@ func (s *service) EthGetBalance(req *http.Request, args *ethBalanceArgs) (*clien
 	addrStr := strings.ReplaceAll(args.Address, "0x", "")
 
 	return s.client.EthGetBalance(req.Context(), addrStr, &height)
+}
+
+func (s *service) Tee(req *http.Request, args *teeArgs) (*teetypes.TEEResponse, error) {
+	return s.client.Tee(req.Context(), args.Dry)
 }

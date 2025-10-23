@@ -170,3 +170,33 @@ message MsgMarkObsoleteRollapps {
 }
 
 message MsgMarkObsoleteRollappsResponse {}
+
+
+// MsgFastFinalizeWithTEE fast-finalizes rollapp state using TEE attestation
+message MsgFastFinalizeWithTEE {
+  option (cosmos.msg.v1.signer) = "creator";
+
+  // creator must be the active sequencer for the rollapp
+  string creator = 1;
+
+  // attestation_token is the JWT token from GCP
+  string attestation_token = 4;
+
+  // nonce contains the data that was signed by TEE
+  TEENonce nonce = 5 [(gogoproto.nullable) = false];
+}
+
+// what the verifying full node inside the tee actually attests over
+message TEENonce {
+  string rollapp_id = 1;
+  string hub_chain_id = 2;
+  // an already finalized height the TEE started at
+  uint64 finalized_height = 3;
+  // height TEE recently validated
+  uint64 curr_height = 4;
+  //// stateRoot/appHash is a 32 byte array of the hash of the block
+  bytes state_root = 5;
+}
+
+// MsgFastFinalizeWithTEEResponse is the response for MsgFastFinalizeWithTEE
+message MsgFastFinalizeWithTEEResponse {}

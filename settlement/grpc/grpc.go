@@ -312,6 +312,10 @@ func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
 	return uint64(0), gerrc.ErrNotFound
 }
 
+func (c *Client) GetLatestFinalizedHeightOrZero() (uint64, error) {
+	return uint64(0), gerrc.ErrNotFound
+}
+
 func (c *Client) saveBatch(batch *settlement.Batch) error {
 	c.logger.Debug("Saving batch to grpc settlement layer", "start height",
 		batch.StartHeight, "end height", batch.EndHeight)
@@ -404,4 +408,15 @@ func (c *Client) GetSignerBalance() (types.Balance, error) {
 
 func (c *Client) ValidateGenesisBridgeData(rollapptypes.GenesisBridgeData) error {
 	return nil
+}
+
+// SubmitTEEAttestation submits a TEE attestation to fast-finalize state updates
+func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce) error {
+	// Stub implementation for grpc settlement layer
+	return nil
+}
+
+// GetChainID returns the chain ID of the settlement layer.
+func (c *Client) GetChainID() string {
+	return "grpc-settlement-layer"
 }

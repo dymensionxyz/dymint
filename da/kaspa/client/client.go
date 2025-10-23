@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -27,6 +28,8 @@ const (
 	Mainnet                       = "kaspa-mainnet"
 	Testnet                       = "kaspa-testnet-10"
 	TxHashLength                  = 64
+	ConfirmationsRequired         = 1000 // Kaspa requires 1000 confirmations (after Crescent hardfork) to consider a transaction final and safe against reorgs.
+	KaspaBlocksPerSecond          = 10
 )
 
 type KaspaClient interface {
@@ -34,12 +37,18 @@ type KaspaClient interface {
 	GetBalance() (uint64, error)
 	SubmitBlob(blob []byte) ([]string, string, error)
 	GetBlob(txHash []string) ([]byte, error)
+	CheckTransactionMaturity(txHash []string) error
 }
 
-// Transaction is a partial struct to extract payload
+// Transaction is a partial struct to extract payload and maturity info
 type Transaction struct {
-	TransactionID string `json:"transaction_id"`
-	Payload       string `json:"payload"`
+	TransactionID           string `json:"transaction_id"`
+	Payload                 string `json:"payload"`
+	BlockTime               uint64 `json:"block_time,omitempty"`
+	AcceptingBlockHash      string `json:"accepting_block_hash,omitempty"`
+	IsCoinbase              bool   `json:"is_coinbase,omitempty"`
+	AcceptingBlockBlueScore uint64 `json:"accepting_block_blue_score,omitempty"`
+	IsAccepted              bool   `json:"is_accepted,omitempty"`
 }
 
 type FailedTxRetrieve struct {
@@ -194,38 +203,62 @@ func (c *Client) GetBalance() (uint64, error) {
 	return balance, nil
 }
 
+// APIError represents an error from the Kaspa API with status code
+type APIError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e APIError) Error() string {
+	return fmt.Sprintf("API error (status %d): %s", e.StatusCode, e.Message)
+}
+
+// makeAPICall makes a generic API call to the Kaspa REST API
+func (c *Client) makeAPICall(endpoint string, result interface{}) error {
+	url := fmt.Sprintf("%s%s", c.apiURL, endpoint)
+
+	resp, err := c.httpClient.Get(url)
+	if err != nil {
+		return fmt.Errorf("API call failed: %w", err)
+	}
+	defer resp.Body.Close() // nolint:errcheck
+
+	if resp.StatusCode != 200 {
+		return APIError{StatusCode: resp.StatusCode, Message: fmt.Sprintf("endpoint %s returned status %d", endpoint, resp.StatusCode)}
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+		return fmt.Errorf("kaspa API response decode failed: %w", err)
+	}
+	return nil
+}
+
 // retrieveBlobTx gets Tx, that includes blob parts, using  Kaspa REST-API server (https://api.kaspa.org/docs)
 func (c *Client) retrieveBlobTx(txHash string) (*Transaction, error) {
 	if len(txHash) != TxHashLength {
 		return nil, da.ErrBlobNotFound
 	}
 
-	url := fmt.Sprintf(c.apiURL+"/transactions/%s", txHash)
-
-	resp, err := c.httpClient.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("post failed: %w", err)
-	}
-	defer func() {
-		if cerr := resp.Body.Close(); cerr != nil {
-			return
-		}
-	}()
-
-	if resp.StatusCode != 200 {
-		var tx FailedTxRetrieve
-		if err := json.NewDecoder(resp.Body).Decode(&tx); err != nil {
-			return nil, fmt.Errorf("kaspa API response decode failed: %w", err)
-		}
-		if tx.Result == "Transaction not found" {
-			return nil, da.ErrBlobNotFound
-		}
-		return nil, fmt.Errorf("http response status code not OK: Status: %d", resp.StatusCode)
-	}
-
 	var tx Transaction
-	if err := json.NewDecoder(resp.Body).Decode(&tx); err != nil {
-		return nil, fmt.Errorf("kaspa API response decode failed: %w", err)
+	endpoint := fmt.Sprintf("/transactions/%s", txHash)
+	if err := c.makeAPICall(endpoint, &tx); err != nil {
+		// Check if this is a 404 error which might mean transaction not found
+		var apiErr APIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode == 404 {
+			// Make another call to get the detailed error message
+			url := fmt.Sprintf("%s%s", c.apiURL, endpoint)
+			resp, _ := c.httpClient.Get(url)
+			if resp != nil {
+				defer resp.Body.Close() // nolint:errcheck
+				var failedTx FailedTxRetrieve
+				if json.NewDecoder(resp.Body).Decode(&failedTx) == nil {
+					if failedTx.Result == "Transaction not found" {
+						return nil, da.ErrBlobNotFound
+					}
+				}
+			}
+		}
+		return nil, err
 	}
 	return &tx, nil
 }
@@ -244,4 +277,51 @@ func versionFromNetworkName(name string) ([4]byte, error) {
 
 func defaultPath() string {
 	return fmt.Sprintf("m/%d'/%d'/0'", SingleSignerPurpose, CoinType)
+}
+
+// BlueScoreResponse represents the response from the virtual-chain-blue-score endpoint
+type BlueScoreResponse struct {
+	BlueScore uint64 `json:"blueScore"`
+}
+
+// CheckTransactionMaturity checks if all transactions in the list are mature enough
+func (c *Client) CheckTransactionMaturity(txHash []string) error {
+	// Get current virtual chain blue score via API
+	var blueScoreResp BlueScoreResponse
+	if err := c.makeAPICall("/info/virtual-chain-blue-score", &blueScoreResp); err != nil {
+		return fmt.Errorf("failed to get virtual chain blue score: %w", err)
+	}
+
+	maxMissingConfirmations := uint64(0)
+
+	for _, hash := range txHash {
+		tx, err := c.retrieveBlobTx(hash)
+		if err != nil {
+			return err
+		}
+
+		// if the transaction is not accepted yet, set max missing confirmations to be required and continue
+		if !tx.IsAccepted {
+			maxMissingConfirmations = ConfirmationsRequired
+			continue
+		}
+
+		// if the transaction is mature enough, go to next tx
+		if ConfirmationsRequired < blueScoreResp.BlueScore-tx.AcceptingBlockBlueScore {
+			continue
+		}
+
+		// calculate missing confirmations
+		missingConfirmations := ConfirmationsRequired - (blueScoreResp.BlueScore - tx.AcceptingBlockBlueScore)
+		// set max missing confirmations from all txs
+		if missingConfirmations > maxMissingConfirmations {
+			maxMissingConfirmations = missingConfirmations
+		}
+	}
+
+	if maxMissingConfirmations > 0 {
+		return da.ErrMaturityNotReached{MissingConfirmations: maxMissingConfirmations}
+	}
+
+	return nil
 }

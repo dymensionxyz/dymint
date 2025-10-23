@@ -141,7 +141,7 @@ func (c *Client) selectUTXOs(feeRate float64, maxFee uint64, blob []byte) (selec
 		totalSpend := fee
 		// Two break cases (if not send all):
 		// 		1. totalValue == totalSpend, so there's no change needed -> number of outputs = 1, so a single input is sufficient
-		// 		2. totalValue > totalSpend, so there will be change and 2 outputs, therefor in order to not struggle with --
+		// 		2. totalValue > totalSpend, so there will be change and 2 outputs, therefore in order to not struggle with --
 		//		   2.1 go-nodes dust patch we try and find at least 2 inputs (even though the next one is not necessary in terms of spend value)
 		// 		   2.2 KIP9 we try and make sure that the change amount is not too small
 		if totalValue == totalSpend || (totalValue >= totalSpend+minChangeTarget && len(selectedUTXOs) > 1) {

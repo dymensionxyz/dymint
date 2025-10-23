@@ -7,7 +7,7 @@ VERSION ?= $(shell git describe --tags --always)
 LD_FLAGS = -X github.com/dymensionxyz/dymint/version.BuildVersion=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 
-# Process Docker environment varible TARGETPLATFORM 
+# Process Docker environment variable TARGETPLATFORM 
 # in order to build binary with correspondent ARCH
 # by default will always build for linux/amd64
 TARGETPLATFORM ?= 
@@ -78,8 +78,8 @@ include tests.mk
 ###############################################################################
 
 mock-gen:
-	go install github.com/vektra/mockery/v2@v2.46.0
-	mockery
+	go install github.com/vektra/mockery/v2@latest
+	~/go/bin/mockery
 .PHONY: mock-gen
 
 ###############################################################################

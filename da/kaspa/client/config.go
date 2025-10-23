@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	defaultRetryDelay    = 3 * time.Second
+	defaultRetryDelay    = 5 * time.Second
 	defaultRetryAttempts = uint(5)
 	maxAddressesUtxo     = uint32(100)
 	MaxBlobSizeBytes     = 500000

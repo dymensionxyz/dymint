@@ -12,7 +12,7 @@ import (
 const (
 	defaultRpcRetryDelay    = 3 * time.Second
 	defaultRpcRetryAttempts = 5
-	defaultGasLimit         = uint64(21000) // set to 21k because its the necessary gas when no calldata or smart contract call (as is the case with simple blob EIP-4844 tx)
+	defaultGasLimit         = uint64(21000) // standard gas for blob tx execution (blob gas is separate)
 	defaultPrivateKeyEnv    = "ETH_PRIVATE_KEY"
 	defaultTimeout          = 500000000000
 )
