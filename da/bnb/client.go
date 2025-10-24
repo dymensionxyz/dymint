@@ -196,7 +196,7 @@ func (c Client) GetBlob(txhash string) ([]byte, error) {
 		}
 	}
 	if data == nil {
-		return nil, fmt.Errorf("Error recovering data from blob")
+		return nil, fmt.Errorf("error recovering data from blob")
 	}
 	return data, err
 }

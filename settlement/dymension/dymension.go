@@ -690,7 +690,7 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 	var (
 		gas           string
-		gasAdjustment float64 = 1.0
+		gasAdjustment = 1.0
 	)
 	if config.GasLimit == 0 {
 		gas = "auto"

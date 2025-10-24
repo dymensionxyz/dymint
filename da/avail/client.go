@@ -5,7 +5,6 @@ import (
 
 	"github.com/availproject/avail-go-sdk/metadata"
 	prim "github.com/availproject/avail-go-sdk/primitives"
-	"github.com/availproject/avail-go-sdk/sdk"
 	availgo "github.com/availproject/avail-go-sdk/sdk"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/vedhavyas/go-subkey/v2"
@@ -14,13 +13,13 @@ import (
 type AvailClient interface {
 	SubmitData(data []byte) (string, error)
 	IsSyncing() (bool, error)
-	GetBlock(blockHash string) (sdk.Block, error)
+	GetBlock(blockHash string) (availgo.Block, error)
 	GetAccountAddress() string
 	GetBlobsBySigner(blockHash string, accountAddress string) ([]availgo.DataSubmission, error)
 }
 
 type Client struct {
-	sdk     sdk.SDK
+	sdk     availgo.SDK
 	account subkey.KeyPair
 	appId   uint32
 }
@@ -29,7 +28,7 @@ var _ AvailClient = &Client{}
 
 // NewClient returns a DA avail client
 func NewClient(endpoint string, seed string, appId uint32) (AvailClient, error) {
-	sdk, err := sdk.NewSDK(endpoint)
+	sdk, err := availgo.NewSDK(endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -61,15 +60,15 @@ func (c Client) SubmitData(data []byte) (string, error) {
 }
 
 // GetBlock retrieves a block from Avail chain by block hash
-func (c Client) GetBlock(blockHash string) (sdk.Block, error) {
+func (c Client) GetBlock(blockHash string) (availgo.Block, error) {
 	hash, err := prim.NewH256FromHexString(blockHash)
 	if err != nil {
-		return sdk.Block{}, errors.Join(da.ErrProofNotMatching, err)
+		return availgo.Block{}, errors.Join(da.ErrProofNotMatching, err)
 	}
 
-	block, err := sdk.NewBlock(c.sdk.Client, hash)
+	block, err := availgo.NewBlock(c.sdk.Client, hash)
 	if err != nil {
-		return sdk.Block{}, errors.Join(da.ErrRetrieval, err)
+		return availgo.Block{}, errors.Join(da.ErrRetrieval, err)
 	}
 	return block, nil
 }

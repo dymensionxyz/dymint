@@ -78,21 +78,21 @@ type SubmitMetaData struct {
 // WithKaspaClient sets kaspa client.
 func WithKaspaClient(client client.KaspaClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).client = client
+		daLayerClient.(*DataAvailabilityLayerClient).client = client //nolint:errcheck
 	}
 }
 
 // WithBatchRetryDelay is an option which sets the delay between batch retries.
 func WithBatchRetryDelay(delay time.Duration) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
-		dalc.(*DataAvailabilityLayerClient).batchRetryDelay = delay
+		dalc.(*DataAvailabilityLayerClient).batchRetryDelay = delay //nolint:errcheck
 	}
 }
 
 // WithBatchRetryAttempts is an option which sets the number of batch retries.
 func WithBatchRetryAttempts(attempts uint) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
-		dalc.(*DataAvailabilityLayerClient).batchRetryAttempts = attempts
+		dalc.(*DataAvailabilityLayerClient).batchRetryAttempts = attempts //nolint:errcheck
 	}
 }
 
@@ -292,7 +292,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 	err = retry.Do(
 		func() error {
 			result = c.checkBatchAvailability(daMetaData)
-			if result.Error == da.ErrBlobNotFound {
+			if errors.Is(result.Error, da.ErrBlobNotFound) {
 				return retry.Unrecoverable(result.Error)
 			}
 			return result.Error
@@ -325,7 +325,7 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
-	var currentDelay time.Duration = c.batchRetryDelay
+	currentDelay := c.batchRetryDelay
 
 	err := retry.Do(
 		func() error {
