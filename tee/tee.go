@@ -3,6 +3,7 @@ package tee
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -195,13 +196,18 @@ func (t *TEEResponse) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("parse curr_height: %w", err)
 	}
 
+	stateRoot, err := base64.StdEncoding.DecodeString(aux.Nonce.StateRoot)
+	if err != nil {
+		return fmt.Errorf("decode state_root: %w", err)
+	}
+
 	t.Token = aux.Token
 	t.Nonce = rollapptypes.TEENonce{
 		RollappId:       aux.Nonce.RollappId,
 		CurrHeight:      currHeight,
 		HubChainId:      aux.Nonce.HubChainId,
 		FinalizedHeight: finalizedHeight,
-		StateRoot:       []byte(aux.Nonce.StateRoot),
+		StateRoot:       stateRoot,
 	}
 
 	return nil
