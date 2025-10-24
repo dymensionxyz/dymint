@@ -76,7 +76,8 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		mt, rdr, err := wsc.NextReader()
 		if err != nil {
-			if _, ok := err.(*websocket.CloseError); ok {
+			e := &websocket.CloseError{}
+			if errors.As(err, &e) {
 				h.logger.Debug("WebSocket connection closed", "reason", err)
 			} else {
 				h.logger.Error("read next WebSocket message", "error", err)

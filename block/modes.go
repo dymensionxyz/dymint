@@ -56,7 +56,7 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
 	if !amIProposerOnSL {
-		return fmt.Errorf("the node is no longer the proposer. please restart.")
+		return fmt.Errorf("the node is no longer the proposer. please restart")
 	}
 
 	// update l2 proposer from SL in case it changed after syncing

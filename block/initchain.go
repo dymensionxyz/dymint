@@ -28,7 +28,7 @@ func (m *Manager) RunInitChain() error {
 	// validate the resulting genesis bridge data against the hub
 	err = m.ValidateGenesisBridgeData(res.GenesisBridgeDataBytes)
 	if err != nil {
-		return fmt.Errorf("Cannot validate genesis bridge data: %w. Please call `$EXECUTABLE dymint unsafe-reset-all` before the next launch to reset this node to genesis state.", err)
+		return fmt.Errorf("cannot validate genesis bridge data: %w. Please call `$EXECUTABLE dymint unsafe-reset-all` before the next launch to reset this node to genesis state", err)
 	}
 
 	// update the state with only the consensus pubkey

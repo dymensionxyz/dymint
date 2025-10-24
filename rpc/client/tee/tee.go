@@ -17,7 +17,7 @@ import (
 const (
 	// GPC defined
 	socketPath    = "/run/container_launcher/teeserver.sock"
-	tokenEndpoint = "http://localhost/v1/token"
+	tokenEndpoint = "http://localhost/v1/token" //nolint:gosec // this is a constant
 )
 
 func GetToken(node *node.Node, dry bool) (tee.TEEResponse, error) {
