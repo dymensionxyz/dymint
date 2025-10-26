@@ -19,7 +19,6 @@ import (
 	"github.com/dymensionxyz/dymint/indexers/txindex"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	dmtypes "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
@@ -338,8 +337,8 @@ func (txi *TxIndex) match(
 
 	tmpHashes := make(map[string][]byte)
 
-	switch {
-	case c.Op == query.OpEqual:
+	switch c.Op {
+	case query.OpEqual:
 		it := txi.store.PrefixIterator(startKeyBz)
 		defer it.Discard()
 
@@ -363,7 +362,7 @@ func (txi *TxIndex) match(
 			panic(err)
 		}
 
-	case c.Op == query.OpExists:
+	case query.OpExists:
 		// XXX: can't use startKeyBz here because c.Operand is nil
 		// (e.g. "account.owner/<nil>/" won't match w/ a single row)
 		it := txi.store.PrefixIterator(startKey(c.CompositeKey))
@@ -389,7 +388,7 @@ func (txi *TxIndex) match(
 			panic(err)
 		}
 
-	case c.Op == query.OpContains:
+	case query.OpContains:
 		// XXX: startKey does not apply here.
 		// For example, if startKey = "account.owner/an/" and search query = "account.owner CONTAINS an"
 		// we can't iterate with prefix "account.owner/an/" because we might miss keys like "account.owner/Ulan/"
@@ -653,7 +652,7 @@ func (txi *TxIndex) pruneEvents(height int64, batch store.KVBatch) (uint64, erro
 	if err != nil {
 		return pruned, err
 	}
-	eventKeys := &dymint.EventKeys{}
+	eventKeys := &dmtypes.EventKeys{}
 	err = eventKeys.Unmarshal(keysList)
 	if err != nil {
 		return pruned, err
@@ -668,7 +667,7 @@ func (txi *TxIndex) pruneEvents(height int64, batch store.KVBatch) (uint64, erro
 	return pruned, nil
 }
 
-func (txi *TxIndex) addEventKeys(height int64, eventKeys *dymint.EventKeys, batch store.KVBatch) error {
+func (txi *TxIndex) addEventKeys(height int64, eventKeys *dmtypes.EventKeys, batch store.KVBatch) error {
 	// index event keys by height
 	eventKeyHeight, err := eventHeightKey(height)
 	if err != nil {

@@ -86,7 +86,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 	case Mainnet:
 		params = &dagconfig.MainnetParams
 	default:
-		return nil, fmt.Errorf("Kaspa network not set to testnet or mainnet. Param: %s", config.Network)
+		return nil, fmt.Errorf("kaspa network not set to testnet or mainnet. Param: %s", config.Network)
 	}
 
 	seed := bip39.NewSeed(mnemonic, "")

@@ -39,14 +39,15 @@ linters:
     paths:
     # mempool and indexer code is borrowed from Tendermint
     - mempool
-    - state/indexer
-    - state/txindex
-    - da/celestia/mock/server.go
+    - indexers
     - ".*_test\\.go" # TODO: bring back
     rules:
     - linters:
       - staticcheck
       text: "^.*SA1019.*$"
+    - linters:
+      - staticcheck
+      text: "^.*QF1008.*$"
     - linters:
       - errcheck
       text: "^.*value of .*it.*Close.* is not checked"
@@ -74,7 +75,4 @@ formatters:
     paths:
     # mempool and indexer code is borrowed from Tendermint
     - mempool
-    - state/indexer
-    - state/txindex
-    - da/celestia/mock/server.go
-    - ".*_test\\.go" # TODO: bring back
+    - indexers

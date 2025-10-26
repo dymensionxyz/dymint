@@ -28,7 +28,6 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	slmock "github.com/dymensionxyz/dymint/settlement/grpc/mockserv/proto"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/proto/tendermint/version"
@@ -315,6 +314,10 @@ func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
 	return uint64(0), gerrc.ErrNotFound
 }
 
+func (c *Client) GetLatestFinalizedHeightOrZero() (uint64, error) {
+	return uint64(0), gerrc.ErrNotFound
+}
+
 func (c *Client) saveBatch(batch *settlement.Batch) error {
 	c.logger.Debug("Saving batch to grpc settlement layer", "start height",
 		batch.StartHeight, "end height", batch.EndHeight)
@@ -345,10 +348,10 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 }
 
 func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
-	bds := []rollapp.BlockDescriptor{}
+	bds := []rollapptypes.BlockDescriptor{}
 
 	for index, block := range batch.Blocks {
-		bd := rollapp.BlockDescriptor{
+		bd := rollapptypes.BlockDescriptor{
 			Height:     block.Header.Height,
 			StateRoot:  block.Header.AppHash[:],
 			Timestamp:  block.Header.GetTimestamp(),
@@ -413,4 +416,9 @@ func (c *Client) ValidateGenesisBridgeData(rollapptypes.GenesisBridgeData) error
 func (c *Client) SubmitTEEAttestation(token string, nonce rollapptypes.TEENonce) error {
 	// Stub implementation for grpc settlement layer
 	return nil
+}
+
+// GetChainID returns the chain ID of the settlement layer.
+func (c *Client) GetChainID() string {
+	return "grpc-settlement-layer"
 }

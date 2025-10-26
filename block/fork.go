@@ -127,7 +127,7 @@ func (m *Manager) doFork(instruction types.Instruction) error {
 		// add consensus msgs to upgrade DRS to running node version (msg is created in all cases and RDK will upgrade if necessary). If returns error if running version is deprecated.
 		consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
 		if err != nil {
-			return fmt.Errorf("prepare DRS upgrade messages: %v", err)
+			return fmt.Errorf("prepare DRS upgrade messages: %w", err)
 		}
 		// add consensus msg to bump the account sequences in all fork cases
 		consensusMsgs = append(consensusMsgs, &sequencers.MsgBumpAccountSequences{Authority: authtypes.NewModuleAddress("sequencers").String()})
@@ -135,13 +135,13 @@ func (m *Manager) doFork(instruction types.Instruction) error {
 		// create fork blocks
 		err = m.createForkBlocks(instruction, consensusMsgs)
 		if err != nil {
-			return fmt.Errorf("validate fork blocks: %v", err)
+			return fmt.Errorf("validate fork blocks: %w", err)
 		}
 	}
 
 	// submit fork batch including two fork blocks
 	if err := m.submitForkBatch(instruction.RevisionStartHeight); err != nil {
-		return fmt.Errorf("submit fork batch: %v", err)
+		return fmt.Errorf("submit fork batch: %w", err)
 	}
 
 	return nil
@@ -231,7 +231,7 @@ func (m *Manager) createForkBlocks(instruction types.Instruction, consensusMsgs 
 func (m *Manager) submitForkBatch(height uint64) error {
 	resp, err := m.SLClient.GetBatchAtHeight(height)
 	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
-		return fmt.Errorf("getting batch at height: %v", err)
+		return fmt.Errorf("getting batch at height: %w", err)
 	}
 
 	if resp != nil {
@@ -239,7 +239,7 @@ func (m *Manager) submitForkBatch(height uint64) error {
 	}
 
 	if _, err = m.CreateAndSubmitBatch(m.Conf.BatchSubmitBytes, false); err != nil {
-		return fmt.Errorf("creating and submitting batch: %v", err)
+		return fmt.Errorf("creating and submitting batch: %w", err)
 	}
 
 	return nil

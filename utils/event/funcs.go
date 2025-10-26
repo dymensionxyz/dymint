@@ -8,7 +8,6 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
@@ -55,6 +54,6 @@ func MustPublish(ctx context.Context, pubsubServer *pubsub.Server, msg interface
 }
 
 // QueryFor returns a query for the given event.
-func QueryFor(eventTypeKey, eventType string) tmpubsub.Query {
+func QueryFor(eventTypeKey, eventType string) pubsub.Query {
 	return tmquery.MustParse(fmt.Sprintf("%s='%s'", eventTypeKey, eventType))
 }

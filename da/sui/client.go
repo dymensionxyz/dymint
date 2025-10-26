@@ -87,7 +87,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(digest string) da.ResultRe
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("Failed to retrieve transaction: %v", err),
-				Error:   fmt.Errorf("failed to retrieve transaction: %v", err),
+				Error:   fmt.Errorf("failed to retrieve transaction: %w", err),
 			},
 		}
 	}
@@ -121,7 +121,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(digest string) da.ResultRe
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("Failed to collect chunks: %s", err),
-				Error:   fmt.Errorf("failed to collect chunks: %s", err),
+				Error:   fmt.Errorf("failed to collect chunks: %w", err),
 			},
 		}
 	}
@@ -178,7 +178,7 @@ func (c *DataAvailabilityLayerClient) collectChunks(inputs []models.SuiCallArg) 
 		// Decode from base64
 		rawValue, err := mystenbcs.FromBase64(rawValueBase64)
 		if err != nil {
-			return nil, fmt.Errorf("invalid input value: expected base64-encoded sting, got %s", input["value"])
+			return nil, fmt.Errorf("invalid input value: expected base64-encoded string, got %s", input["value"])
 		}
 
 		// Unmarshal the BCS-encoded bytes to get the actual chunk data
@@ -199,14 +199,14 @@ func (c *DataAvailabilityLayerClient) parseBatch(batchData []byte) (*types.Batch
 	var batch pb.Batch
 	err := proto.Unmarshal(batchData, &batch)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling batch: %s", err)
+		return nil, fmt.Errorf("error unmarshaling batch: %w", err)
 	}
 
 	// Convert from proto format to our batch type
 	parsedBatch := new(types.Batch)
 	err = parsedBatch.FromProto(&batch)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling batch: %s", err)
+		return nil, fmt.Errorf("error unmarshaling batch: %w", err)
 	}
 
 	return parsedBatch, nil
@@ -345,7 +345,7 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 	for _, chunk := range chunks {
 		rawData, err := mystenbcs.Marshal(chunk)
 		if err != nil {
-			return nil, fmt.Errorf("marshal to BCS: %v", err)
+			return nil, fmt.Errorf("marshal to BCS: %w", err)
 		}
 
 		txs = append(txs, models.RPCTransactionRequestParams{
@@ -373,7 +373,7 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 		SuiTransactionBlockBuilderMode: "Commit",
 	})
 	if err != nil {
-		return nil, fmt.Errorf("batch transaction: %v", err)
+		return nil, fmt.Errorf("batch transaction: %w", err)
 	}
 
 	// Transaction fails if:
@@ -409,7 +409,7 @@ func (c *DataAvailabilityLayerClient) submit(data []byte) (*da.DASubmitMetaData,
 		RequestType: "WaitForLocalExecution",
 	})
 	if err != nil {
-		return nil, fmt.Errorf("sign and execute transaction block: %v", err)
+		return nil, fmt.Errorf("sign and execute transaction block: %w", err)
 	}
 
 	// "If the node fails to execute the transaction locally in a timely manner, a bool type in

@@ -273,6 +273,51 @@ func (_c *MockClientI_GetBondedSequencers_Call) RunAndReturn(run func() ([]types
 	return _c
 }
 
+// GetChainID provides a mock function with no fields
+func (_m *MockClientI) GetChainID() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetChainID")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockClientI_GetChainID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetChainID'
+type MockClientI_GetChainID_Call struct {
+	*mock.Call
+}
+
+// GetChainID is a helper method to define mock.On call
+func (_e *MockClientI_Expecter) GetChainID() *MockClientI_GetChainID_Call {
+	return &MockClientI_GetChainID_Call{Call: _e.mock.On("GetChainID")}
+}
+
+func (_c *MockClientI_GetChainID_Call) Run(run func()) *MockClientI_GetChainID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClientI_GetChainID_Call) Return(_a0 string) *MockClientI_GetChainID_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientI_GetChainID_Call) RunAndReturn(run func() string) *MockClientI_GetChainID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetLatestBatch provides a mock function with no fields
 func (_m *MockClientI) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	ret := _m.Called()
@@ -381,6 +426,61 @@ func (_c *MockClientI_GetLatestFinalizedHeight_Call) Return(_a0 uint64, _a1 erro
 }
 
 func (_c *MockClientI_GetLatestFinalizedHeight_Call) RunAndReturn(run func() (uint64, error)) *MockClientI_GetLatestFinalizedHeight_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetLatestFinalizedHeightOrZero provides a mock function with no fields
+func (_m *MockClientI) GetLatestFinalizedHeightOrZero() (uint64, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLatestFinalizedHeightOrZero")
+	}
+
+	var r0 uint64
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (uint64, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() uint64); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(uint64)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClientI_GetLatestFinalizedHeightOrZero_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLatestFinalizedHeightOrZero'
+type MockClientI_GetLatestFinalizedHeightOrZero_Call struct {
+	*mock.Call
+}
+
+// GetLatestFinalizedHeightOrZero is a helper method to define mock.On call
+func (_e *MockClientI_Expecter) GetLatestFinalizedHeightOrZero() *MockClientI_GetLatestFinalizedHeightOrZero_Call {
+	return &MockClientI_GetLatestFinalizedHeightOrZero_Call{Call: _e.mock.On("GetLatestFinalizedHeightOrZero")}
+}
+
+func (_c *MockClientI_GetLatestFinalizedHeightOrZero_Call) Run(run func()) *MockClientI_GetLatestFinalizedHeightOrZero_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClientI_GetLatestFinalizedHeightOrZero_Call) Return(_a0 uint64, _a1 error) *MockClientI_GetLatestFinalizedHeightOrZero_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClientI_GetLatestFinalizedHeightOrZero_Call) RunAndReturn(run func() (uint64, error)) *MockClientI_GetLatestFinalizedHeightOrZero_Call {
 	_c.Call.Return(run)
 	return _c
 }

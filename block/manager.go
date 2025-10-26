@@ -379,7 +379,10 @@ func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
 	} else if err != nil {
 		return fmt.Errorf("getting finalized height. err: %w", err)
 	}
-	m.SettlementValidator.UpdateLastValidatedHeight(height)
+	if !m.Conf.TeeEnabled {
+		// in tee: last validated has to have been applied | TODO: revisit, maybe can/should remove for all modes
+		m.SettlementValidator.UpdateLastValidatedHeight(height, false)
+	}
 
 	return nil
 }

@@ -3,6 +3,7 @@ package tee
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -65,7 +66,7 @@ func (f *TEEFinalizer) fetchAndSubmitAttestation() error {
 		return fmt.Errorf("query full node TEE: %w", err)
 	}
 
-	latestFinalizedHeight, err := f.hubClient.GetLatestFinalizedHeight()
+	latestFinalizedHeight, err := f.hubClient.GetLatestFinalizedHeightOrZero()
 	if err != nil {
 		return fmt.Errorf("get latest finalized height: %w", err)
 	}
@@ -168,7 +169,9 @@ func (t *TEEResponse) UnmarshalJSON(data []byte) error {
 		Nonce struct {
 			RollappId       string `json:"rollapp_id"`
 			CurrHeight      string `json:"curr_height,omitempty"`
+			HubChainId      string `json:"hub_chain_id"`
 			FinalizedHeight string `json:"finalized_height,omitempty"`
+			StateRoot       string `json:"state_root"`
 		} `json:"nonce"`
 	}
 
@@ -183,21 +186,28 @@ func (t *TEEResponse) UnmarshalJSON(data []byte) error {
 		aux.Nonce.FinalizedHeight = "0"
 	}
 
+	finalizedHeight, err := strconv.ParseUint(aux.Nonce.FinalizedHeight, 10, 64)
+	if err != nil {
+		return fmt.Errorf("parse finalized_height: %w", err)
+	}
+
 	currHeight, err := strconv.ParseUint(aux.Nonce.CurrHeight, 10, 64)
 	if err != nil {
 		return fmt.Errorf("parse curr_height: %w", err)
 	}
 
-	finalizedHeight, err := strconv.ParseUint(aux.Nonce.FinalizedHeight, 10, 64)
+	stateRoot, err := base64.StdEncoding.DecodeString(aux.Nonce.StateRoot)
 	if err != nil {
-		return fmt.Errorf("parse finalized_height: %w", err)
+		return fmt.Errorf("decode state_root: %w", err)
 	}
 
 	t.Token = aux.Token
 	t.Nonce = rollapptypes.TEENonce{
 		RollappId:       aux.Nonce.RollappId,
 		CurrHeight:      currHeight,
+		HubChainId:      aux.Nonce.HubChainId,
 		FinalizedHeight: finalizedHeight,
+		StateRoot:       stateRoot,
 	}
 
 	return nil

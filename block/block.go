@@ -11,20 +11,18 @@ import (
 
 // validateAndApplyBlock calls validateBlockBeforeApply and applyBlock.
 func (m *Manager) validateAndApplyBlock(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
-	if m.Conf.SkipValidationHeight != block.Header.Height {
 
-		// in case of fork, update proposer from SL to validate the block, otherwise previous block next proposer may not be valid.
-		if m.State.IsForkHeight(block.Header.Height) {
-			if err := m.UpdateProposerFromSL(); err != nil {
-				return err
-			}
+	// in case of fork, update proposer from SL to validate the block, otherwise previous block next proposer may not be valid.
+	if m.State.IsForkHeight(block.Header.Height) {
+		if err := m.UpdateProposerFromSL(); err != nil {
+			return err
 		}
+	}
 
-		if err := m.validateBlockBeforeApply(block, commit); err != nil {
-			m.blockCache.Delete(block.Header.Height)
-			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
-			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
-		}
+	if err := m.validateBlockBeforeApply(block, commit); err != nil {
+		m.blockCache.Delete(block.Header.Height)
+		// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+		return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
 	}
 
 	if err := m.applyBlock(block, commit, blockMetaData); err != nil {
