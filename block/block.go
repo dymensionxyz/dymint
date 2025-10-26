@@ -11,7 +11,6 @@ import (
 
 // validateAndApplyBlock calls validateBlockBeforeApply and applyBlock.
 func (m *Manager) validateAndApplyBlock(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
-
 	// in case of fork, update proposer from SL to validate the block, otherwise previous block next proposer may not be valid.
 	if m.State.IsForkHeight(block.Header.Height) {
 		if err := m.UpdateProposerFromSL(); err != nil {
