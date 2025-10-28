@@ -10,7 +10,7 @@ type BlocksReceived struct {
 	blockReceivedMu sync.Mutex
 }
 
-// addBlockReceived adds the block height to a map
+// AddBlockReceived adds the block height to a map
 func (br *BlocksReceived) AddBlockReceived(height uint64) {
 	br.latestSeenHeight = max(height, br.latestSeenHeight)
 	br.blockReceivedMu.Lock()
@@ -18,7 +18,7 @@ func (br *BlocksReceived) AddBlockReceived(height uint64) {
 	br.blocksReceived[height] = struct{}{}
 }
 
-// isBlockReceived checks if a block height is already received
+// IsBlockReceived checks if a block height is already received
 func (br *BlocksReceived) IsBlockReceived(height uint64) bool {
 	br.blockReceivedMu.Lock()
 	defer br.blockReceivedMu.Unlock()
@@ -26,7 +26,7 @@ func (br *BlocksReceived) IsBlockReceived(height uint64) bool {
 	return ok
 }
 
-// removeBlocksReceivedUpToHeight clears previous received block heights
+// RemoveBlocksReceivedUpToHeight clears previous received block heights
 func (br *BlocksReceived) RemoveBlocksReceivedUpToHeight(appliedHeight uint64) {
 	br.blockReceivedMu.Lock()
 	defer br.blockReceivedMu.Unlock()
