@@ -999,7 +999,8 @@ func getRPCAndNodeSequencer(t *testing.T) (*tmmocks.MockApplication, *client.Cli
 	return getRPCInternal(t, true)
 }
 
-// getRPC returns a mock application and a new RPC client (non-sequencer mode)
+// getRPCInternal returns a mock application, a new RPC client, and a node.
+// The sequencer parameter determines whether the node runs in sequencer mode.
 func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *client.Client, *node.Node) {
 	t.Helper()
 	version.DRS = "0"
