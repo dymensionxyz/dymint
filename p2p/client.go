@@ -647,7 +647,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 					return
 				}
 
-				//TODO: https://github.com/dymensionxyz/dymint/issues/1115 existing issue still opened since p2p syncing does not support sequencer rotation yet. i.e. we cannot validate block signatures properly here.
+				// TODO: https://github.com/dymensionxyz/dymint/issues/1115 existing issue still opened since p2p syncing does not support sequencer rotation yet. i.e. we cannot validate block signatures properly here.
 				propKey, err := state.SafeProposerPubKey()
 				if err != nil {
 					c.logger.Error("Get proposer public key.", "err", err)
