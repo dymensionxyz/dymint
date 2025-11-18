@@ -209,6 +209,11 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			err = retry.Do(
 				func() error {
 					result := c.checkBatchAvailability(submitMetadata)
+					// If maturity not reached, make it unrecoverable so we stop retrying and start with a new batch. This will happen only in case of REST API issues.
+					var maturityErr da.ErrMaturityNotReached
+					if errors.As(result.Error, &maturityErr) {
+						return retry.Unrecoverable(result.Error)
+					}
 					return result.Error
 				},
 				retry.Context(c.ctx),
@@ -218,6 +223,15 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				retry.Attempts(c.batchRetryAttempts),
 			)
 			if err != nil {
+				// Check if this is a maturity error - if so, submit a new batch immediately
+				var maturityErr da.ErrMaturityNotReached
+				if errors.As(err, &maturityErr) {
+					c.logger.Info("Batch not reaching maturity, submitting new batch",
+						"txHash", txHash,
+						"missingConfirmations", maturityErr.MissingConfirmations)
+					metrics.RollappConsecutiveFailedDASubmission.Inc()
+					continue
+				}
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()

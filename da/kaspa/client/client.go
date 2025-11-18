@@ -302,8 +302,13 @@ func (c *Client) CheckTransactionMaturity(txHash []string) error {
 
 		// if the transaction is not accepted yet, set max missing confirmations to be required and continue
 		if !tx.IsAccepted {
-			maxMissingConfirmations = ConfirmationsRequired
-			continue
+			return da.ErrMaturityNotReached{MissingConfirmations: ConfirmationsRequired}
+		}
+
+		// if the transaction's accepting block blue score is higher than current blue score, return maturity not reached
+		// it should not happen, but REST API might be lagging for the chain blue score
+		if blueScoreResp.BlueScore < tx.AcceptingBlockBlueScore {
+			return da.ErrMaturityNotReached{MissingConfirmations: ConfirmationsRequired}
 		}
 
 		// if the transaction is mature enough, go to next tx
