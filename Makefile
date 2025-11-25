@@ -78,8 +78,8 @@ include tests.mk
 ###############################################################################
 
 mock-gen:
-	go install github.com/vektra/mockery/v2@v2.46.0
-	mockery
+	go install github.com/vektra/mockery/v2@latest
+	~/go/bin/mockery
 .PHONY: mock-gen
 
 ###############################################################################

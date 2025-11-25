@@ -188,13 +188,14 @@ message MsgFastFinalizeWithTEE {
 
 // what the verifying full node inside the tee actually attests over
 message TEENonce {
-  string rollapp_id = 2;
- 
+  string rollapp_id = 1;
+  string hub_chain_id = 2;
+  // an already finalized height the TEE started at
+  uint64 finalized_height = 3;
   // height TEE recently validated
-  uint64 curr_height = 1;
-
-  // height TEE started from (which must be finalized)
-  uint64 finalized_height = 4;
+  uint64 curr_height = 4;
+  //// stateRoot/appHash is a 32 byte array of the hash of the block
+  bytes state_root = 5;
 }
 
 // MsgFastFinalizeWithTEEResponse is the response for MsgFastFinalizeWithTEE
