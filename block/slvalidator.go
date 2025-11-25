@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -21,9 +22,6 @@ type SettlementValidator struct {
 	lastValidatedHeight atomic.Uint64
 
 	// immutable: the height the node was started from
-<<<<<<< HEAD
-	trustedHeight uint64
-=======
 	trustedHeight         uint64
 	lastValidatedHeightMu sync.Mutex
 
@@ -32,7 +30,6 @@ type SettlementValidator struct {
 	// of the attestation request the block might have already been pruned
 	// note: can be nil to simplify genesis setup
 	lastValidatedHeightBlockHeaderAppHash []byte
->>>>>>> 97fea848 (feat(tee): state root in nonce (#1481))
 }
 
 // NewSettlementValidator returns a new StateUpdateValidator instance.

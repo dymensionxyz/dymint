@@ -46,7 +46,7 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 				}
 
 				// update the last validated height to the batch last block height
-				m.SettlementValidator.UpdateLastValidatedHeight(batch.EndHeight)
+				m.SettlementValidator.UpdateLastValidatedHeight(batch.EndHeight, false)
 
 				m.logger.Info("state info validated", "idx", batch.StateIndex, "start height", batch.StartHeight, "end height", batch.EndHeight)
 			}
