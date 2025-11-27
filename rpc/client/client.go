@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
@@ -706,9 +707,7 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 		})
 
 	case "asc", "":
-		sort.Slice(results, func(i, j int) bool {
-			return results[i] < results[j]
-		})
+		slices.Sort(results)
 	default:
 		return nil, errors.New("expected order_by to be either `asc` or `desc` or empty")
 	}

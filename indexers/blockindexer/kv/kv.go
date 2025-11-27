@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -226,7 +226,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 		}
 	}
 
-	sort.Slice(results, func(i, j int) bool { return results[i] < results[j] })
+	slices.Sort(results)
 
 	return results, nil
 }
