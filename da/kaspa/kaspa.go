@@ -206,9 +206,14 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				BlobHash: blobHash,
 			}
 
+			var maturityErr da.ErrMaturityNotReached
 			err = retry.Do(
 				func() error {
 					result := c.checkBatchAvailability(submitMetadata)
+					// If maturity not reached, make it unrecoverable so we stop retrying and start with a new batch. This will happen only in case of REST API issues.
+					if errors.As(result.Error, &maturityErr) {
+						return retry.Unrecoverable(result.Error)
+					}
 					return result.Error
 				},
 				retry.Context(c.ctx),
@@ -220,7 +225,12 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			if err != nil {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
 				metrics.RollappConsecutiveFailedDASubmission.Inc()
-				backoff.Sleep()
+				// Check if this is a maturity error - if so, submit a new batch immediately
+				if errors.As(err, &maturityErr) {
+					c.logger.Info("Batch not reaching maturity, submitting new batch", "txHash", txHash, "missingConfirmations", maturityErr.MissingConfirmations)
+				} else {
+					backoff.Sleep()
+				}
 				continue
 			}
 
@@ -326,6 +336,7 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitMetaData) da.ResultCheckBatch {
 	currentDelay := c.batchRetryDelay
+	var maturityErr da.ErrMaturityNotReached
 
 	err := retry.Do(
 		func() error {
@@ -333,7 +344,6 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 			err := c.client.CheckTransactionMaturity(daMetaData.TxHash)
 			if err != nil {
 				// Check if this is a maturity error with missing confirmations info
-				var maturityErr da.ErrMaturityNotReached
 				if errors.As(err, &maturityErr) {
 					// Calculate dynamic delay based on missing confirmations. Kaspa has 10 blocks per second, so we estimate delay accordingly
 					currentDelay += time.Duration(float64(maturityErr.MissingConfirmations)/client.KaspaBlocksPerSecond) * time.Second
@@ -355,7 +365,6 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 	)
 	if err != nil {
 		c.logger.Error("checkBatchAvailability", "hash", daMetaData.TxHash, "error", err)
-		var maturityErr da.ErrMaturityNotReached
 		if errors.As(err, &maturityErr) {
 			return da.ResultCheckBatch{
 				BaseResult: da.BaseResult{
