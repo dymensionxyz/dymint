@@ -21,7 +21,7 @@ const (
 	p2pBlocksyncLoop = "applyBlockSyncBlocksLoop"
 )
 
-// setFraudHandler sets the fraud handler for the block manager.
+// runAsFullNode runs the block manager as a full node.
 func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 	m.logger.Info("starting block manager", "mode", "full node")
 	m.RunMode = RunModeFullNode

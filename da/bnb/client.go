@@ -176,7 +176,7 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
 	return txhash, commitment, proof, nil
 }
 
-// GetBlock retrieves a block BNB Near chain by tx hash
+// GetBlob retrieves a blob from BNB chain by tx hash
 func (c Client) GetBlob(txhash string) ([]byte, error) {
 	blobSidecar, err := c.blobSidecarByTxHash(c.ctx, txhash)
 	if err != nil {
