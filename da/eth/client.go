@@ -153,7 +153,7 @@ func (c Client) SubmitBlob(blob []byte) ([]byte, []byte, string, error) {
 	return commitment, proof, slot, nil
 }
 
-// GetBlock retrieves a block Ethereum beacon chain by slot and commitment
+// GetBlob retrieves a blob from Ethereum beacon chain by slot and commitment
 func (c Client) GetBlob(slot string, txCommitment []byte) ([]byte, error) {
 	blob, err := c.getKzg4844Blob(slot, txCommitment)
 	if err != nil {
