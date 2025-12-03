@@ -50,6 +50,12 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
+	// skip if all blocks in the batch have not been applied yet
+	if v.blockManager.State.Height() < batch.EndHeight {
+		v.logger.Debug("skipping state update validation as not all blocks have been applied yet", "current height", v.blockManager.State.Height(), "batch end height", batch.EndHeight)
+		return nil
+	}
+
 	daClient, err := v.blockManager.Store.LoadDA(batch.EndHeight)
 	if err != nil {
 		return err
