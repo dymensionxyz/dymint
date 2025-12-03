@@ -32,11 +32,18 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 			m.logger.Info("validating state updates to target height", "targetHeight", targetValidationHeight)
 
 			for currH := m.SettlementValidator.NextValidationHeight(); currH <= targetValidationHeight; currH = m.SettlementValidator.NextValidationHeight() {
+
 				// get next batch that needs to be validated from SL
 				batch, err := m.SLClient.GetBatchAtHeight(currH)
 				if err != nil {
 					// TODO: should be recoverable. set to unhealthy and continue
 					return err
+				}
+
+				// skip if all blocks in the batch have not been applied yet
+				if m.State.Height() < batch.EndHeight {
+					m.logger.Debug("skipping state update validation as not all blocks have been applied yet", "current height", m.State.Height(), "batch end height", batch.EndHeight)
+					return nil
 				}
 
 				// validate batch
