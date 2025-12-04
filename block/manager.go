@@ -265,7 +265,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		m.triggerSettlementSyncing()
 	} else {
 		// send signal to validation loop with last settlement state update
-		m.triggerSettlementValidation()
+		m.TriggerSettlementValidation()
 	}
 
 	// This error group is used to control the lifetime of the block manager.

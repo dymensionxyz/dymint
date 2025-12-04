@@ -40,10 +40,10 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 					return err
 				}
 
-				// skip if all blocks in the batch have not been applied yet
+				// skip if all blocks in the batch have not been applied yet. batch will be validated once all blocks are applied (triggered on apply)
 				if m.State.Height() < batch.EndHeight {
 					m.logger.Debug("skipping state update validation as not all blocks have been applied yet", "current height", m.State.Height(), "batch end height", batch.EndHeight)
-					return nil
+					break
 				}
 
 				// validate batch
