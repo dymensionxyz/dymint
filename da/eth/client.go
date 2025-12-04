@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/avast/retry-go/v4"
@@ -58,9 +57,10 @@ func NewClient(ctx context.Context, config *EthConfig, logger dyminttypes.Logger
 		return nil, err
 	}
 
-	priKeyHex := os.Getenv(config.PrivateKeyEnv)
-	if priKeyHex == "" {
-		return nil, fmt.Errorf("private key environment %s is not set or empty", config.PrivateKeyEnv)
+	// Load private key with priority: env var -> file -> config field
+	priKeyHex, err := da.LoadSecret(config.PrivateKeyEnv, config.PrivateKeyFile, config.PrivateKey, "private key")
+	if err != nil {
+		return nil, err
 	}
 
 	account, err := accountFromHexKey(priKeyHex)

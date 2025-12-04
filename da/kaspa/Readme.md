@@ -8,11 +8,18 @@
 
 ## Dymint.toml Configuration
 
-- Example:
+- Example using environment variable:
 
 ```shell
 da_layer = ['kaspa']
 da_config = ['{"api_url":"https://api-tn10.kaspa.org","grpc_address":"localhost:16210","network":"kaspa-testnet-10","address":"kaspatest:qzwyrgapjnhtjqkxdrmp7fpm3yddw296v2ajv9nmgmw5k3z0r38guevxyk7j0","mnemonic_env":"KASPA_MNEMONIC"}']
+```
+
+- Example with mnemonic directly in config (alternative to environment variable):
+
+```shell
+da_layer = ['kaspa']
+da_config = ['{"api_url":"https://api-tn10.kaspa.org","grpc_address":"localhost:16210","network":"kaspa-testnet-10","address":"kaspatest:qzwyrgapjnhtjqkxdrmp7fpm3yddw296v2ajv9nmgmw5k3z0r38guevxyk7j0","mnemonic":"your mnemonic words here"}']
 ```
 
 where:
@@ -21,4 +28,5 @@ where:
 - grpc_address = IP and port of a Kaspa Node to access via grpc.
 - network: kaspa-testnet-10 or kaspa-mainnet.
 - address: Kaspa funded address.
-- mnemonic_env: Env variable used to set account mnemonic, e.g. KASPA_MNEMONIC.
+- mnemonic_env: (Optional) Environment variable name for mnemonic (e.g., KASPA_MNEMONIC). Takes precedence over `mnemonic` field.
+- mnemonic: (Optional) Mnemonic phrase directly in config. Used as fallback if `mnemonic_env` is not set.

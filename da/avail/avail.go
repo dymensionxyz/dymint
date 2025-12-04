@@ -34,7 +34,9 @@ const (
 )
 
 type Config struct {
-	Seed        string `json:"seed"`
+	SeedEnv     string `json:"seed_env,omitempty"`     // Environment variable name for seed (highest priority)
+	SeedFile    string `json:"seed_file,omitempty"`    // Path to file containing seed (second priority)
+	Seed        string `json:"seed,omitempty"`         // Seed directly in config (lowest priority, fallback only)
 	RpcEndpoint string `json:"endpoint"`
 	AppID       uint32 `json:"app_id"`
 }
@@ -166,7 +168,13 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	client, err := NewClient(c.config.RpcEndpoint, c.config.Seed, c.config.AppID)
+	// Load seed with priority: env var -> file -> config field
+	seed, err := da.LoadSecret(c.config.SeedEnv, c.config.SeedFile, c.config.Seed, "seed")
+	if err != nil {
+		return err
+	}
+
+	client, err := NewClient(c.config.RpcEndpoint, seed, c.config.AppID)
 	if err != nil {
 		return fmt.Errorf("error while establishing connection to DA layer: %w", err)
 	}
