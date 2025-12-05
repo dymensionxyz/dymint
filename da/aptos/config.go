@@ -25,9 +25,9 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 // Config stores Aptos DALC configuration parameters.
 type Config struct {
 	Network       string               `json:"network,omitempty"`
-	PriKeyEnv     string               `json:"pri_key_env,omitempty"`     // Environment variable name for private key (highest priority)
-	PriKeyFile    string               `json:"pri_key_file,omitempty"`    // Path to file containing private key (second priority)
-	PriKey        string               `json:"pri_key,omitempty"`         // Private key directly in config (lowest priority, fallback only)
+	PriKeyEnv     string               `json:"pri_key_env,omitempty"`  // Environment variable name for private key (highest priority)
+	PriKeyFile    string               `json:"pri_key_file,omitempty"` // Path to file containing private key (second priority)
+	PriKey        string               `json:"pri_key,omitempty"`      // Private key directly in config (lowest priority, fallback only)
 	Backoff       uretry.BackoffConfig `json:"backoff,omitempty"`
 	RetryAttempts *int                 `json:"retry_attempts,omitempty"`
 	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`

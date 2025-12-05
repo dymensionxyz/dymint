@@ -21,7 +21,7 @@ func LoadSecret(envName, filePath, directValue, secretType string) (string, erro
 
 	// Try file second
 	if filePath != "" {
-		data, err := os.ReadFile(filePath)
+		data, err := os.ReadFile(filePath) //nolint:gosec // filePath is from config, intentional file read for secrets
 		if err != nil {
 			// Only return error if file was explicitly specified
 			return "", fmt.Errorf("read %s file %s: %w", secretType, filePath, err)

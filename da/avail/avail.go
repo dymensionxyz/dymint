@@ -34,9 +34,9 @@ const (
 )
 
 type Config struct {
-	SeedEnv     string `json:"seed_env,omitempty"`     // Environment variable name for seed (highest priority)
-	SeedFile    string `json:"seed_file,omitempty"`    // Path to file containing seed (second priority)
-	Seed        string `json:"seed,omitempty"`         // Seed directly in config (lowest priority, fallback only)
+	SeedEnv     string `json:"seed_env,omitempty"`  // Environment variable name for seed (highest priority)
+	SeedFile    string `json:"seed_file,omitempty"` // Path to file containing seed (second priority)
+	Seed        string `json:"seed,omitempty"`      // Seed directly in config (lowest priority, fallback only)
 	RpcEndpoint string `json:"endpoint"`
 	AppID       uint32 `json:"app_id"`
 }
