@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Access to a Sui RPC node (e.g., https://fullnode.devnet.sui.io:443 for devnet, https://fullnode.mainnet.sui.io:443 for mainnet)
+- Access to a Sui RPC node (e.g., <https://fullnode.devnet.sui.io:443> for devnet, <https://fullnode.mainnet.sui.io:443> for mainnet)
 - A Sui account with funds. Faucet for devnet can be accessed via SDK: `sui.RequestSuiFromFaucet("https://faucet.devnet.sui.io", address, map[string]string{})`
 - A deployed Noop contract address
 
