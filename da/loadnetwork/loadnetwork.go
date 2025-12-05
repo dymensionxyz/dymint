@@ -163,16 +163,18 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 				return fmt.Errorf("failed to initialize rpc client: %w", err)
 			}
 			c.client = client
-		} else if cfg.PrivateKeyHex != "" {
-			// Initialize with private key
-			privateKeySigner := signer.NewPrivateKeySigner(cfg.PrivateKeyHex, logger, cfg.ChainID)
+		} else {
+			// Initialize with private key - load with priority: env var -> file -> config field
+			privateKey, err := da.LoadSecret(cfg.PrivateKeyEnv, cfg.PrivateKeyFile, cfg.PrivateKeyHex, "private key")
+			if err != nil {
+				return fmt.Errorf("either web3signer endpoint or private key must be provided: %w", err)
+			}
+			privateKeySigner := signer.NewPrivateKeySigner(privateKey, logger, cfg.ChainID)
 			client, err := rpc.NewLNRPCClient(logger, &cfg, privateKeySigner)
 			if err != nil {
 				return fmt.Errorf("failed to initialize rpc client: %w", err)
 			}
 			c.client = client
-		} else {
-			return fmt.Errorf("either web3signer endpoint or private key must be provided")
 		}
 	}
 

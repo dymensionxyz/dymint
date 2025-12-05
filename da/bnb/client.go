@@ -95,7 +95,13 @@ func NewClient(ctx context.Context, config *BNBConfig) (BNBClient, error) {
 		return nil, err
 	}
 
-	account, err := fromHexKey(config.PrivateKey)
+	// Load private key with priority: env var -> file -> config field
+	privateKey, err := da.LoadSecret(config.PrivateKeyEnv, config.PrivateKeyFile, config.PrivateKey, "private key")
+	if err != nil {
+		return nil, err
+	}
+
+	account, err := fromHexKey(privateKey)
 	if err != nil {
 		return nil, err
 	}
