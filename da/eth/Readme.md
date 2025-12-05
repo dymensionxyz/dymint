@@ -25,7 +25,7 @@ da_config = ['{​"endpoint":"https://ethereum-rpc.publicnode.com","gas_limit":1
 
 ```shell
 da_layer = ['eth']
-da_config = ['{​"endpoint":"https://ethereum-rpc.publicnode.com","gas_limit":100000,"private_key":"0x...","chain_id":1,"api_url":"https://ethereum-beacon-api.publicnode.com"}']
+da_config = ['{​"endpoint":"https://ethereum-rpc.publicnode.com","gas_limit":100000,"private_key":"...","chain_id":1,"api_url":"https://ethereum-beacon-api.publicnode.com"}']
 ```
 
 where:
