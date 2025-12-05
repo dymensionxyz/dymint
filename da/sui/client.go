@@ -3,7 +3,6 @@ package sui
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"cosmossdk.io/math"
 	"github.com/avast/retry-go/v4"
@@ -464,9 +463,10 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	mnemonic := os.Getenv(c.config.MnemonicEnv)
-	if mnemonic == "" {
-		return fmt.Errorf("mnemonic environment variable %s is not set or empty", c.config.MnemonicEnv)
+	// Load mnemonic with priority: env var -> file -> config field
+	mnemonic, err := da.LoadSecret(c.config.MnemonicEnv, c.config.MnemonicFile, c.config.Mnemonic, "mnemonic")
+	if err != nil {
+		return err
 	}
 
 	signer, err := suisigner.NewSignertWithMnemonic(mnemonic)

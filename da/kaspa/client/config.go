@@ -26,7 +26,9 @@ type Config struct {
 	APIUrl        string               `json:"api_url,omitempty"`        // Kaspa REST-API server (https://api.kaspa.org/docs), used to retrieve txs. It requires indexer+archival node.
 	GrpcAddress   string               `json:"grpc_address,omitempty"`   // Kaspa node address+port used to submit txs using GRPC
 	Timeout       time.Duration        `json:"timeout,omitempty"`        // Timeout used in http requests
-	MnemonicEnv   string               `json:"mnemonic_env,omitempty"`   // mnemonic used to generate key
+	MnemonicEnv   string               `json:"mnemonic_env,omitempty"`   // Environment variable name for mnemonic (highest priority)
+	MnemonicFile  string               `json:"mnemonic_file,omitempty"`  // Path to file containing mnemonic (second priority)
+	Mnemonic      string               `json:"mnemonic,omitempty"`       // Mnemonic directly in config (lowest priority, fallback only)
 	RetryAttempts *uint                `json:"retry_attempts,omitempty"` // num retries before failing when submitting or retrieving blobs
 	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`    // waiting time after failing before failing when submitting or retrieving blobs
 	Address       string               `json:"address,omitempty"`        // Address with funds used to send Kaspa Txs

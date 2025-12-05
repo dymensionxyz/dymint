@@ -15,7 +15,7 @@ func TestStringer(t *testing.T) {
 		hs := DataHealthStatus{}
 		s := fmt.Sprint(hs)
 		require.Contains(t, s, "nil")
-		t.Logf(s)
+		t.Log(s)
 	})
 	t.Run("health: some err", func(t *testing.T) {
 		text := "oops"

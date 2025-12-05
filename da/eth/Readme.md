@@ -7,17 +7,33 @@
 
 ## Dymint.toml Configuration
 
-- Example:
+- Example using environment variable:
 
 ```shell
 da_layer = ['eth']
-da_config = ['{"endpoint":"https://ethereum-rpc.publicnode.com","gas_limit":100000,"private_key_env":"ETH_PRIVATE_KEY","chain_id":1,"api_url":"https://ethereum-beacon-api.publicnode.com"}']
+da_config = ['{​"endpoint":"https://ethereum-rpc.publicnode.com","gas_limit":100000,"private_key_env":"ETH_PRIVATE_KEY","chain_id":1,"api_url":"https://ethereum-beacon-api.publicnode.com"}']
+```
+
+- Example using file (recommended for production):
+
+```shell
+da_layer = ['eth']
+da_config = ['{​"endpoint":"https://ethereum-rpc.publicnode.com","gas_limit":100000,"private_key_file":"/path/to/private_key.txt","chain_id":1,"api_url":"https://ethereum-beacon-api.publicnode.com"}']
+```
+
+- Example with private key directly in config (alternative, not recommended for production):
+
+```shell
+da_layer = ['eth']
+da_config = ['{​"endpoint":"https://ethereum-rpc.publicnode.com","gas_limit":100000,"private_key":"...","chain_id":1,"api_url":"https://ethereum-beacon-api.publicnode.com"}']
 ```
 
 where:
 
 - endpoint = RPC url address for Ethereum RPC.
-- private_key_env: env variable used to set private key address for sequencer Ethereum address.
+- private_key_env: (Optional) Environment variable name for private key (e.g., ETH_PRIVATE_KEY). Takes precedence over other methods.
+- private_key_file: (Optional) Path to file containing the private key. Takes precedence over `private_key` field.
+- private_key: (Optional) Private key directly in config. Used as fallback if neither `private_key_env` nor `private_key_file` is set.
 - timeout (nanoseconds): used to cancel retry when fail submissions or retrievals (optional).
 - chain_id: Network identifier (11155111 for Sepolia, 1 for mainnet).
 - api_url: Beacon API Endpoint Link used to retrieve blobs.
