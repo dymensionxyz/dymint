@@ -44,7 +44,7 @@ type Client struct {
 	rpcClient  *rpc.Client
 	httpClient *http.Client
 	ctx        context.Context
-	cfg        *EthConfig
+	cfg        *Config
 	account    *Account
 	apiURL     string
 	logger     dyminttypes.Logger
@@ -52,7 +52,7 @@ type Client struct {
 
 var _ EthClient = &Client{}
 
-func NewClient(ctx context.Context, config *EthConfig, logger dyminttypes.Logger) (EthClient, error) {
+func NewClient(ctx context.Context, config *Config, logger dyminttypes.Logger) (EthClient, error) {
 	rpcClient, err := rpc.DialContext(ctx, config.Endpoint)
 	if err != nil {
 		return nil, err

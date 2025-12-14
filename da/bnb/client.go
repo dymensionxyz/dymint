@@ -33,7 +33,7 @@ type Client struct {
 	ethclient *ethclient.Client
 	rpcClient *rpc.Client
 	ctx       context.Context
-	cfg       *BNBConfig
+	cfg       *Config
 	account   *Account
 }
 
@@ -89,7 +89,7 @@ func (c Client) ValidateInclusion(txHash string, txCommitment []byte, txProof []
 
 var _ BNBClient = &Client{}
 
-func NewClient(ctx context.Context, config *BNBConfig) (BNBClient, error) {
+func NewClient(ctx context.Context, config *Config) (BNBClient, error) {
 	rpcClient, err := rpc.DialContext(ctx, config.Endpoint)
 	if err != nil {
 		return nil, err

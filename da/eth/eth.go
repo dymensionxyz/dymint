@@ -58,13 +58,13 @@ type DataAvailabilityLayerClient struct {
 	stub.Layer
 	client             EthClient
 	pubsubServer       *pubsub.Server
-	config             EthConfig
+	config             Config
 	logger             types.Logger
 	ctx                context.Context
 	cancel             context.CancelFunc
 	txInclusionTimeout time.Duration
 	batchRetryDelay    time.Duration
-	batchRetryAttempts uint
+	batchRetryAttempts int
 }
 
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
@@ -96,7 +96,7 @@ func WithBatchRetryDelay(delay time.Duration) da.Option {
 }
 
 // WithBatchRetryAttempts is an option which sets the number of batch retries.
-func WithBatchRetryAttempts(attempts uint) da.Option {
+func WithBatchRetryAttempts(attempts int) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
 		dalc.(*DataAvailabilityLayerClient).batchRetryAttempts = attempts //nolint:errcheck
 	}
@@ -108,17 +108,17 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
-	ethconfig, err := createConfig(config)
+	cfg, err := createConfig(config)
 	if err != nil {
 		return fmt.Errorf("create config: %w", err)
 	}
-	c.config = ethconfig
+	c.config = cfg
 
 	c.pubsubServer = pubsubServer
 
 	c.txInclusionTimeout = defaultTxInclusionTimeout
-	c.batchRetryDelay = defaultBatchRetryDelay
-	c.batchRetryAttempts = defaultBatchRetryAttempts
+	c.batchRetryDelay = c.config.RetryDelay
+	c.batchRetryAttempts = c.config.GetRetryAttempts()
 
 	// Apply options
 	for _, apply := range options {
@@ -222,7 +222,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				retry.LastErrorOnly(true),
 				retry.Delay(c.batchRetryDelay),
 				retry.DelayType(retry.FixedDelay),
-				retry.Attempts(c.batchRetryAttempts),
+				retry.Attempts(uint(c.batchRetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 			)
 			if err != nil {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
@@ -306,7 +306,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 			}
 			return result.Error
 		},
-		retry.Attempts(c.batchRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
+		retry.Attempts(uint(c.batchRetryAttempts)), //nolint:gosec // RetryAttempts should be always positive //nolint:gosec // RetryAttempts should be always positive
 		retry.DelayType(retry.FixedDelay),
 		retry.Delay(c.batchRetryDelay),
 	)

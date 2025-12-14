@@ -2,7 +2,6 @@ package bnb
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -22,17 +21,8 @@ import (
 
 const (
 	defaultTxInclusionTimeout = 100 * time.Second
-	defaultBatchRetryDelay    = 10 * time.Second
-	defaultBatchRetryAttempts = 10
 	ArchivePoolAddress        = "0x0000000000000000000000000000000000000000" // the data settling address
 )
-
-type BNBConfig struct {
-	Timeout    time.Duration `json:"timeout,omitempty"`
-	Endpoint   string        `json:"endpoint"`
-	PrivateKey string        `json:"private_key_hex"`
-	ChainId    uint64        `json:"chain_id"`
-}
 
 // ToPath converts a SubmitMetaData to a path.
 func (d *SubmitMetaData) ToPath() string {
@@ -67,13 +57,13 @@ type DataAvailabilityLayerClient struct {
 	stub.Layer
 	client             BNBClient
 	pubsubServer       *pubsub.Server
-	config             BNBConfig
+	config             Config
 	logger             types.Logger
 	ctx                context.Context
 	cancel             context.CancelFunc
 	txInclusionTimeout time.Duration
 	batchRetryDelay    time.Duration
-	batchRetryAttempts uint
+	batchRetryAttempts int
 }
 
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
@@ -106,7 +96,7 @@ func WithBatchRetryDelay(delay time.Duration) da.Option {
 }
 
 // WithBatchRetryAttempts is an option which sets the number of batch retries.
-func WithBatchRetryAttempts(attempts uint) da.Option {
+func WithBatchRetryAttempts(attempts int) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
 		dalc.(*DataAvailabilityLayerClient).batchRetryAttempts = attempts //nolint:errcheck
 	}
@@ -116,20 +106,18 @@ func WithBatchRetryAttempts(attempts uint) da.Option {
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 
-	if len(config) > 0 {
-		err := json.Unmarshal(config, &c.config)
-		if err != nil {
-			return err
-		}
+	var err error
+	c.config, err = createConfig(config)
+	if err != nil {
+		return fmt.Errorf("create config: %w", err)
 	}
 
 	// Set defaults
 	c.pubsubServer = pubsubServer
 
-	// TODO: Make configurable
 	c.txInclusionTimeout = defaultTxInclusionTimeout
-	c.batchRetryDelay = defaultBatchRetryDelay
-	c.batchRetryAttempts = defaultBatchRetryAttempts
+	c.batchRetryDelay = c.config.RetryDelay
+	c.batchRetryAttempts = c.config.GetRetryAttempts()
 
 	// Apply options
 	for _, apply := range options {
@@ -213,7 +201,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				retry.LastErrorOnly(true),
 				retry.Delay(c.batchRetryDelay),
 				retry.DelayType(retry.FixedDelay),
-				retry.Attempts(c.batchRetryAttempts),
+				retry.Attempts(uint(c.batchRetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 			)
 			if err != nil {
 				err = fmt.Errorf("broadcast data blob: %w", err)
@@ -311,7 +299,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 			}
 			return result.Error
 		},
-		retry.Attempts(c.batchRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
+		retry.Attempts(uint(c.batchRetryAttempts)), //nolint:gosec // RetryAttempts should be always positive //nolint:gosec // RetryAttempts should be always positive
 		retry.DelayType(retry.FixedDelay),
 		retry.Delay(c.batchRetryDelay),
 	)

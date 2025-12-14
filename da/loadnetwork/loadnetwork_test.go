@@ -180,18 +180,20 @@ func TestInit(t *testing.T) {
 func getTestConfig() loadnetworktypes.Config {
 	attempts := 1 // Single attempt for tests to simplify validation
 	return loadnetworktypes.Config{
+		BaseConfig: da.BaseConfig{
+			Timeout:       1 * time.Second,
+			RetryDelay:    100 * time.Millisecond,
+			RetryAttempts: &attempts,
+			// Disable backoff for predictable behavior in tests
+			Backoff: uretry.BackoffConfig{
+				InitialDelay: 1 * time.Millisecond,
+				MaxDelay:     1 * time.Millisecond,
+				GrowthFactor: 1.0,
+			},
+		},
 		ChainID:       1,
 		PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 		Endpoint:      "http://localhost:8545",
-		Timeout:       1 * time.Second,
-		RetryDelay:    100 * time.Millisecond,
-		RetryAttempts: &attempts,
-		// Disable backoff for predictable behavior in tests
-		Backoff: uretry.BackoffConfig{
-			InitialDelay: 1 * time.Millisecond,
-			MaxDelay:     1 * time.Millisecond,
-			GrowthFactor: 1.0,
-		},
 	}
 }
 

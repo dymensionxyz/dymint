@@ -1,4 +1,4 @@
-package aptos
+package avail
 
 import (
 	"encoding/json"
@@ -8,18 +8,17 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 )
 
-const aptSymbol = "APT"
-
-// Config stores Aptos DALC configuration parameters.
+// Config stores Avail DALC configuration parameters.
 type Config struct {
 	da.BaseConfig `json:",inline"`
-	Network       string `json:"network,omitempty"`
-	PrivateKeyEnv string `json:"private_key_env,omitempty"`
+	Seed          string `json:"seed,omitempty"`
+	RpcEndpoint   string `json:"endpoint,omitempty"`
+	AppID         uint32 `json:"app_id,omitempty"`
 }
 
 var TestConfig = Config{
-	Network:       "testnet",
-	PrivateKeyEnv: "APT_PRIVATE_KEY",
+	RpcEndpoint: "wss://turing-rpc.avail.so/ws",
+	AppID:       1,
 }
 
 func createConfig(bz []byte) (c Config, err error) {
@@ -29,10 +28,6 @@ func createConfig(bz []byte) (c Config, err error) {
 	err = json.Unmarshal(bz, &c)
 	if err != nil {
 		return c, fmt.Errorf("json unmarshal: %w", err)
-	}
-
-	if c.Network == "" {
-		c.Network = "testnet"
 	}
 
 	// Set common defaults (retry, backoff, timeout)

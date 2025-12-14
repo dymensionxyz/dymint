@@ -368,9 +368,9 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	priKeyHex := os.Getenv(c.config.PriKeyEnv)
+	priKeyHex := os.Getenv(c.config.PrivateKeyEnv)
 	if priKeyHex == "" {
-		return fmt.Errorf("private key environment %s is not set or empty", c.config.PriKeyEnv)
+		return fmt.Errorf("private key environment %s is not set or empty", c.config.PrivateKeyEnv)
 	}
 
 	priKeyHexFormated, err := crypto.FormatPrivateKey(priKeyHex, crypto.PrivateKeyVariantEd25519)

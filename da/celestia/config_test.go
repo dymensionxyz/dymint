@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dymensionxyz/dymint/da"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 
 	"github.com/stretchr/testify/assert"
@@ -22,12 +23,14 @@ func TestCreateConfig(t *testing.T) {
 		retryAttempts := 10
 
 		c := Config{
-			BaseURL:       TestConfig.BaseURL,
-			Timeout:       TestConfig.Timeout,
-			GasPrices:     42,
-			Backoff:       uretry.NewBackoffConfig(uretry.WithGrowthFactor(1.65)),
-			RetryAttempts: &retryAttempts,
-			RetryDelay:    10 * time.Second,
+			BaseConfig: da.BaseConfig{
+				Timeout:       TestConfig.Timeout,
+				Backoff:       uretry.NewBackoffConfig(uretry.WithGrowthFactor(1.65)),
+				RetryAttempts: &retryAttempts,
+				RetryDelay:    10 * time.Second,
+			},
+			BaseURL:   TestConfig.BaseURL,
+			GasPrices: 42,
 		}
 		bz := mustMarshal(c)
 		gotC, err := createConfig(bz)
@@ -38,26 +41,30 @@ func TestCreateConfig(t *testing.T) {
 	})
 	t.Run("no backoff", func(t *testing.T) {
 		c := Config{
+			BaseConfig: da.BaseConfig{
+				Timeout: TestConfig.Timeout,
+			},
 			BaseURL:   TestConfig.BaseURL,
-			Timeout:   TestConfig.Timeout,
 			GasPrices: 42,
 		}
 		bz := mustMarshal(c)
 		gotC, err := createConfig(bz)
 		require.NoError(t, err)
-		assert.Equal(t, defaultSubmitBackoff, gotC.Backoff)
+		assert.Equal(t, da.DefaultSubmitBackoff, gotC.Backoff)
 	})
 	t.Run("generate example", func(t *testing.T) {
 		retryAttempts := 4
 
 		c := Config{
-			BaseURL:       TestConfig.BaseURL,
-			Timeout:       TestConfig.Timeout,
-			GasPrices:     0.1,
-			AuthToken:     "TOKEN",
-			Backoff:       defaultSubmitBackoff,
-			RetryAttempts: &retryAttempts,
-			RetryDelay:    3 * time.Second,
+			BaseConfig: da.BaseConfig{
+				Timeout:       TestConfig.Timeout,
+				Backoff:       da.DefaultSubmitBackoff,
+				RetryAttempts: &retryAttempts,
+				RetryDelay:    3 * time.Second,
+			},
+			BaseURL:   TestConfig.BaseURL,
+			GasPrices: 0.1,
+			AuthToken: "TOKEN",
 		}
 		bz := mustMarshal(c)
 		t.Log(string(bz))

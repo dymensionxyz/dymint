@@ -1,9 +1,7 @@
 package types
 
 import (
-	"time"
-
-	uretry "github.com/dymensionxyz/dymint/utils/retry"
+	"github.com/dymensionxyz/dymint/da"
 )
 
 const (
@@ -11,11 +9,11 @@ const (
 	LoadNetworkMaxTransactionSize = 8_388_608
 )
 
-// Config...LoadNetwork client configuration
+// Config stores LoadNetwork client configuration parameters.
 type Config struct {
-	Timeout  time.Duration `json:"timeout,omitempty"`
-	ChainID  int64         `json:"chain_id,omitempty"`
-	Endpoint string        `json:"endpoint,omitempty"`
+	da.BaseConfig `json:",inline"`
+	ChainID       int64  `json:"chain_id,omitempty"`
+	Endpoint      string `json:"endpoint,omitempty"`
 
 	// Signer config (either private key or web3signer required)
 	PrivateKeyHex           string `json:"private_key_hex,omitempty"`
@@ -23,11 +21,6 @@ type Config struct {
 	Web3SignerTLSCertFile   string `json:"web3_signer_tls_cert_file,omitempty"`
 	Web3SignerTLSKeyFile    string `json:"web3_signer_tls_key_file,omitempty"`
 	Web3SignerTLSCACertFile string `json:"web3_signer_tls_ca_cert_file,omitempty"`
-
-	// Retry config
-	Backoff       uretry.BackoffConfig `json:"backoff,omitempty"`
-	RetryAttempts *int                 `json:"retry_attempts,omitempty"`
-	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`
 }
 
 type RetrieverResponse struct {

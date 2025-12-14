@@ -41,17 +41,6 @@ type Gateway interface {
 	RetrieveFromGateway(ctx context.Context, txHash string) (*loadnetworktypes.LNDymintBlob, error)
 }
 
-// TODO: adjust
-const (
-	defaultRpcRetryDelay    = 3 * time.Second
-	defaultRpcTimeout       = 5 * time.Second
-	defaultRpcRetryAttempts = 5
-)
-
-var defaultSubmitBackoff = uretry.NewBackoffConfig(
-	uretry.WithInitialDelay(time.Second*6),
-	uretry.WithMaxDelay(time.Second*6),
-)
 
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
@@ -119,20 +108,9 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	c.pubsubServer = pubsubServer
 	c.logger = logger
 
-	// Validate and set defaults for config
-	if cfg.Timeout == 0 {
-		cfg.Timeout = defaultRpcTimeout
-	}
-	if cfg.RetryDelay == 0 {
-		cfg.RetryDelay = defaultRpcRetryDelay
-	}
-	if cfg.RetryAttempts == nil {
-		attempts := defaultRpcRetryAttempts
-		cfg.RetryAttempts = &attempts
-	}
-	if cfg.Backoff == (uretry.BackoffConfig{}) {
-		cfg.Backoff = defaultSubmitBackoff
-	}
+	// Set common defaults (retry, backoff, timeout)
+	cfg.BaseConfig.SetDefaults()
+
 	if cfg.ChainID == 0 {
 		return fmt.Errorf("chain ID must be set")
 	}

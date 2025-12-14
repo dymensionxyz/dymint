@@ -6,38 +6,30 @@ import (
 	"fmt"
 	"time"
 
-	uretry "github.com/dymensionxyz/dymint/utils/retry"
+	"github.com/dymensionxyz/dymint/da"
 )
 
 const (
-	defaultRpcRetryDelay    = 3 * time.Second
 	namespaceVersion        = 0
 	DefaultGasPrices        = 0.1
-	defaultRpcRetryAttempts = 5
 	maxBlobSizeBytes        = 500000
-)
-
-var defaultSubmitBackoff = uretry.NewBackoffConfig(
-	uretry.WithInitialDelay(time.Second*6),
-	uretry.WithMaxDelay(time.Second*6),
 )
 
 // Config stores Celestia DALC configuration parameters.
 type Config struct {
-	BaseURL        string               `json:"base_url,omitempty"`
-	Timeout        time.Duration        `json:"timeout,omitempty"`
-	GasPrices      float64              `json:"gas_prices,omitempty"`
-	NamespaceIDStr string               `json:"namespace_id,omitempty"`
-	AuthToken      string               `json:"auth_token,omitempty"`
-	Backoff        uretry.BackoffConfig `json:"backoff,omitempty"`
-	RetryAttempts  *int                 `json:"retry_attempts,omitempty"`
-	RetryDelay     time.Duration        `json:"retry_delay,omitempty"`
-	NamespaceID    Namespace            `json:"-"`
+	da.BaseConfig  `json:",inline"`
+	BaseURL        string    `json:"base_url,omitempty"`
+	GasPrices      float64   `json:"gas_prices,omitempty"`
+	NamespaceIDStr string    `json:"namespace_id,omitempty"`
+	AuthToken      string    `json:"auth_token,omitempty"`
+	NamespaceID    Namespace `json:"-"`
 }
 
 var TestConfig = Config{
+	BaseConfig: da.BaseConfig{
+		Timeout: 5 * time.Second,
+	},
 	BaseURL:        "http://127.0.0.1:26658",
-	Timeout:        5 * time.Second,
 	GasPrices:      DefaultGasPrices,
 	NamespaceIDStr: "",
 	NamespaceID:    Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 0, 0, 255, 255}},

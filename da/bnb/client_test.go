@@ -114,8 +114,10 @@ func setDAandMock(t *testing.T) (*mocks.MockBNBClient, da.DataAvailabilityLayerC
 	// init avail DA with mock RPC client
 	dalc := registry.GetClient("bnb")
 
-	config := bnb.BNBConfig{
-		Timeout:    5000000000,
+	config := bnb.Config{
+		BaseConfig: da.BaseConfig{
+			Timeout: 5000000000,
+		},
 		Endpoint:   "http://localhost:8545/rpc",
 		ChainId:    1,
 		PrivateKey: "459c954ea1366473e0edfa4cf55b8028fa6405e44959cfcaa1771890dc527275",

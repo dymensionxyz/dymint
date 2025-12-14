@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -66,7 +65,7 @@ type DataAvailabilityLayerClient struct {
 	ctx                context.Context
 	cancel             context.CancelFunc
 	batchRetryDelay    time.Duration
-	batchRetryAttempts uint
+	batchRetryAttempts int
 }
 
 // SubmitMetaData contains meta data about a batch on the Data Availability Layer.
@@ -90,7 +89,7 @@ func WithBatchRetryDelay(delay time.Duration) da.Option {
 }
 
 // WithBatchRetryAttempts is an option which sets the number of batch retries.
-func WithBatchRetryAttempts(attempts uint) da.Option {
+func WithBatchRetryAttempts(attempts int) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
 		dalc.(*DataAvailabilityLayerClient).batchRetryAttempts = attempts //nolint:errcheck
 	}
@@ -106,18 +105,11 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		return fmt.Errorf("create config: %w", err)
 	}
 
-	if len(config) > 0 {
-		err := json.Unmarshal(config, &c.config)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Set defaults
 	c.pubsubServer = pubsubServer
 
 	c.batchRetryDelay = c.config.RetryDelay
-	c.batchRetryAttempts = *c.config.RetryAttempts
+	c.batchRetryAttempts = c.config.GetRetryAttempts()
 
 	// Apply options
 	for _, apply := range options {
@@ -220,7 +212,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				retry.LastErrorOnly(true),
 				retry.Delay(c.batchRetryDelay),
 				retry.DelayType(retry.FixedDelay),
-				retry.Attempts(c.batchRetryAttempts),
+				retry.Attempts(uint(c.batchRetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 			)
 			if err != nil {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
@@ -307,7 +299,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daPath string) da.R
 			}
 			return result.Error
 		},
-		retry.Attempts(c.batchRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
+		retry.Attempts(uint(c.batchRetryAttempts)), //nolint:gosec // RetryAttempts should be always positive //nolint:gosec // RetryAttempts should be always positive
 		retry.DelayType(retry.FixedDelay),
 		retry.Delay(c.batchRetryDelay),
 	)
@@ -357,7 +349,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 			}
 			return nil // Success
 		},
-		retry.Attempts(c.batchRetryAttempts), //nolint:gosec // RetryAttempts should be always positive
+		retry.Attempts(uint(c.batchRetryAttempts)), //nolint:gosec // RetryAttempts should be always positive //nolint:gosec // RetryAttempts should be always positive
 		retry.DelayType(func(n uint, err error, config *retry.Config) time.Duration {
 			// Use dynamic delay for maturity errors
 			return currentDelay
