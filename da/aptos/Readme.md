@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- Access to an Aptos RPC node (e.g., https://fullnode.testnet.aptoslabs.com/v1 for testnet, https://fullnode.mainnet.aptoslabs.com/v1 for mainnet)
-- An Aptos account with funds. Faucet for testnet: https://aptoslabs.com/testnet-faucet
+- Access to an Aptos RPC node (e.g., <https://fullnode.testnet.aptoslabs.com/v1> for testnet, <https://fullnode.mainnet.aptoslabs.com/v1> for mainnet).
+- An Aptos account with funds. Faucet for testnet: <https://aptoslabs.com/testnet-faucet>.
 
 ## Dymint.toml Configuration
 
