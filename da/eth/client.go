@@ -80,22 +80,32 @@ func NewClient(ctx context.Context, config *Config, logger dyminttypes.Logger) (
 	return client, nil
 }
 
-// loadAccount loads the account from the configured private key file.
-// ETH DA only supports private key file (JSON format with "private_key" field).
+// loadAccount loads the account from the configured source.
+// Supports both mnemonic (direct or from file) and private key (from JSON file).
 func loadAccount(config *Config) (*Account, error) {
 	if err := config.KeyConfig.Validate(); err != nil {
 		return nil, err
 	}
 
+	// Try mnemonic first (direct or from file)
+	mnemonic, err := config.KeyConfig.GetMnemonic()
+	if err != nil {
+		return nil, err
+	}
+	if mnemonic != "" {
+		return accountFromMnemonic(mnemonic)
+	}
+
+	// Try private key from JSON file
 	privateKey, err := config.KeyConfig.GetPrivateKey()
 	if err != nil {
 		return nil, err
 	}
-	if privateKey == "" {
-		return nil, fmt.Errorf("keypath is required for Ethereum DA (mnemonic not supported)")
+	if privateKey != "" {
+		return accountFromHexKey(privateKey)
 	}
 
-	return accountFromHexKey(privateKey)
+	return nil, fmt.Errorf("key configuration required for Ethereum DA: set mnemonic, mnemonic_path, or keypath")
 }
 
 // SubmitBlob sends blob data to Ethereum

@@ -2,6 +2,7 @@ package sui
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 
 	"cosmossdk.io/math"
@@ -476,12 +477,13 @@ func (c *DataAvailabilityLayerClient) Start() error {
 }
 
 // loadSigner loads the Sui signer from the configured source.
+// Supports both mnemonic (direct or from file) and private key (from JSON file).
 func (c *DataAvailabilityLayerClient) loadSigner() (*suisigner.Signer, error) {
 	if err := c.config.KeyConfig.Validate(); err != nil {
 		return nil, err
 	}
 
-	// Try mnemonic (direct or from file)
+	// Try mnemonic first (direct or from file)
 	mnemonic, err := c.config.KeyConfig.GetMnemonic()
 	if err != nil {
 		return nil, err
@@ -490,7 +492,31 @@ func (c *DataAvailabilityLayerClient) loadSigner() (*suisigner.Signer, error) {
 		return suisigner.NewSignertWithMnemonic(mnemonic)
 	}
 
-	return nil, fmt.Errorf("mnemonic is required for Sui DA: set mnemonic or mnemonic_path")
+	// Try private key from JSON file
+	privateKey, err := c.config.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	if privateKey != "" {
+		return signerFromHexKey(privateKey)
+	}
+
+	return nil, fmt.Errorf("key configuration required for Sui DA: set mnemonic, mnemonic_path, or keypath")
+}
+
+// signerFromHexKey creates a Sui signer from a hex-encoded private key.
+func signerFromHexKey(hexKey string) (*suisigner.Signer, error) {
+	// Remove 0x prefix if present
+	if len(hexKey) > 2 && hexKey[:2] == "0x" {
+		hexKey = hexKey[2:]
+	}
+
+	seed, err := hex.DecodeString(hexKey)
+	if err != nil {
+		return nil, fmt.Errorf("decode hex key: %w", err)
+	}
+
+	return suisigner.NewSigner(seed), nil
 }
 
 // Stop stops the Sui Data Availability Layer Client.
@@ -541,7 +567,7 @@ func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 
 // TestRequestCoins requests coins from the Sui faucet. Only for testing purposes.
 func (c *DataAvailabilityLayerClient) TestRequestCoins() error {
-	err := sui.RequestSuiFromFaucet("https://faucet.devnet.sui.io", c.signer.Address, map[string]string{})
+	err := sui.RequestSuiFromFaucet("https://faucet.sui.io/?network=devnet", c.signer.Address, map[string]string{})
 	if err != nil {
 		return fmt.Errorf("request coins: %w", err)
 	}

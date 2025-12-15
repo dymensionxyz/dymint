@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	maxAddressesUtxo = uint32(100)
 	MaxBlobSizeBytes = 500000
 )
 
@@ -18,10 +17,9 @@ const (
 type Config struct {
 	da.BaseConfig `json:",inline"`
 	da.KeyConfig  `json:",inline"`
-	APIUrl        string `json:"api_url,omitempty"`      // Kaspa REST-API server (https://api.kaspa.org/docs), used to retrieve txs. It requires indexer+archival node.
-	GrpcAddress   string `json:"grpc_address,omitempty"` // Kaspa node address+port used to submit txs using GRPC
-	Address       string `json:"address,omitempty"`      // Address with funds used to send Kaspa Txs
-	Network       string `json:"network,omitempty"`      // mainnet or testnet
+	APIUrl      string `json:"api_url,omitempty"`      // Kaspa REST-API server (https://api.kaspa.org/docs), used to retrieve txs. It requires indexer+archival node.
+	GrpcAddress string `json:"grpc_address,omitempty"` // Kaspa node address+port used to submit txs using GRPC
+	Network     string `json:"network,omitempty"`      // mainnet or testnet
 }
 
 var TestConfig = Config{
@@ -34,7 +32,6 @@ var TestConfig = Config{
 	APIUrl:      "https://kaspa-testnet-rest.mzonder.com",
 	GrpcAddress: "rpc.tn.kaspa.rollapp.network:443",
 	Network:     "kaspa-testnet-10",
-	Address:     "kaspatest:qzwyrgapjnhtjqkxdrmp7fpm3yddw296v2ajv9nmgmw5k3z0r38guevxyk7j0",
 }
 
 // CreateConfig generates config from da_config field received in DA client Init()

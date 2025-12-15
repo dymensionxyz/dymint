@@ -1,14 +1,17 @@
 package avail
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/availproject/avail-go-sdk/metadata"
 	prim "github.com/availproject/avail-go-sdk/primitives"
 	availgo "github.com/availproject/avail-go-sdk/sdk"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/vedhavyas/go-subkey/v2"
+	"github.com/vedhavyas/go-subkey/v2/sr25519"
 )
 
 type AvailClient interface {
@@ -28,21 +31,16 @@ type Client struct {
 var _ AvailClient = &Client{}
 
 // NewClient returns a DA avail client using the provided config.
-// It loads the seed/mnemonic from either mnemonic_env or keypath_env.
+// Supports both mnemonic (direct or from file) and private key (from JSON file).
 func NewClient(config *Config) (AvailClient, error) {
 	sdk, err := availgo.NewSDK(config.RpcEndpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	seed, err := loadSeed(config)
+	acc, err := loadKeyPair(config)
 	if err != nil {
-		return nil, fmt.Errorf("load seed: %w", err)
-	}
-
-	acc, err := availgo.Account.NewKeyPair(seed)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load keypair: %w", err)
 	}
 
 	client := Client{
@@ -53,22 +51,46 @@ func NewClient(config *Config) (AvailClient, error) {
 	return client, nil
 }
 
-// loadSeed loads the seed/mnemonic from the configured source.
-func loadSeed(config *Config) (string, error) {
+// loadKeyPair loads the keypair from the configured source.
+// Supports mnemonic (direct or from file) and private key (from JSON file).
+func loadKeyPair(config *Config) (subkey.KeyPair, error) {
 	if err := config.KeyConfig.Validate(); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	// Try mnemonic (direct or from file)
+	// Try mnemonic first (direct or from file)
 	mnemonic, err := config.KeyConfig.GetMnemonic()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if mnemonic != "" {
-		return mnemonic, nil
+		return availgo.Account.NewKeyPair(mnemonic)
 	}
 
-	return "", fmt.Errorf("mnemonic is required for Avail DA: set mnemonic or mnemonic_path")
+	// Try private key from JSON file
+	privateKey, err := config.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	if privateKey != "" {
+		return keyPairFromHex(privateKey)
+	}
+
+	return nil, fmt.Errorf("key configuration required for Avail DA: set mnemonic, mnemonic_path, or keypath")
+}
+
+// keyPairFromHex creates a sr25519 keypair from a hex-encoded private key/seed.
+func keyPairFromHex(hexKey string) (subkey.KeyPair, error) {
+	// Remove 0x prefix if present
+	hexKey = strings.TrimPrefix(hexKey, "0x")
+
+	seed, err := hex.DecodeString(hexKey)
+	if err != nil {
+		return nil, fmt.Errorf("decode hex key: %w", err)
+	}
+
+	scheme := sr25519.Scheme{}
+	return scheme.FromSeed(seed)
 }
 
 // SubmitData sends blob data to Avail DA

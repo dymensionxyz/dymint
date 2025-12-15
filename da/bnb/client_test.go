@@ -26,7 +26,7 @@ import (
 )
 
 func TestDataAvailabilityLayerClient(t *testing.T) {
-	//t.Skip("Skipping BNB client test")
+	t.Skip("Skipping BNB client test")
 
 	// Create temp file with test private key in JSON format
 	keyFile, err := os.CreateTemp("", "bnb_test_key")

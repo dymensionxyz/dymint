@@ -1,12 +1,18 @@
 package da
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/cosmos/go-bip39"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 )
 
@@ -131,4 +137,80 @@ func (c *BaseConfig) GetRetryAttempts() int {
 		return DefaultRetryAttempts
 	}
 	return *c.RetryAttempts
+}
+
+// DeriveECDSAKeyFromMnemonic derives an ECDSA private key from a BIP39 mnemonic
+// using the specified BIP44 derivation path. This is used for Ethereum-compatible
+// chains (ETH, BNB) that use secp256k1 keys.
+// Example path: "m/44'/60'/0'/0/0" for Ethereum
+func DeriveECDSAKeyFromMnemonic(mnemonic, derivationPath string) (*ecdsa.PrivateKey, error) {
+	// Validate mnemonic
+	if !bip39.IsMnemonicValid(mnemonic) {
+		return nil, errors.New("invalid mnemonic")
+	}
+
+	// Generate seed from mnemonic (no passphrase)
+	seed := bip39.NewSeed(mnemonic, "")
+
+	// Create master key from seed
+	masterKey, err := hdkeychain.NewMaster(seed, &chaincfg.MainNetParams)
+	if err != nil {
+		return nil, fmt.Errorf("create master key: %w", err)
+	}
+
+	// Parse and derive the path
+	path, err := ParseDerivationPath(derivationPath)
+	if err != nil {
+		return nil, fmt.Errorf("parse derivation path: %w", err)
+	}
+
+	key := masterKey
+	for _, n := range path {
+		key, err = key.Derive(n)
+		if err != nil {
+			return nil, fmt.Errorf("derive key: %w", err)
+		}
+	}
+
+	// Get the ECDSA private key
+	privateKey, err := key.ECPrivKey()
+	if err != nil {
+		return nil, fmt.Errorf("get private key: %w", err)
+	}
+
+	return privateKey.ToECDSA(), nil
+}
+
+// ParseDerivationPath parses a BIP44 derivation path string into uint32 components.
+// Supports hardened derivation indicated by ' suffix.
+// Example: "m/44'/60'/0'/0/0" -> []uint32{0x8000002C, 0x8000003C, 0x80000000, 0, 0}
+func ParseDerivationPath(path string) ([]uint32, error) {
+	// Remove "m/" prefix if present
+	path = strings.TrimPrefix(path, "m/")
+
+	components := strings.Split(path, "/")
+	result := make([]uint32, len(components))
+
+	for i, component := range components {
+		// Check if hardened (ends with ')
+		hardened := strings.HasSuffix(component, "'")
+		if hardened {
+			component = strings.TrimSuffix(component, "'")
+		}
+
+		// Parse the number
+		n, err := strconv.ParseUint(component, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("invalid path component %s: %w", component, err)
+		}
+
+		// Apply hardened offset if needed (0x80000000)
+		if hardened {
+			result[i] = uint32(n) + hdkeychain.HardenedKeyStart
+		} else {
+			result[i] = uint32(n)
+		}
+	}
+
+	return result, nil
 }

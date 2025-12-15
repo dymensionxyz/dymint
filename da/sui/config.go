@@ -31,7 +31,7 @@ var TestConfig = Config{
 		MnemonicPath: "/tmp/sui_mnemonic",
 	},
 	RPCURL:              "https://fullnode.devnet.sui.io:443",
-	NoopContractAddress: "0x45d86eb334f15b3a5145c0b7012dae3bf16de58ab4777ae31d184e9baf91c420",
+	NoopContractAddress: "0x3dbdaa3db8d587deb38be3d4825ff434f1723054a6f43e04c0623f2c21a3f8a2",
 	GasBudget:           defaultGasBudget,
 }
 
