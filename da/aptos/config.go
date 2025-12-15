@@ -14,11 +14,11 @@ const aptSymbol = "APT"
 type Config struct {
 	da.BaseConfig `json:",inline"`
 	da.KeyConfig  `json:",inline"`
-	Network       string `json:"network,omitempty"`
+	NetworkID     string `json:"network_id,omitempty"`
 }
 
 var TestConfig = Config{
-	Network: "testnet",
+	NetworkID: "testnet",
 	KeyConfig: da.KeyConfig{
 		KeyPath: "/tmp/aptos_key.json",
 	},
@@ -33,8 +33,8 @@ func createConfig(bz []byte) (c Config, err error) {
 		return c, fmt.Errorf("json unmarshal: %w", err)
 	}
 
-	if c.Network == "" {
-		c.Network = "testnet"
+	if c.NetworkID == "" {
+		c.NetworkID = "testnet"
 	}
 
 	// Set common defaults (retry, backoff, timeout)

@@ -373,7 +373,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 	}
 
 	var cfg aptos.NetworkConfig
-	switch c.config.Network {
+	switch c.config.NetworkID {
 	case "devnet":
 		cfg = aptos.DevnetConfig
 	case "mainnet":

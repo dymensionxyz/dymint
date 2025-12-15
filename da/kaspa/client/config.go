@@ -17,9 +17,9 @@ const (
 type Config struct {
 	da.BaseConfig `json:",inline"`
 	da.KeyConfig  `json:",inline"`
-	APIUrl        string `json:"api_url,omitempty"`      // Kaspa REST-API server (https://api.kaspa.org/docs), used to retrieve txs. It requires indexer+archival node.
-	GrpcAddress   string `json:"grpc_address,omitempty"` // Kaspa node address+port used to submit txs using GRPC
-	Network       string `json:"network,omitempty"`      // mainnet or testnet
+	APIUrl        string `json:"api_url,omitempty"`    // Kaspa REST-API server (https://api.kaspa.org/docs), used to retrieve txs. It requires indexer+archival node.
+	Endpoint      string `json:"endpoint,omitempty"`   // Kaspa node address+port used to submit txs using GRPC
+	NetworkID     string `json:"network_id,omitempty"` // kaspa-mainnet or kaspa-testnet-10
 }
 
 var TestConfig = Config{
@@ -29,9 +29,9 @@ var TestConfig = Config{
 	KeyConfig: da.KeyConfig{
 		MnemonicPath: "/tmp/kaspa_mnemonic",
 	},
-	APIUrl:      "https://kaspa-testnet-rest.mzonder.com",
-	GrpcAddress: "rpc.tn.kaspa.rollapp.network:443",
-	Network:     "kaspa-testnet-10",
+	APIUrl:    "https://kaspa-testnet-rest.mzonder.com",
+	Endpoint:  "rpc.tn.kaspa.rollapp.network:443",
+	NetworkID: "kaspa-testnet-10",
 }
 
 // CreateConfig generates config from da_config field received in DA client Init()

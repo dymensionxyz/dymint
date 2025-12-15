@@ -176,7 +176,7 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
 	}
 
 	// create blob tx with blob and fee params previously obtained
-	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
+	blobTx, err := createBlobTx(c.account.Key, c.cfg.NetworkID, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	if err != nil {
 		return common.Hash{}, nil, nil, err
 	}

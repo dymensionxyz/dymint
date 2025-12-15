@@ -17,7 +17,7 @@ type Config struct {
 	da.BaseConfig `json:",inline"`
 	da.KeyConfig  `json:",inline"`
 	Endpoint      string  `json:"endpoint,omitempty"`
-	ChainId       uint64  `json:"chain_id,omitempty"`
+	NetworkID     uint64  `json:"network_id,omitempty"`
 	ApiUrl        string  `json:"api_url,omitempty"`
 	GasLimit      *uint64 `json:"gas_limit,omitempty"`
 }
@@ -26,9 +26,9 @@ var TestConfig = Config{
 	KeyConfig: da.KeyConfig{
 		KeyPath: "/tmp/eth_key.json",
 	},
-	Endpoint: "https://ethereum-sepolia-rpc.publicnode.com",
-	ChainId:  11155111,
-	ApiUrl:   "https://ethereum-sepolia-beacon-api.publicnode.com",
+	Endpoint:  "https://ethereum-sepolia-rpc.publicnode.com",
+	NetworkID: 11155111,
+	ApiUrl:    "https://ethereum-sepolia-beacon-api.publicnode.com",
 }
 
 func createConfig(bz []byte) (c Config, err error) {

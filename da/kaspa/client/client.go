@@ -70,7 +70,7 @@ type Client struct {
 var _ KaspaClient = &Client{}
 
 func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClient, error) {
-	rpcClient, err := rpcclient.NewRPCClient(config.GrpcAddress)
+	rpcClient, err := rpcclient.NewRPCClient(config.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -80,13 +80,13 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 	}
 
 	var params *dagconfig.Params
-	switch config.Network {
+	switch config.NetworkID {
 	case Testnet:
 		params = &dagconfig.TestnetParams
 	case Mainnet:
 		params = &dagconfig.MainnetParams
 	default:
-		return nil, fmt.Errorf("kaspa network not set to testnet or mainnet. Param: %s", config.Network)
+		return nil, fmt.Errorf("kaspa network_id must be kaspa-mainnet or kaspa-testnet-10. Got: %s", config.NetworkID)
 	}
 
 	seed := bip39.NewSeed(mnemonic, "")

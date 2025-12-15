@@ -13,12 +13,12 @@ type Config struct {
 	da.BaseConfig `json:",inline"`
 	da.KeyConfig  `json:",inline"`
 	Endpoint      string `json:"endpoint,omitempty"`
-	ChainId       uint64 `json:"chain_id,omitempty"`
+	NetworkID     uint64 `json:"network_id,omitempty"`
 }
 
 var TestConfig = Config{
-	Endpoint: "https://bsc-testnet-rpc.publicnode.com",
-	ChainId:  97, // BSC testnet
+	Endpoint:  "https://bsc-testnet-rpc.publicnode.com",
+	NetworkID: 97, // BSC testnet
 	KeyConfig: da.KeyConfig{
 		KeyPath: "/tmp/bnb_key.json",
 	},

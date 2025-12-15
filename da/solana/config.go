@@ -17,7 +17,7 @@ const (
 type Config struct {
 	da.BaseConfig          `json:",inline"`
 	da.KeyConfig           `json:",inline"`
-	ApiKeyEnv              string `json:"apikey_env,omitempty"`      // env var for API key
+	ApiKey                 string `json:"api_key,omitempty"`         // API key for paid RPC endpoints
 	Endpoint               string `json:"endpoint,omitempty"`        // rpc endpoint
 	ProgramAddress         string `json:"program_address,omitempty"` // address of the Solana program used to write/read data
 	SubmitTxRatePerSecond  *int   `json:"tx_rate_second,omitempty"`  // rate limit to send transactions
@@ -28,7 +28,6 @@ var TestConfig = Config{
 	KeyConfig: da.KeyConfig{
 		KeyPath: "/tmp/solana_key.json",
 	},
-	ApiKeyEnv:      "API_KEY",
 	Endpoint:       "https://api.devnet.solana.com/",
 	ProgramAddress: defaultProgramAddress,
 }

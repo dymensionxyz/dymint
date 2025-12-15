@@ -132,7 +132,7 @@ func (c Client) SubmitBlob(blob []byte) ([]byte, []byte, string, error) {
 	totalCost := new(big.Int).Add(regularGasCost, blobGasCost)
 	c.logger.Debug("Estimated transaction costs", "regularGasCost", regularGasCost.String(), "blobGasCost", blobGasCost.String(), "totalCost", totalCost.String())
 	// create blob tx with blob and fee params previously obtained
-	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, *c.cfg.GasLimit, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
+	blobTx, err := createBlobTx(c.account.Key, c.cfg.NetworkID, *c.cfg.GasLimit, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	if err != nil {
 		return nil, nil, "", err
 	}

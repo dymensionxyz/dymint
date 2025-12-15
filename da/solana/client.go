@@ -6,16 +6,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/decred/base58"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/gagliardetto/solana-go"
-	"golang.org/x/time/rate"
-
 	"github.com/gagliardetto/solana-go/rpc"
+	"golang.org/x/time/rate"
 )
 
 const maxTxData = 973 // 1232 max tx size - 195 bytes (64 signature + 3 header + 96 accounts + 32 blockhash + 64 tx string)
@@ -47,8 +45,8 @@ type RPCClient struct {
 // NewClient creates the new client that is used to communicate with Solana chain
 func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 	// create two rpc clients, one for sending transactions and one for queries. done this way to allow different rate limits.
-	txRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.SubmitTxRatePerSecond)
-	reqRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.RequestTxRatePerSecond)
+	txRpcClient := setRpcClient(config.Endpoint, config.ApiKey, config.SubmitTxRatePerSecond)
+	reqRpcClient := setRpcClient(config.Endpoint, config.ApiKey, config.RequestTxRatePerSecond)
 
 	sender, err := loadPrivateKey(config)
 	if err != nil {
@@ -270,17 +268,15 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, string, error) {
 	return data, hash, nil
 }
 
-func SetRpcClient(endpoint string, apiKeyEnv string, maxRatePerSecond *int) *RPCClient {
-	if os.Getenv(apiKeyEnv) != "" && maxRatePerSecond != nil {
-		apiKey := os.Getenv(apiKeyEnv)
+func setRpcClient(endpoint string, apiKey string, maxRatePerSecond *int) *RPCClient {
+	if apiKey != "" && maxRatePerSecond != nil {
 		jsonRpcClient := rpc.NewWithLimiterWithCustomHeaders(endpoint, rate.Every(time.Second), *maxRatePerSecond, map[string]string{
 			"x-api-key": apiKey,
 		})
 		return &RPCClient{rpc.NewWithCustomRPCClient(jsonRpcClient), "limiter+apikey"}
 	}
 
-	if os.Getenv(apiKeyEnv) != "" {
-		apiKey := os.Getenv(apiKeyEnv)
+	if apiKey != "" {
 		return &RPCClient{rpc.NewWithHeaders(endpoint, map[string]string{
 			"x-api-key": apiKey,
 		}), "apikey"}

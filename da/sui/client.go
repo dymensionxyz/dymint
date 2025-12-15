@@ -469,7 +469,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return fmt.Errorf("load signer: %w", err)
 	}
 
-	c.cli = sui.NewSuiClient(c.config.RPCURL)
+	c.cli = sui.NewSuiClient(c.config.Endpoint)
 	c.signer = signer
 
 	c.logger.Info("Sui client initialized successfully", "address", c.signer.Address)

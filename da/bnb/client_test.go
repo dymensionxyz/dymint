@@ -130,8 +130,8 @@ func setDAandMock(t *testing.T) (*mocks.MockBNBClient, da.DataAvailabilityLayerC
 		KeyConfig: da.KeyConfig{
 			KeyPath: keyFile.Name(),
 		},
-		Endpoint: "http://localhost:8545/rpc",
-		ChainId:  1,
+		Endpoint:  "http://localhost:8545/rpc",
+		NetworkID: 1,
 	}
 
 	conf, err := json.Marshal(config)

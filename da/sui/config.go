@@ -18,7 +18,7 @@ const (
 type Config struct {
 	da.BaseConfig       `json:",inline"`
 	da.KeyConfig        `json:",inline"`
-	RPCURL              string `json:"rpc_url,omitempty"`
+	Endpoint            string `json:"endpoint,omitempty"`
 	NoopContractAddress string `json:"noop_contract_address,omitempty"`
 	GasBudget           string `json:"gas_budget,omitempty"`
 }
@@ -30,7 +30,7 @@ var TestConfig = Config{
 	KeyConfig: da.KeyConfig{
 		MnemonicPath: "/tmp/sui_mnemonic",
 	},
-	RPCURL:              "https://fullnode.devnet.sui.io:443",
+	Endpoint:            "https://fullnode.devnet.sui.io:443",
 	NoopContractAddress: "0x3dbdaa3db8d587deb38be3d4825ff434f1723054a6f43e04c0623f2c21a3f8a2",
 	GasBudget:           defaultGasBudget,
 }
