@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -51,16 +50,9 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 	txRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.SubmitTxRatePerSecond)
 	reqRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.RequestTxRatePerSecond)
 
-	// keypath is used to get solana private key
-	keyPath := os.Getenv(config.KeyPathEnv)
-	if keyPath == "" {
-		return nil, fmt.Errorf("keyPath environment variable %s is not set or empty", config.KeyPathEnv)
-	}
-
-	// Load sender's private key (from file, base58, or other means)
-	sender, err := solana.PrivateKeyFromSolanaKeygenFile(keyPath)
+	sender, err := loadPrivateKey(config)
 	if err != nil {
-		log.Fatalf("Failed to load keypair: %v", err)
+		return nil, fmt.Errorf("load private key: %w", err)
 	}
 
 	// programId is created from config address
@@ -76,6 +68,29 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 	}
 
 	return client, nil
+}
+
+// loadPrivateKey loads the Solana private key from the configured private key file.
+// Solana DA only supports private key file (JSON format with "private_key" field containing base58-encoded key).
+func loadPrivateKey(config *Config) (solana.PrivateKey, error) {
+	if err := config.KeyConfig.Validate(); err != nil {
+		return solana.PrivateKey{}, err
+	}
+
+	privateKey, err := config.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return solana.PrivateKey{}, err
+	}
+	if privateKey == "" {
+		return solana.PrivateKey{}, fmt.Errorf("keypath is required for Solana DA (mnemonic not supported)")
+	}
+
+	// Parse the base58-encoded private key
+	sender, err := solana.PrivateKeyFromBase58(privateKey)
+	if err != nil {
+		return solana.PrivateKey{}, fmt.Errorf("parse private key: %w", err)
+	}
+	return sender, nil
 }
 
 // SubmitBlob slices the blob in small pieces and sends each piece to the Solana program (specified in config) as input data. It returns the list of transactions plus the blob hash used to compare with the original one on retrieval.

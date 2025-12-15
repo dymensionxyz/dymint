@@ -141,20 +141,40 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 				return fmt.Errorf("failed to initialize rpc client: %w", err)
 			}
 			c.client = client
-		} else if cfg.PrivateKeyHex != "" {
-			// Initialize with private key
-			privateKeySigner := signer.NewPrivateKeySigner(cfg.PrivateKeyHex, logger, cfg.ChainID)
+		} else {
+			// Try to load private key from KeyConfig
+			privateKeyHex, err := loadPrivateKey(&cfg)
+			if err != nil {
+				return fmt.Errorf("load private key: %w", err)
+			}
+			privateKeySigner := signer.NewPrivateKeySigner(privateKeyHex, logger, cfg.ChainID)
 			client, err := rpc.NewLNRPCClient(logger, &cfg, privateKeySigner)
 			if err != nil {
 				return fmt.Errorf("failed to initialize rpc client: %w", err)
 			}
 			c.client = client
-		} else {
-			return fmt.Errorf("either web3signer endpoint or private key must be provided")
 		}
 	}
 
 	return nil
+}
+
+// loadPrivateKey loads the private key from the configured private key file.
+// LoadNetwork DA only supports private key file (JSON format with "private_key" field).
+func loadPrivateKey(cfg *loadnetworktypes.Config) (string, error) {
+	if err := cfg.KeyConfig.Validate(); err != nil {
+		return "", err
+	}
+
+	privateKey, err := cfg.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return "", err
+	}
+	if privateKey == "" {
+		return "", fmt.Errorf("keypath is required for LoadNetwork DA (mnemonic not supported)")
+	}
+
+	return privateKey, nil
 }
 
 // Start starts DataAvailabilityLayerClient instance.

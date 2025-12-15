@@ -17,7 +17,7 @@ da_config = ['{"endpoint":"https://ethereum-rpc.publicnode.com","gas_limit":1000
 where:
 
 - endpoint = RPC url address for Ethereum RPC.
-- private_key_env: env variable used to set private key address for sequencer Ethereum address.
+- private_key_env: env variable used to set private key for sequencer Ethereum address.
 - timeout (nanoseconds): used to cancel retry when fail submissions or retrievals (optional).
 - chain_id: Network identifier (11155111 for Sepolia, 1 for mainnet).
 - api_url: Beacon API Endpoint Link used to retrieve blobs.

@@ -155,7 +155,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	client, err := NewClient(c.config.RpcEndpoint, c.config.Seed, c.config.AppID)
+	client, err := NewClient(&c.config)
 	if err != nil {
 		return fmt.Errorf("error while establishing connection to DA layer: %w", err)
 	}

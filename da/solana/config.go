@@ -16,7 +16,7 @@ const (
 // Config stores Solana client configuration parameters.
 type Config struct {
 	da.BaseConfig          `json:",inline"`
-	KeyPathEnv             string `json:"keypath_env,omitempty"`     // env var for key file path
+	da.KeyConfig           `json:",inline"`
 	ApiKeyEnv              string `json:"apikey_env,omitempty"`      // env var for API key
 	Endpoint               string `json:"endpoint,omitempty"`        // rpc endpoint
 	ProgramAddress         string `json:"program_address,omitempty"` // address of the Solana program used to write/read data
@@ -25,7 +25,9 @@ type Config struct {
 }
 
 var TestConfig = Config{
-	KeyPathEnv:     "SOLANA_KEYPATH",
+	KeyConfig: da.KeyConfig{
+		KeyPath: "/tmp/solana_key.json",
+	},
 	ApiKeyEnv:      "API_KEY",
 	Endpoint:       "https://api.devnet.solana.com/",
 	ProgramAddress: defaultProgramAddress,

@@ -11,14 +11,17 @@ import (
 // Config stores BNB DALC configuration parameters.
 type Config struct {
 	da.BaseConfig `json:",inline"`
+	da.KeyConfig  `json:",inline"`
 	Endpoint      string `json:"endpoint,omitempty"`
-	PrivateKey    string `json:"private_key_hex,omitempty"`
 	ChainId       uint64 `json:"chain_id,omitempty"`
 }
 
 var TestConfig = Config{
 	Endpoint: "https://bsc-testnet-rpc.publicnode.com",
 	ChainId:  97, // BSC testnet
+	KeyConfig: da.KeyConfig{
+		KeyPath: "/tmp/bnb_key.json",
+	},
 }
 
 func createConfig(bz []byte) (c Config, err error) {

@@ -11,7 +11,7 @@ import (
 // Config stores Avail DALC configuration parameters.
 type Config struct {
 	da.BaseConfig `json:",inline"`
-	Seed          string `json:"seed,omitempty"`
+	da.KeyConfig  `json:",inline"`
 	RpcEndpoint   string `json:"endpoint,omitempty"`
 	AppID         uint32 `json:"app_id,omitempty"`
 }
@@ -19,6 +19,9 @@ type Config struct {
 var TestConfig = Config{
 	RpcEndpoint: "wss://turing-rpc.avail.so/ws",
 	AppID:       1,
+	KeyConfig: da.KeyConfig{
+		MnemonicPath: "/tmp/avail_mnemonic",
+	},
 }
 
 func createConfig(bz []byte) (c Config, err error) {

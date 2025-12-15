@@ -17,20 +17,22 @@ const (
 // Config stores Sui DALC configuration parameters.
 type Config struct {
 	da.BaseConfig       `json:",inline"`
+	da.KeyConfig        `json:",inline"`
 	RPCURL              string `json:"rpc_url,omitempty"`
 	NoopContractAddress string `json:"noop_contract_address,omitempty"`
 	GasBudget           string `json:"gas_budget,omitempty"`
-	MnemonicEnv         string `json:"mnemonic_env,omitempty"`
 }
 
 var TestConfig = Config{
 	BaseConfig: da.BaseConfig{
 		Timeout: 5 * time.Second,
 	},
+	KeyConfig: da.KeyConfig{
+		MnemonicPath: "/tmp/sui_mnemonic",
+	},
 	RPCURL:              "https://fullnode.devnet.sui.io:443",
 	NoopContractAddress: "0x45d86eb334f15b3a5145c0b7012dae3bf16de58ab4777ae31d184e9baf91c420",
 	GasBudget:           defaultGasBudget,
-	MnemonicEnv:         "SUI_MNEMONIC",
 }
 
 func createConfig(bz []byte) (c Config, err error) {

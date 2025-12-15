@@ -2,6 +2,7 @@ package avail
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/availproject/avail-go-sdk/metadata"
 	prim "github.com/availproject/avail-go-sdk/primitives"
@@ -26,12 +27,19 @@ type Client struct {
 
 var _ AvailClient = &Client{}
 
-// NewClient returns a DA avail client
-func NewClient(endpoint string, seed string, appId uint32) (AvailClient, error) {
-	sdk, err := availgo.NewSDK(endpoint)
+// NewClient returns a DA avail client using the provided config.
+// It loads the seed/mnemonic from either mnemonic_env or keypath_env.
+func NewClient(config *Config) (AvailClient, error) {
+	sdk, err := availgo.NewSDK(config.RpcEndpoint)
 	if err != nil {
 		return nil, err
 	}
+
+	seed, err := loadSeed(config)
+	if err != nil {
+		return nil, fmt.Errorf("load seed: %w", err)
+	}
+
 	acc, err := availgo.Account.NewKeyPair(seed)
 	if err != nil {
 		return nil, err
@@ -40,9 +48,27 @@ func NewClient(endpoint string, seed string, appId uint32) (AvailClient, error) 
 	client := Client{
 		sdk:     sdk,
 		account: acc,
-		appId:   appId,
+		appId:   config.AppID,
 	}
 	return client, nil
+}
+
+// loadSeed loads the seed/mnemonic from the configured source.
+func loadSeed(config *Config) (string, error) {
+	if err := config.KeyConfig.Validate(); err != nil {
+		return "", err
+	}
+
+	// Try mnemonic (direct or from file)
+	mnemonic, err := config.KeyConfig.GetMnemonic()
+	if err != nil {
+		return "", err
+	}
+	if mnemonic != "" {
+		return mnemonic, nil
+	}
+
+	return "", fmt.Errorf("mnemonic is required for Avail DA: set mnemonic or mnemonic_path")
 }
 
 // SubmitData sends blob data to Avail DA

@@ -17,13 +17,17 @@ import (
 func TestDataAvailabilityLayerClient(t *testing.T) {
 	t.Skip("Skipping Eth client tests")
 
-	// Set up test environment
-	priKeyEnv := "ETH_PRIVATE_KEY"
-	err := os.Setenv(priKeyEnv, "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234")
+	// Create temp file with test private key in JSON format
+	keyFile, err := os.CreateTemp("", "eth_test_key")
 	require.NoError(t, err)
+	defer os.Remove(keyFile.Name())
+	_, err = keyFile.WriteString(`{"private_key": "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234"}`)
+	require.NoError(t, err)
+	keyFile.Close()
 
 	// Create test config. By default, tests use Ethereum sepolia network.
 	config := eth.TestConfig
+	config.KeyConfig.KeyPath = keyFile.Name()
 
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
@@ -102,13 +106,17 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 func TestDataAvailabilityLayerClientRetrieval(t *testing.T) {
 	t.Skip("Skipping Eth client tests")
 
-	// Set up test environment
-	priKeyEnv := "ETH_PRIVATE_KEY"
-	err := os.Setenv(priKeyEnv, "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234")
+	// Create temp file with test private key in JSON format
+	keyFile, err := os.CreateTemp("", "eth_test_key")
 	require.NoError(t, err)
+	defer os.Remove(keyFile.Name())
+	_, err = keyFile.WriteString(`{"private_key": "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234"}`)
+	require.NoError(t, err)
+	keyFile.Close()
 
 	// Create test config. By default, tests use Sepolia devnet.
 	config := eth.TestConfig
+	config.KeyConfig.KeyPath = keyFile.Name()
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
 

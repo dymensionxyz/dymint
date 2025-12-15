@@ -95,9 +95,9 @@ func NewClient(ctx context.Context, config *Config) (BNBClient, error) {
 		return nil, err
 	}
 
-	account, err := fromHexKey(config.PrivateKey)
+	account, err := loadAccount(config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load account: %w", err)
 	}
 
 	client := Client{
@@ -109,6 +109,24 @@ func NewClient(ctx context.Context, config *Config) (BNBClient, error) {
 	}
 
 	return client, nil
+}
+
+// loadAccount loads the account from the configured private key file.
+// BNB DA only supports private key file (JSON format with "private_key" field).
+func loadAccount(config *Config) (*Account, error) {
+	if err := config.KeyConfig.Validate(); err != nil {
+		return nil, err
+	}
+
+	privateKey, err := config.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	if privateKey == "" {
+		return nil, fmt.Errorf("keypath is required for BNB DA (mnemonic not supported)")
+	}
+
+	return fromHexKey(privateKey)
 }
 
 // SubmitBlob sends blob data to BNB chain

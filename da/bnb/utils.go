@@ -105,6 +105,8 @@ func createBlobTx(key *ecdsa.PrivateKey, chainId, gasLimit uint64, gasTipCap *bi
 }
 
 func fromHexKey(hexkey string) (*Account, error) {
+	// Remove 0x prefix if present
+	hexkey = strings.TrimPrefix(hexkey, "0x")
 	key, err := crypto.HexToECDSA(hexkey)
 	if err != nil {
 		return &Account{}, err

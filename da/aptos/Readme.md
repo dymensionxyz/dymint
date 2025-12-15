@@ -7,32 +7,36 @@
 
 ## Dymint.toml Configuration
 
-- Example using environment variable:
+- Example using key file path (recommended for production):
 
 ```shell
 da_layer = ['aptos']
-da_config = ['{​"network":"testnet","pri_key_env":"APT_PRIVATE_KEY"}']
+da_config = ['{"network":"testnet","keypath_env":"APT_KEY_PATH"}']
 ```
 
-- Example using file (recommended for production):
-
+Set the environment variable to point to your key file:
 ```shell
-da_layer = ['aptos']
-da_config = ['{​"network":"testnet","pri_key_file":"/path/to/private_key.txt"}']
+export APT_KEY_PATH=/path/to/private_key.txt
 ```
 
-- Example with private key directly in config (alternative, not recommended for production):
+- Example using mnemonic:
 
 ```shell
 da_layer = ['aptos']
-da_config = ['{​"network":"testnet","pri_key":"..."}']
+da_config = ['{"network":"testnet","mnemonic_env":"APT_MNEMONIC"}']
+```
+
+Set the environment variable with your mnemonic:
+```shell
+export APT_MNEMONIC="your twelve word mnemonic phrase here..."
 ```
 
 where:
 
 - network: Aptos network to connect to ("testnet", "mainnet", "devnet")
-- pri_key_env: (Optional) Environment variable name for private key (e.g., APT_PRIVATE_KEY). Takes precedence over other methods.
-- pri_key_file: (Optional) Path to file containing the private key. Takes precedence over `pri_key` field.
-- pri_key: (Optional) Private key directly in config. Used as fallback if neither `pri_key_env` nor `pri_key_file` is set.
+- keypath_env: Environment variable name containing the path to the private key file
+- mnemonic_env: Environment variable name containing the BIP39 mnemonic phrase
 - retry_attempts: (Optional) Number of retry attempts for failed operations (default: 5)
 - retry_delay: (Optional) Delay between retry attempts (default: 3s)
+
+Note: Either `keypath_env` or `mnemonic_env` must be configured. If both are set, `keypath_env` takes precedence.

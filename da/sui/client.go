@@ -3,7 +3,6 @@ package sui
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"cosmossdk.io/math"
 	"github.com/avast/retry-go/v4"
@@ -464,14 +463,9 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	mnemonic := os.Getenv(c.config.MnemonicEnv)
-	if mnemonic == "" {
-		return fmt.Errorf("mnemonic environment variable %s is not set or empty", c.config.MnemonicEnv)
-	}
-
-	signer, err := suisigner.NewSignertWithMnemonic(mnemonic)
+	signer, err := c.loadSigner()
 	if err != nil {
-		return fmt.Errorf("create signer from mnemonic: %w", err)
+		return fmt.Errorf("load signer: %w", err)
 	}
 
 	c.cli = sui.NewSuiClient(c.config.RPCURL)
@@ -479,6 +473,24 @@ func (c *DataAvailabilityLayerClient) Start() error {
 
 	c.logger.Info("Sui client initialized successfully", "address", c.signer.Address)
 	return nil
+}
+
+// loadSigner loads the Sui signer from the configured source.
+func (c *DataAvailabilityLayerClient) loadSigner() (*suisigner.Signer, error) {
+	if err := c.config.KeyConfig.Validate(); err != nil {
+		return nil, err
+	}
+
+	// Try mnemonic (direct or from file)
+	mnemonic, err := c.config.KeyConfig.GetMnemonic()
+	if err != nil {
+		return nil, err
+	}
+	if mnemonic != "" {
+		return suisigner.NewSignertWithMnemonic(mnemonic)
+	}
+
+	return nil, fmt.Errorf("mnemonic is required for Sui DA: set mnemonic or mnemonic_path")
 }
 
 // Stop stops the Sui Data Availability Layer Client.

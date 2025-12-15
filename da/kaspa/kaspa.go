@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -130,9 +129,9 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	mnemonic := os.Getenv(c.config.MnemonicEnv)
-	if mnemonic == "" {
-		return fmt.Errorf("mnemonic environment variable %s is not set or empty", c.config.MnemonicEnv)
+	mnemonic, err := c.loadMnemonic()
+	if err != nil {
+		return fmt.Errorf("load mnemonic: %w", err)
 	}
 
 	client, err := client.NewClient(c.ctx, &c.config, mnemonic)
@@ -141,6 +140,24 @@ func (c *DataAvailabilityLayerClient) Start() error {
 	}
 	c.client = client
 	return nil
+}
+
+// loadMnemonic loads the mnemonic from the configured source.
+func (c *DataAvailabilityLayerClient) loadMnemonic() (string, error) {
+	if err := c.config.KeyConfig.Validate(); err != nil {
+		return "", err
+	}
+
+	// Try mnemonic (direct or from file)
+	mnemonic, err := c.config.KeyConfig.GetMnemonic()
+	if err != nil {
+		return "", err
+	}
+	if mnemonic != "" {
+		return mnemonic, nil
+	}
+
+	return "", fmt.Errorf("mnemonic is required for Kaspa DA: set mnemonic or mnemonic_path")
 }
 
 // Stop stops DataAvailabilityLayerClient.

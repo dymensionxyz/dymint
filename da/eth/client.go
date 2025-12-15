@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/avast/retry-go/v4"
@@ -58,14 +57,9 @@ func NewClient(ctx context.Context, config *Config, logger dyminttypes.Logger) (
 		return nil, err
 	}
 
-	priKeyHex := os.Getenv(config.PrivateKeyEnv)
-	if priKeyHex == "" {
-		return nil, fmt.Errorf("private key environment %s is not set or empty", config.PrivateKeyEnv)
-	}
-
-	account, err := accountFromHexKey(priKeyHex)
+	account, err := loadAccount(config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load account: %w", err)
 	}
 
 	httpClient := &http.Client{
@@ -84,6 +78,24 @@ func NewClient(ctx context.Context, config *Config, logger dyminttypes.Logger) (
 	}
 
 	return client, nil
+}
+
+// loadAccount loads the account from the configured private key file.
+// ETH DA only supports private key file (JSON format with "private_key" field).
+func loadAccount(config *Config) (*Account, error) {
+	if err := config.KeyConfig.Validate(); err != nil {
+		return nil, err
+	}
+
+	privateKey, err := config.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	if privateKey == "" {
+		return nil, fmt.Errorf("keypath is required for Ethereum DA (mnemonic not supported)")
+	}
+
+	return accountFromHexKey(privateKey)
 }
 
 // SubmitBlob sends blob data to Ethereum

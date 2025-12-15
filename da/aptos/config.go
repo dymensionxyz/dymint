@@ -13,13 +13,15 @@ const aptSymbol = "APT"
 // Config stores Aptos DALC configuration parameters.
 type Config struct {
 	da.BaseConfig `json:",inline"`
+	da.KeyConfig  `json:",inline"`
 	Network       string `json:"network,omitempty"`
-	PrivateKeyEnv string `json:"private_key_env,omitempty"`
 }
 
 var TestConfig = Config{
-	Network:       "testnet",
-	PrivateKeyEnv: "APT_PRIVATE_KEY",
+	Network: "testnet",
+	KeyConfig: da.KeyConfig{
+		KeyPath: "/tmp/aptos_key.json",
+	},
 }
 
 func createConfig(bz []byte) (c Config, err error) {

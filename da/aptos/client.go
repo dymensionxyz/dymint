@@ -3,7 +3,6 @@ package aptos
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"cosmossdk.io/math"
 	"github.com/aptos-labs/aptos-go-sdk"
@@ -368,25 +367,9 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	priKeyHex := os.Getenv(c.config.PrivateKeyEnv)
-	if priKeyHex == "" {
-		return fmt.Errorf("private key environment %s is not set or empty", c.config.PrivateKeyEnv)
-	}
-
-	priKeyHexFormated, err := crypto.FormatPrivateKey(priKeyHex, crypto.PrivateKeyVariantEd25519)
+	signer, err := c.loadSigner()
 	if err != nil {
-		return fmt.Errorf("format private key: %w", err)
-	}
-
-	priKey := new(crypto.Ed25519PrivateKey)
-	err = priKey.FromHex(priKeyHexFormated)
-	if err != nil {
-		return fmt.Errorf("create aptos account: %w", err)
-	}
-
-	signer, err := aptos.NewAccountFromSigner(priKey)
-	if err != nil {
-		return fmt.Errorf("create aptos account: %w", err)
+		return fmt.Errorf("load signer: %w", err)
 	}
 
 	var cfg aptos.NetworkConfig
@@ -446,4 +429,33 @@ func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 
 func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 	return maxBlobSizeBytes
+}
+
+// loadSigner loads the Aptos signer from the configured private key file.
+// Aptos DA only supports private key file (JSON format with "private_key" field).
+func (c *DataAvailabilityLayerClient) loadSigner() (*aptos.Account, error) {
+	if err := c.config.KeyConfig.Validate(); err != nil {
+		return nil, err
+	}
+
+	privateKey, err := c.config.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	if privateKey == "" {
+		return nil, fmt.Errorf("keypath is required for Aptos DA (mnemonic not supported)")
+	}
+
+	priKeyHexFormatted, err := crypto.FormatPrivateKey(privateKey, crypto.PrivateKeyVariantEd25519)
+	if err != nil {
+		return nil, fmt.Errorf("format private key: %w", err)
+	}
+
+	priKey := new(crypto.Ed25519PrivateKey)
+	err = priKey.FromHex(priKeyHexFormatted)
+	if err != nil {
+		return nil, fmt.Errorf("parse private key: %w", err)
+	}
+
+	return aptos.NewAccountFromSigner(priKey)
 }

@@ -12,11 +12,11 @@ const (
 // Config stores LoadNetwork client configuration parameters.
 type Config struct {
 	da.BaseConfig `json:",inline"`
+	da.KeyConfig  `json:",inline"`
 	ChainID       int64  `json:"chain_id,omitempty"`
 	Endpoint      string `json:"endpoint,omitempty"`
 
-	// Signer config (either private key or web3signer required)
-	PrivateKeyHex           string `json:"private_key_hex,omitempty"`
+	// Web3Signer config (alternative to KeyConfig)
 	Web3SignerEndpoint      string `json:"web3_signer_endpoint,omitempty"`
 	Web3SignerTLSCertFile   string `json:"web3_signer_tls_cert_file,omitempty"`
 	Web3SignerTLSKeyFile    string `json:"web3_signer_tls_key_file,omitempty"`
