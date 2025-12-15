@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- Access to Ethereum RPC node. Public RPC addresses can be found here <https://ethereum-sepolia-rpc.publicnode.com/>, but private RPCs are recommended.
-- An Ethereum account with funds. Faucet for Sepolia testnet can be found here: <https://cloud.google.com/application/web3/faucet/ethereum/sepolia>
+- Access to Ethereum RPC node. Public RPC addresses can be found here: <https://ethereum-sepolia-rpc.publicnode.com/>, but private RPCs are recommended.
+- An Ethereum account with funds. Faucet for Sepolia testnet can be found here: <https://cloud.google.com/application/web3/faucet/ethereum/sepolia>.
 
 ## Dymint.toml Configuration
 

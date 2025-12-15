@@ -4,7 +4,7 @@
 
 - Access to an Avail RPC node and its url.
 - An Avail account with funds.
-- Registration of an App id for the specific RollApp <https://docs.availproject.org/docs/learn-about-avail/app-ids>
+- Registration of an App id for the specific RollApp: <https://docs.availproject.org/docs/learn-about-avail/app-ids>.
 
 ## Dymint.toml Configuration
 
@@ -34,5 +34,5 @@ where:
 - mnemonic: BIP39 mnemonic phrase (direct value).
 - mnemonic_path: path to file containing the BIP39 mnemonic phrase.
 - keypath: path to JSON file containing the private key (format: `{"private_key": "0x..."}`).
-- endpoint: Avail RPC node url address. Public rpc's are available here: <https://avail-rpc.publicnode.com/>
-- app_id: identifier of the RollApp in Avail, that needs to be registered beforehand. More info in here: <https://docs.availproject.org/docs/learn-about-avail/app-ids>
+- endpoint: Avail RPC node url address. Public rpc's are available here: <https://avail-rpc.publicnode.com/>.
+- app_id: identifier of the RollApp in Avail, that needs to be registered beforehand. More info here: <https://docs.availproject.org/docs/learn-about-avail/app-ids>.
