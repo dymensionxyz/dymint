@@ -17,7 +17,7 @@ type Config struct {
 }
 
 var TestConfig = Config{
-	RpcEndpoint: "wss://turing-rpc.avail.so/ws",
+	RpcEndpoint: "https://avail-turing-rpc.publicnode.com",
 	AppID:       1,
 	KeyConfig: da.KeyConfig{
 		MnemonicPath: "/tmp/avail_mnemonic",

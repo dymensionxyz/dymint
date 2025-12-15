@@ -31,7 +31,7 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 
 	// Create test config with mnemonic directly
 	config := avail.TestConfig
-	config.KeyConfig.Mnemonic = "bottom drive obey lake curtain smoke basket hold race lonely fit walk"
+	config.KeyConfig.Mnemonic = "plug mandate gossip deposit reduce civil lawn extra fantasy grow increase off"
 	config.KeyConfig.MnemonicPath = "" // Clear the path since we're using direct mnemonic
 
 	configBytes, err := json.Marshal(config)
