@@ -17,9 +17,9 @@ const (
 type Config struct {
 	da.BaseConfig `json:",inline"`
 	da.KeyConfig  `json:",inline"`
-	APIUrl      string `json:"api_url,omitempty"`      // Kaspa REST-API server (https://api.kaspa.org/docs), used to retrieve txs. It requires indexer+archival node.
-	GrpcAddress string `json:"grpc_address,omitempty"` // Kaspa node address+port used to submit txs using GRPC
-	Network     string `json:"network,omitempty"`      // mainnet or testnet
+	APIUrl        string `json:"api_url,omitempty"`      // Kaspa REST-API server (https://api.kaspa.org/docs), used to retrieve txs. It requires indexer+archival node.
+	GrpcAddress   string `json:"grpc_address,omitempty"` // Kaspa node address+port used to submit txs using GRPC
+	Network       string `json:"network,omitempty"`      // mainnet or testnet
 }
 
 var TestConfig = Config{

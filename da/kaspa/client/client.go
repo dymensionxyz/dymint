@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/cosmos/go-bip39"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet/bip32"
@@ -17,7 +18,6 @@ import (
 	"github.com/kaspanet/kaspad/infrastructure/network/rpcclient"
 	"github.com/kaspanet/kaspad/util"
 	"github.com/kaspanet/kaspad/util/txmass"
-	"github.com/cosmos/go-bip39"
 )
 
 const (

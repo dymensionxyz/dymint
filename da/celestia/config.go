@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	namespaceVersion        = 0
-	DefaultGasPrices        = 0.1
-	maxBlobSizeBytes        = 500000
+	namespaceVersion = 0
+	DefaultGasPrices = 0.1
+	maxBlobSizeBytes = 500000
 )
 
 // Config stores Celestia DALC configuration parameters.

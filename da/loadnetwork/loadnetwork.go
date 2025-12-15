@@ -41,7 +41,6 @@ type Gateway interface {
 	RetrieveFromGateway(ctx context.Context, txHash string) (*loadnetworktypes.LNDymintBlob, error)
 }
 
-
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
 	client       LoadNetwork
