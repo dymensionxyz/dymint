@@ -22,3 +22,9 @@ where:
 - retry_delay: (Optional) Delay between retry attempts (default: 3s).
 
 Note: Aptos DA only supports private key file configuration (mnemonic is not supported).
+
+## Batch Size Limit
+
+**⚠️ Maximum blob size: 65,536 bytes (64KB)**
+
+This is below the default rollapp batch size (500KB). You **must** set `batch_max_size_bytes` in dymint.toml to a value below 65,536 (e.g., `batch_max_size_bytes = "60000"`).
