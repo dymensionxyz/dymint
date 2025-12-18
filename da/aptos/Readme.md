@@ -27,4 +27,4 @@ Note: Aptos DA only supports private key file configuration (mnemonic is not sup
 
 **⚠️ Maximum blob size: 65,536 bytes (64KB)**
 
-This is below the default rollapp batch size (500KB). You **must** set `batch_max_size_bytes` in dymint.toml to a value below 65,536 (e.g., `batch_max_size_bytes = "60000"`).
+This is below the default rollapp batch size (500KB). You **must** set `batch_submit_bytes` in dymint.toml to a value below 65,536 (e.g., `batch_submit_bytes = 60000`).

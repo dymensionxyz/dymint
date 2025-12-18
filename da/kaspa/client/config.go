@@ -29,8 +29,8 @@ var TestConfig = Config{
 	KeyConfig: da.KeyConfig{
 		MnemonicPath: "/tmp/kaspa_mnemonic",
 	},
-	APIUrl:    "https://kaspa-testnet-rest.mzonder.com",
-	Endpoint:  "rpc.tn.kaspa.rollapp.network:443",
+	APIUrl:    "https://rest.tn.kaspa.rollapp.network",
+	Endpoint:  "val.rpc.tn.kaspa.rollapp.network:16210",
 	NetworkID: "kaspa-testnet-10",
 }
 

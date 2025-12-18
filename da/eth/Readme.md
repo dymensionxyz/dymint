@@ -45,4 +45,4 @@ The address is derived from the mnemonic using the Ethereum BIP44 derivation pat
 
 **⚠️ Maximum blob size: ~130,000 bytes (~130KB)**
 
-This is below the default rollapp batch size (500KB). You **must** set `batch_max_size_bytes` in dymint.toml to a value below 130,000 (e.g., `batch_max_size_bytes = "120000"`).
+This is below the default rollapp batch size (500KB). You **must** set `batch_submit_bytes` in dymint.toml to a value below 130,000 (e.g., `batch_submit_bytes = 120000`).

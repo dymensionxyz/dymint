@@ -32,10 +32,11 @@ var DefaultSubmitBackoff = uretry.NewBackoffConfig(
 )
 
 // KeyConfig contains key/mnemonic configuration for DA clients.
-// Supports three methods of loading credentials (in priority order):
+// Supports four methods of loading credentials (in priority order):
 // 1. Mnemonic phrase directly in config (mnemonic)
 // 2. Mnemonic phrase from file (mnemonic_path)
-// 3. Private key from JSON file with format {"private_key": "..."} (keypath)
+// 3. Private key directly in config (private_key)
+// 4. Private key from JSON file with format {"private_key": "..."} (keypath)
 // At least one must be configured. This struct should be embedded
 // separately from BaseConfig as not all DAs require key configuration.
 type KeyConfig struct {
@@ -43,6 +44,8 @@ type KeyConfig struct {
 	Mnemonic string `json:"mnemonic,omitempty"`
 	// MnemonicPath is the path to a file containing the mnemonic phrase
 	MnemonicPath string `json:"mnemonic_path,omitempty"`
+	// PrivateKey is the private key directly in config
+	PrivateKey string `json:"private_key,omitempty"`
 	// KeyPath is the path to a JSON key file with format {"private_key": "..."}
 	KeyPath string `json:"keypath,omitempty"`
 }
@@ -71,10 +74,16 @@ func (k *KeyConfig) GetMnemonic() (string, error) {
 	return "", nil
 }
 
-// GetPrivateKey returns the private key from the configured JSON key file.
-// The key file must have format {"private_key": "..."}
-// Returns empty string if not configured.
+// GetPrivateKey returns the private key from the configured source.
+// Priority: PrivateKey (direct) > KeyPath (from JSON file)
+// Returns empty string if neither is configured.
 func (k *KeyConfig) GetPrivateKey() (string, error) {
+	// Direct private key takes priority
+	if k.PrivateKey != "" {
+		return k.PrivateKey, nil
+	}
+
+	// Then try key file
 	if k.KeyPath == "" {
 		return "", nil
 	}
@@ -99,10 +108,10 @@ func (k *KeyConfig) GetPrivateKey() (string, error) {
 // Validate checks that at least one key loading method is configured.
 // Returns an error if no method is configured.
 func (k *KeyConfig) Validate() error {
-	if k.Mnemonic != "" || k.MnemonicPath != "" || k.KeyPath != "" {
+	if k.Mnemonic != "" || k.MnemonicPath != "" || k.PrivateKey != "" || k.KeyPath != "" {
 		return nil
 	}
-	return fmt.Errorf("no key configuration provided: set one of mnemonic, mnemonic_path, or keypath")
+	return fmt.Errorf("no key configuration provided: set one of mnemonic, mnemonic_path, private_key, or keypath")
 }
 
 // BaseConfig contains common configuration fields for all DA clients.
