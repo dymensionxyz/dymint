@@ -10,6 +10,15 @@ import (
 	"github.com/kaspanet/kaspad/domain/consensus/utils/constants"
 )
 
+// DefaultWalletAddress returns the default wallet address at index 0 (path m/44'/111111'/0'/0/0)
+func DefaultWalletAddress() *walletAddress {
+	return &walletAddress{
+		index:         0,
+		cosignerIndex: 0,
+		keyChain:      libkaspawallet.ExternalKeychain,
+	}
+}
+
 type walletUTXO struct {
 	Outpoint  *externalapi.DomainOutpoint
 	UTXOEntry externalapi.UTXOEntry
@@ -49,28 +58,6 @@ func (c *Client) generateWalletUtxos(entries []*appmessage.UTXOsByAddressesEntry
 		}
 	}
 
-	// we obtain walletAddress corresponding to the configuration address, by generating the addresses corresponding to different index (max 100) and stopping once found
-	var address *walletAddress
-	for index := uint32(0); index < maxAddressesUtxo; index++ {
-		candidateAddress := &walletAddress{
-			index:         index,
-			cosignerIndex: 0,
-			keyChain:      libkaspawallet.ExternalKeychain,
-		}
-		addressString, err := c.walletAddressString(candidateAddress)
-		if err != nil {
-			return nil, err
-		}
-		if addressString == c.address.String() {
-			address = candidateAddress
-			break
-		}
-	}
-	if address == nil {
-		return nil, fmt.Errorf("address not found")
-	}
-
-	mempoolExcludedUTXOs := make(map[externalapi.DomainOutpoint]*walletUTXO)
 	for _, entry := range entries {
 		outpoint, err := appmessage.RPCOutpointToDomainOutpoint(entry.Outpoint)
 		if err != nil {
@@ -82,19 +69,11 @@ func (c *Client) generateWalletUtxos(entries []*appmessage.UTXOsByAddressesEntry
 			return nil, err
 		}
 
-		utxo := &walletUTXO{
-			Outpoint:  outpoint,
-			UTXOEntry: utxoEntry,
-			address:   address,
-		}
-
-		if _, ok := exclude[*entry.Outpoint]; ok {
-			mempoolExcludedUTXOs[*outpoint] = utxo
-		} else {
+		if _, ok := exclude[*entry.Outpoint]; !ok {
 			utxos = append(utxos, &walletUTXO{
 				Outpoint:  outpoint,
 				UTXOEntry: utxoEntry,
-				address:   address,
+				address:   c.wAddress,
 			})
 		}
 	}
@@ -110,7 +89,6 @@ func (c *Client) selectUTXOs(feeRate float64, maxFee uint64, blob []byte) (selec
 	if err != nil {
 		return nil, 0, err
 	}
-	c.wAddress = utxos[0].address
 	totalValue := uint64(0)
 
 	dagInfo, err := c.rpcClient.GetBlockDAGInfo()

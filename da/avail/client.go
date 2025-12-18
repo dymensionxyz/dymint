@@ -1,13 +1,17 @@
 package avail
 
 import (
+	"encoding/hex"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/availproject/avail-go-sdk/metadata"
 	prim "github.com/availproject/avail-go-sdk/primitives"
 	availgo "github.com/availproject/avail-go-sdk/sdk"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/vedhavyas/go-subkey/v2"
+	"github.com/vedhavyas/go-subkey/v2/sr25519"
 )
 
 type AvailClient interface {
@@ -26,23 +30,67 @@ type Client struct {
 
 var _ AvailClient = &Client{}
 
-// NewClient returns a DA avail client
-func NewClient(endpoint string, seed string, appId uint32) (AvailClient, error) {
-	sdk, err := availgo.NewSDK(endpoint)
+// NewClient returns a DA avail client using the provided config.
+// Supports both mnemonic (direct or from file) and private key (from JSON file).
+func NewClient(config *Config) (AvailClient, error) {
+	sdk, err := availgo.NewSDK(config.RpcEndpoint)
 	if err != nil {
 		return nil, err
 	}
-	acc, err := availgo.Account.NewKeyPair(seed)
+
+	acc, err := loadKeyPair(config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load keypair: %w", err)
 	}
 
 	client := Client{
 		sdk:     sdk,
 		account: acc,
-		appId:   appId,
+		appId:   config.AppID,
 	}
 	return client, nil
+}
+
+// loadKeyPair loads the keypair from the configured source.
+// Supports mnemonic (direct or from file) and private key (from JSON file).
+func loadKeyPair(config *Config) (subkey.KeyPair, error) {
+	if err := config.KeyConfig.Validate(); err != nil {
+		return nil, err
+	}
+
+	// Try mnemonic first (direct or from file)
+	mnemonic, err := config.KeyConfig.GetMnemonic()
+	if err != nil {
+		return nil, err
+	}
+	if mnemonic != "" {
+		return availgo.Account.NewKeyPair(mnemonic)
+	}
+
+	// Try private key from JSON file
+	privateKey, err := config.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	if privateKey != "" {
+		return keyPairFromHex(privateKey)
+	}
+
+	return nil, fmt.Errorf("key configuration required for Avail DA: set mnemonic, mnemonic_path, or keypath")
+}
+
+// keyPairFromHex creates a sr25519 keypair from a hex-encoded private key/seed.
+func keyPairFromHex(hexKey string) (subkey.KeyPair, error) {
+	// Remove 0x prefix if present
+	hexKey = strings.TrimPrefix(hexKey, "0x")
+
+	seed, err := hex.DecodeString(hexKey)
+	if err != nil {
+		return nil, fmt.Errorf("decode hex key: %w", err)
+	}
+
+	scheme := sr25519.Scheme{}
+	return scheme.FromSeed(seed)
 }
 
 // SubmitData sends blob data to Avail DA

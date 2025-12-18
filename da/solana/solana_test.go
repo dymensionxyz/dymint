@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/cometbft/cometbft/libs/log"
@@ -16,25 +17,27 @@ import (
 	"github.com/test-go/testify/require"
 )
 
-func TestDataAvailabilityLayerClient(t *testing.T) {
-	t.Skip("Skipping Solana client tests")
+// Test private key (devnet only - DO NOT USE IN PRODUCTION)
+// This is a base58-encoded Solana keypair (64 bytes: 32-byte private key + 32-byte public key)
+// Corresponds to address: 7NXRH5ciAnAPk2tAZvokeApjZZkqaPMdU8riZaRLZxFF
+const testPrivateKey = "5N3YikeamLMj6FGqCSBBskbDooYUcPeKYeoQxb7XMJ1LREUfPQAKqHUtzB8HDKBnsw5UPJygcDZTFHDxs9pN1UJH"
 
-	// Set up test environment
-	keyPathEnv := "SOLANA_KEYPATH"
-	err := os.Setenv(keyPathEnv, "/Users/sergi/wallet-keypair.json")
+func TestDataAvailabilityLayerClient(t *testing.T) {
+	t.Skip("Skipping Solana client tests - requires live network connection")
+
+	// Create temporary key file with test private key in JSON format
+	tmpDir := t.TempDir()
+	keyFile := filepath.Join(tmpDir, "solana_key.json")
+	keyJSON := `{"private_key": "` + testPrivateKey + `"}`
+	err := os.WriteFile(keyFile, []byte(keyJSON), 0600)
 	require.NoError(t, err)
 
-	// Set up test environment
-	/*apikeyEnv := "API_KEY"
-	err = os.Setenv(apikeyEnv, "api-test-key")
-	require.NoError(t, err)*/
-
-	// Create test config. By default, tests use Solana devnet.
+	// Create test config with the temp key file path
 	config := solana.TestConfig
+	config.KeyPath = keyFile
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
 
-	config.Endpoint = "http://barcelona:8899"
 	// Create new Solana client
 	client := &solana.DataAvailabilityLayerClient{}
 	err = client.Init(configBytes, nil, nil, log.NewTMLogger(log.NewSyncWriter(os.Stdout)))

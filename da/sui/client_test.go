@@ -16,16 +16,14 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
+// fund 0xd3fa2bb99f69cc21b8c22a259f394ae1a52027299e3fdd63ff0603bc1e8e0a9e address with devnet faucet before running TestDataAvailabilityLayerClient
 func TestDataAvailabilityLayerClient(t *testing.T) {
 	t.Skip("Skipping SUI client tests")
 
-	// Set up test environment
-	mnemonicEnv := "SUI_MNEMONIC"
-	err := os.Setenv(mnemonicEnv, "catalog phone awful abuse derive type verb betray foil salad street scrub")
-	require.NoError(t, err)
-
-	// Create test config. By default, tests use Sui testnet.
+	// Create test config with mnemonic directly
 	config := sui.TestConfig
+	config.KeyConfig.Mnemonic = "catalog phone awful abuse derive type verb betray foil salad street scrub"
+	config.KeyConfig.MnemonicPath = "" // Clear the path since we're using direct mnemonic
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
 
@@ -42,9 +40,6 @@ func TestDataAvailabilityLayerClient(t *testing.T) {
 	balance, err := client.GetSignerBalance()
 	require.NoError(t, err)
 	if balance.Amount.LT(sui.SUI) {
-		// Request SUI tokens from the faucet and wait until the balance is sufficient
-		err = client.TestRequestCoins()
-		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
 			balance, err = client.GetSignerBalance()

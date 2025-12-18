@@ -2,6 +2,7 @@ package eth_test
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -114,7 +115,16 @@ func setDAandMock(t *testing.T) (*mocks.MockEthClient, da.DataAvailabilityLayerC
 	// init Eth DA with mock RPC client
 	dalc := registry.GetClient("eth")
 
+	// Create temp file with test private key in JSON format
+	keyFile, err := os.CreateTemp("", "eth_test_key")
+	require.NoError(err)
+	defer os.Remove(keyFile.Name())
+	_, err = keyFile.WriteString(`{"private_key": "f3459c9fb5b720f52968f97e0dd895fa1caf3fe4a521fbc6395380bc50b0a234"}`)
+	require.NoError(err)
+	keyFile.Close()
+
 	config := eth.TestConfig
+	config.KeyConfig.KeyPath = keyFile.Name()
 
 	conf, err := json.Marshal(config)
 	require.NoError(err)

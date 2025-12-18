@@ -2,9 +2,9 @@
 
 ## Requirements
 
-- Run a Celestia light node, following these instructions <https://docs.celestia.org/how-to-guides/light-node>
+- Run a Celestia light node, following these instructions: <https://docs.celestia.org/how-to-guides/light-node>.
 - Testnet RollApps require using Mocha network, and Mainnet RollApps Mainnet Beta.
-- Light nodes can be fast synced by specifying in <celestia_folder/config.toml> which block it should start syncing from. For that a trusted block hash (obtained from <https://celenium.io/blocks>) needs to be added in [Header] TrustedHash field, and the block id in [DASer] SampleFrom field.
+- Light nodes can be fast synced by specifying in `<celestia_folder>/config.toml` which block it should start syncing from. For that a trusted block hash (obtained from <https://celenium.io/blocks>) needs to be added in `[Header]` TrustedHash field, and the block id in `[DASer]` SampleFrom field.
 - Light client account needs to be funded. To know the address run:
 
 ```shell
@@ -20,18 +20,18 @@ da_config = ['{"base_url": "http://localhost:26658", "timeout": 60000000000, "ga
 
 where:
 
-- base_url = url pointing to the light node, use localhost when running in same machine, otherwise specify the right IP address.
+- base_url: url pointing to the light node, use localhost when running in same machine, otherwise specify the right IP address.
 - timeout (nanoseconds): used to cancel retry when fail submissions or retrievals.
-- gas_prices: can be adjusted based on gas prices <https://celenium.io/gas>
-- namespace_id: Namespace used to identify RollApps within Celestia <https://celestiaorg.github.io/celestia-app/namespace.html>
-- auth_token: auth token issues by the light client. You can get it running the following command.
+- gas_prices: can be adjusted based on gas prices: <https://celenium.io/gas>.
+- namespace_id: Namespace used to identify RollApps within Celestia: <https://celestiaorg.github.io/celestia-app/namespace.html>.
+- auth_token: auth token issued by the light client. You can get it running the following command:
 
 ```shell
 celestia light auth admin --p2p.network <network>
 ```
 
-optional:
+Optional:
 
-- backoff: backoff function that models the waiting time after each failed batch submission to celestia with init delay, max delay and growth factor. e.g. "backoff":{"initial_delay":6000000000,"max_delay":6000000000,"growth_factor":2}
+- backoff: backoff function that models the waiting time after each failed batch submission to celestia with init delay, max delay and growth factor. e.g. `"backoff":{"initial_delay":6000000000,"max_delay":6000000000,"growth_factor":2}`.
 - retry_attempts: number of retries in retrieval and availability check before returning error.
 - retry_delay (nanoseconds): waiting time between retrieval and availability check retries.
