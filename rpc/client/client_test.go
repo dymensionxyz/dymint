@@ -374,7 +374,6 @@ func TestValidatedHeight(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			node.BlockManager.SettlementValidator.UpdateLastValidatedHeight(test.validatedHeight, false)
 			node.BlockManager.LastSettlementHeight.Store(test.submittedHeight)
@@ -528,7 +527,6 @@ func TestBlockSearch(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.query, func(t *testing.T) {
 			result, err := rpc.BlockSearch(context.Background(), test.query, &test.page, &test.perPage, test.orderBy)
 			require.NoError(err)
