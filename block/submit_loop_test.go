@@ -72,7 +72,7 @@ func testSubmitLoopInner(
 	}
 	skewNow := func() time.Duration {
 		settlementTime := time.Unix(0, lastSettlementBlockTime.Load())
-		return time.Now().Sub(settlementTime)
+		return time.Since(settlementTime)
 	}
 	go func() { // simulate block production
 		go func() { // another thread to check system properties

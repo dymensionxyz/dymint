@@ -1,6 +1,7 @@
 package block_test
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"reflect"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/da"
+	mock_settlement "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
@@ -366,6 +368,119 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 	}
 }
 
+// TestValidateStateUpdate_PartialBatchApplication tests that SettlementValidateLoop correctly skips
+// batches where not all blocks have been applied yet, preventing "not found" errors.
+// This test exercises the actual race condition scenario where validation is triggered while blocks are being applied.
+func TestValidateStateUpdate_PartialBatchApplication(t *testing.T) {
+	version.DRS = "0"
+
+	// Setup manager with test dependencies
+	manager, proposerKey, cleanup := setupManagerForRaceConditionTest(t)
+	defer cleanup()
+
+	// Generate one large batch covering heights 1-20
+	largeBatch, err := testutil.GenerateBatch(1, 20, proposerKey, [32]byte{})
+	require.NoError(t, err)
+
+	// Split into two batches for testing
+	batch1 := &types.Batch{
+		Blocks:  largeBatch.Blocks[:10],
+		Commits: largeBatch.Commits[:10],
+	}
+
+	batch2 := &types.Batch{
+		Blocks:  largeBatch.Blocks[10:],
+		Commits: largeBatch.Commits[10:],
+	}
+
+	// Submit to DA
+	daResult1 := manager.GetActiveDAClient().SubmitBatch(batch1)
+	require.Equal(t, da.StatusSuccess, daResult1.Code)
+
+	daResult2 := manager.GetActiveDAClient().SubmitBatch(batch2)
+	require.Equal(t, da.StatusSuccess, daResult2.Code)
+
+	// Create settlement batches
+	bds1, err := getBlockDescriptors(batch1)
+	require.NoError(t, err)
+	slBatch1 := getSLBatch(bds1, daResult1.SubmitMetaData, 1, 10, manager.State.GetProposer().SettlementAddress)
+
+	bds2, err := getBlockDescriptors(batch2)
+	require.NoError(t, err)
+	slBatch2 := getSLBatch(bds2, daResult2.SubmitMetaData, 11, 20, manager.State.GetProposer().SettlementAddress)
+
+	// Setup mock settlement client
+	setupMockSLClient(t, manager, slBatch1, slBatch2)
+
+	// Apply batch1 completely
+	err = manager.ApplyBatchFromSL(slBatch1.Batch)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(10), manager.State.Height())
+
+	// Update LastSettlementHeight to indicate batch2 exists on settlement
+	manager.LastSettlementHeight.Store(20)
+
+	// Start SettlementValidateLoop in background
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var validationErr error
+	validationDone := make(chan struct{})
+
+	go func() {
+		validationErr = manager.SettlementValidateLoop(ctx)
+		close(validationDone)
+	}()
+
+	// Apply batch2 blocks slowly via P2P in a goroutine
+	applyDone := make(chan struct{})
+	go func() {
+		defer close(applyDone)
+		for i, block := range batch2.Blocks {
+			time.Sleep(20 * time.Millisecond)
+			blockData := p2p.BlockData{Block: *block, Commit: *batch2.Commits[i]}
+			msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
+			manager.OnReceivedBlock(msg)
+			t.Logf("Applied block %d, current height: %d", block.Header.Height, manager.State.Height())
+		}
+	}()
+
+	// Trigger validation multiple times while blocks are being applied
+	// This simulates the race condition
+	for i := 0; i < 10; i++ {
+		time.Sleep(15 * time.Millisecond)
+		manager.TriggerSettlementValidation()
+		t.Logf("Triggered validation %d, current height: %d", i, manager.State.Height())
+	}
+
+	// Wait for blocks to finish applying
+	<-applyDone
+
+	// Trigger validation one final time after all blocks are applied
+	manager.TriggerSettlementValidation()
+	t.Logf("Final validation trigger after all blocks applied, height: %d", manager.State.Height())
+
+	// Give validation time to complete
+	time.Sleep(100 * time.Millisecond)
+
+	// Cancel context and wait for validation loop to exit
+	cancel()
+	<-validationDone
+
+	// Verify no error occurred (with the fix, validation should skip partial batches and not error)
+	// Without the fix, validationErr would contain "not found" errors
+	assert.NoError(t, validationErr, "SettlementValidateLoop should not error with the fix in place")
+
+	// Verify all blocks were applied
+	assert.Equal(t, uint64(20), manager.State.Height())
+
+	// Verify validation completed successfully for all batches
+	lastValidated := manager.SettlementValidator.GetLastValidatedHeight()
+	assert.Equal(t, uint64(20), lastValidated, "All batches should be validated after blocks are applied")
+
+	t.Log("Test completed successfully - race condition properly handled")
+}
+
 func getBlockDescriptors(batch *types.Batch) ([]rollapp.BlockDescriptor, error) {
 	// Create block descriptors
 	var bds []rollapp.BlockDescriptor
@@ -397,4 +512,64 @@ func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, 
 			StateIndex: 1,
 		},
 	}
+}
+
+// setupManagerForRaceConditionTest sets up a manager with all required dependencies for race condition testing
+func setupManagerForRaceConditionTest(t *testing.T) (*block.Manager, crypto.PrivKey, func()) {
+	// Setup app with custom EndBlock response
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:         "mock",
+			DrsVersion: 0,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   40000000,
+				MaxBytes: 500000,
+			},
+		},
+	})
+
+	// Create and start proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(t, err)
+
+	// Generate proposer key
+	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
+	// Create manager
+	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), proposerKey, nil, 1, 1, 0, proxyApp, nil)
+	require.NoError(t, err)
+
+	// Setup DA client
+	manager.DAClients[da.Mock] = testutil.GetMockDALC(log.TestingLogger())
+
+	cleanup := func() {
+		proxyApp.Stop()
+	}
+
+	return manager, proposerKey, cleanup
+}
+
+// setupMockSLClient creates and configures a mock settlement client with the given batches
+func setupMockSLClient(t *testing.T, manager *block.Manager, slBatch1, slBatch2 *settlement.ResultRetrieveBatch) {
+	mockSLClient := new(mock_settlement.MockClientI)
+	manager.SLClient = mockSLClient
+
+	mockSLClient.On("GetBatchAtHeight", mock.MatchedBy(func(h uint64) bool {
+		return h >= 1 && h <= 10
+	})).Return(slBatch1, nil)
+
+	mockSLClient.On("GetBatchAtHeight", mock.MatchedBy(func(h uint64) bool {
+		return h >= 11 && h <= 20
+	})).Return(slBatch2, nil)
+
+	mockSLClient.On("GetRollapp").Return(&types.Rollapp{
+		RollappID: "test-rollapp",
+		Revisions: []types.Revision{{Number: 0, StartHeight: 1}},
+	}, nil)
 }
