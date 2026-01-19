@@ -3,7 +3,6 @@ package aptos
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"cosmossdk.io/math"
 	"github.com/aptos-labs/aptos-go-sdk"
@@ -368,9 +367,10 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	priKeyHex := os.Getenv(c.config.PriKeyEnv)
-	if priKeyHex == "" {
-		return fmt.Errorf("private key environment %s is not set or empty", c.config.PriKeyEnv)
+	// Load private key with priority: env var -> file -> config field
+	priKeyHex, err := da.LoadSecret(c.config.PriKeyEnv, c.config.PriKeyFile, c.config.PriKey, "private key")
+	if err != nil {
+		return err
 	}
 
 	priKeyHexFormated, err := crypto.FormatPrivateKey(priKeyHex, crypto.PrivateKeyVariantEd25519)

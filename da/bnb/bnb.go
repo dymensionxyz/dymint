@@ -28,10 +28,12 @@ const (
 )
 
 type BNBConfig struct {
-	Timeout    time.Duration `json:"timeout,omitempty"`
-	Endpoint   string        `json:"endpoint"`
-	PrivateKey string        `json:"private_key_hex"`
-	ChainId    uint64        `json:"chain_id"`
+	Timeout        time.Duration `json:"timeout,omitempty"`
+	Endpoint       string        `json:"endpoint"`
+	PrivateKeyEnv  string        `json:"private_key_env,omitempty"`  // Environment variable name for private key (highest priority)
+	PrivateKeyFile string        `json:"private_key_file,omitempty"` // Path to file containing private key (second priority)
+	PrivateKey     string        `json:"private_key_hex,omitempty"`  // Private key directly in config (lowest priority, fallback only)
+	ChainId        uint64        `json:"chain_id"`
 }
 
 // ToPath converts a SubmitMetaData to a path.
