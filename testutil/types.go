@@ -322,11 +322,8 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 		InitialHeight:   uint64(initialHeight), //nolint:gosec // height is non-negative and falls in int64
 		AppHash:         [32]byte{},
 		LastResultsHash: GetEmptyLastResultsHash(),
-		Version: tmstate.Version{
-			Consensus: version.Consensus{
-				Block: BlockVersion,
-				App:   AppVersion,
-			},
+		Revisions: []types.Revision{
+			{StartHeight: 0, Revision: tmstate.Version{Consensus: version.Consensus{Block: BlockVersion, App: AppVersion}}},
 		},
 		RollappParams: dymint.RollappParams{
 			Da:         "mock",

@@ -1,36 +1,41 @@
 syntax = "proto3";
 package dymint;
-option go_package = "github.com/dymensionxyz/dymint/types/pb/dymint";
 
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
+import "types/dymint/dymint.proto";
 import "types/tendermint/abci/types.proto";
+import "types/tendermint/state/types.proto";
+import "types/tendermint/types/params.proto";
 import "types/tendermint/types/types.proto";
 import "types/tendermint/types/validator.proto";
-import "types/tendermint/types/params.proto";
-import "types/tendermint/state/types.proto";
-import "types/dymint/dymint.proto";
 
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dymint";
+
+message Revision {
+  uint64 start_height = 1;
+  tendermint.state.Version revision = 2;
+}
 
 message State {
-  tendermint.state.Version version = 1;
-
-  string  chain_id = 2;
+  reserved 1;
+  string chain_id = 2;
   int64 initial_height = 3;
 
   int64 last_block_height = 4;
 
-  tendermint.types.BlockID last_block_id = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
+  tendermint.types.BlockID last_block_id = 5 [
+    (gogoproto.nullable) = false,
+    (gogoproto.customname) = "LastBlockID"
+  ];
 
   reserved 6;
   reserved 7;
   reserved 8;
-  tendermint.types.ValidatorSet validators = 9 [deprecated = true]; 
+  tendermint.types.ValidatorSet validators = 9 [deprecated = true];
   reserved 10;
 
-
   int64 last_height_validators_changed = 11;
-  
 
   tendermint.types.ConsensusParams consensus_params = 12 [(gogoproto.nullable) = false];
   reserved 13;
@@ -49,14 +54,15 @@ message State {
   // Proposer is a sequencer that acts as a proposer. Can be nil if no proposer is set.
   Sequencer proposer = 20;
 
-  int64 revision_start_height = 21;
+  reserved 21;
 
+  repeated Revision revisions = 22;
 }
 
 //rollapp params defined in genesis and updated via gov proposal
 message RollappParams {
   //data availability type (e.g. celestia) used in the rollapp
-  string da = 1 ;
+  string da = 1;
   //drs version
   uint32 drs_version = 2;
 }

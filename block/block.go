@@ -11,6 +11,13 @@ import (
 
 // validateAndApplyBlock calls validateBlockBeforeApply and applyBlock.
 func (m *Manager) validateAndApplyBlock(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
+	// in case of fork, update proposer from SL to validate the block, otherwise previous block next proposer may not be valid.
+	if m.State.IsForkHeight(block.Header.Height) {
+		if err := m.UpdateProposerFromSL(); err != nil {
+			return err
+		}
+	}
+
 	if err := m.validateBlockBeforeApply(block, commit); err != nil {
 		m.blockCache.Delete(block.Header.Height)
 		// TODO: can we take an action here such as dropping the peer / reducing their reputation?
@@ -133,6 +140,13 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// 2. Update the proposer in the state in case of rotation happened on the rollapp level (not necessarily on the hub yet).
 	isProposerUpdated := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
 
+	// in case of empty proposer after fork, update from SL
+	if m.State.GetProposer() == nil {
+		if err := m.UpdateProposerFromSL(); err != nil {
+			return err
+		}
+	}
+
 	// 3. Save the state to the store (independently of the height). Here the proposer might differ from (1).
 	batch, err = m.Store.SaveState(m.State, batch)
 	if err != nil {
@@ -169,7 +183,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// If so, restart so I can start as the proposer.
 	// For current proposer, we don't want to restart because we still need to send the last batch.
 	// This will be done as part of the `rotate` function.
-	if isProposerUpdated && m.AmIProposerOnRollapp() {
+	if isProposerUpdated && m.AmIProposerOnRollapp() && m.RunMode == RunModeFullNode {
 		panic("I'm the new Proposer now. restarting as a proposer")
 	}
 
@@ -207,9 +221,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		if !blockExists {
 			break
 		}
-		if cachedBlock.Block.GetRevision() != m.State.GetRevision() {
-			break
-		}
+
 		err := m.validateAndApplyBlock(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)

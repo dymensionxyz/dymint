@@ -29,6 +29,8 @@ import (
 	slmock "github.com/dymensionxyz/dymint/settlement/grpc/mockserv/proto"
 	"github.com/dymensionxyz/dymint/types"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	"github.com/tendermint/tendermint/proto/tendermint/version"
 )
 
 const (
@@ -54,7 +56,7 @@ type Client struct {
 func (c *Client) GetRollapp() (*types.Rollapp, error) {
 	return &types.Rollapp{
 		RollappID: c.rollappID,
-		Revisions: []types.Revision{{Number: 0, StartHeight: 0}},
+		Revisions: []types.Revision{{Revision: tmstate.Version{Consensus: version.Consensus{App: 0, Block: 1}}, StartHeight: 0}},
 	}, nil
 }
 

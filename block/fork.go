@@ -51,7 +51,7 @@ func (m *Manager) checkForkUpdate(msg string) error {
 
 	var (
 		nextHeight       = m.State.NextHeight()
-		actualRevision   = m.State.GetRevision()
+		actualRevision   = m.State.GetLastRevisionNumber()
 		expectedRevision = rollapp.GetRevisionForHeight(nextHeight)
 	)
 
@@ -66,7 +66,7 @@ func (m *Manager) checkForkUpdate(msg string) error {
 			return err
 		}
 
-		err = fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), expectedRevision.StartHeight, actualRevision, expectedRevision.Number)
+		err = fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), expectedRevision.StartHeight, actualRevision, expectedRevision.GetRevisionNumber())
 		return errors.Join(ErrNonRecoverable, err)
 	}
 
@@ -81,7 +81,7 @@ func (m *Manager) createInstruction(expectedRevision types.Revision) (types.Inst
 	}
 
 	instruction := types.Instruction{
-		Revision:            expectedRevision.Number,
+		Revision:            expectedRevision.GetRevisionNumber(),
 		RevisionStartHeight: expectedRevision.StartHeight,
 		FaultyDRS:           obsoleteDrs,
 	}
@@ -99,7 +99,7 @@ func shouldStopNode(
 	nextHeight uint64,
 	actualRevisionNumber uint64,
 ) bool {
-	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
+	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.GetRevisionNumber()
 }
 
 // getRevisionFromSL returns revision data for the specific height
@@ -109,6 +109,15 @@ func (m *Manager) getRevisionFromSL(height uint64) (types.Revision, error) {
 		return types.Revision{}, err
 	}
 	return rollapp.GetRevisionForHeight(height), nil
+}
+
+// getRevisions returns revision data for the rollapp
+func (m *Manager) getRevisions() ([]types.Revision, error) {
+	rollapp, err := m.SLClient.GetRollapp()
+	if err != nil {
+		return []types.Revision{}, err
+	}
+	return rollapp.GetRevisions(), nil
 }
 
 // doFork creates fork blocks and submits a new batch with them
@@ -236,27 +245,18 @@ func (m *Manager) submitForkBatch(height uint64) error {
 	return nil
 }
 
-// updateStateForNextRevision updates dymint stored state in case next height corresponds to a new revision, to enable syncing (and validation) for rollapps with multiple revisions.
-func (m *Manager) updateStateForNextRevision() error {
-	// in case fork is detected dymint state needs to be updated
-
-	// get next revision according to node height
-	nextRevision, err := m.getRevisionFromSL(m.State.NextHeight())
+// updateStateWithRevisions updates dymint stored state with rollapp forks revisions, to enable syncing (and validation) for rollapps with multiple revisions.
+func (m *Manager) updateStateWithRevisions() error {
+	// get revisions for rollapp from SL
+	revisions, err := m.getRevisions()
 	if err != nil {
 		return err
 	}
 
-	// if next height is revision start height, update local state
-	if nextRevision.StartHeight == m.State.NextHeight() {
-		// Set proposer to nil to force updating it from SL
-		m.State.SetProposer(nil)
-		m.State.SetRevision(nextRevision.Number)
-
-		// update stored state
-		_, err = m.Store.SaveState(m.State, nil)
-		return err
-	}
-	return nil
+	// store revisions to dymint state
+	m.State.SetRevisions(revisions)
+	_, err = m.Store.SaveState(m.State, nil)
+	return err
 }
 
 // doForkWhenNewRevision creates and submit to SL fork blocks according to next revision start height.
@@ -276,8 +276,6 @@ func (m *Manager) doForkWhenNewRevision() error {
 		if err != nil {
 			return err
 		}
-		// update revision with revision after fork
-		m.State.SetRevision(instruction.Revision)
 		// create and submit fork batch
 		err = m.doFork(instruction)
 		if err != nil {
@@ -286,8 +284,8 @@ func (m *Manager) doForkWhenNewRevision() error {
 	}
 
 	// this cannot happen. it means the revision number obtained is not the same or the next revision. unable to fork.
-	if expectedRevision.Number != m.State.GetRevision() {
-		return fmt.Errorf("inconsistent expected revision number from Hub (%d != %d). Unable to fork", expectedRevision.Number, m.State.GetRevision())
+	if expectedRevision.GetRevisionNumber() != m.State.GetLastRevisionNumber() {
+		return fmt.Errorf("inconsistent expected revision number from Hub (%d != %d). Unable to fork", expectedRevision.GetRevisionNumber(), m.State.GetLastRevisionNumber())
 	}
 
 	// remove instruction file after fork

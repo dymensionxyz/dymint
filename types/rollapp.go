@@ -1,15 +1,14 @@
 package types
 
-import rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+import (
+	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	"github.com/tendermint/tendermint/version"
+)
 
 type Rollapp struct {
 	RollappID string
 	Revisions []Revision
-}
-
-type Revision struct {
-	Number      uint64
-	StartHeight uint64
 }
 
 func (r Rollapp) LatestRevision() Revision {
@@ -29,11 +28,18 @@ func (r Rollapp) GetRevisionForHeight(height uint64) Revision {
 	return Revision{}
 }
 
+func (r Rollapp) GetRevisions() []Revision {
+	return r.Revisions
+}
+
 func RollappFromProto(pb rollapptypes.Rollapp) Rollapp {
 	revisions := make([]Revision, 0, len(pb.Revisions))
 	for _, pbRevision := range pb.Revisions {
+		revision := tmstate.Version{}
+		revision.Consensus.App = pbRevision.Number
+		revision.Consensus.Block = version.BlockProtocol
 		revisions = append(revisions, Revision{
-			Number:      pbRevision.Number,
+			Revision:    revision,
 			StartHeight: pbRevision.StartHeight,
 		})
 	}
