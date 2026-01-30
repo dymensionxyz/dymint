@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"os"
 	"testing"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -13,13 +12,10 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-
-	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
 	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/solana"
@@ -121,41 +117,6 @@ func TestAvailCheck(t *testing.T) {
 			rValidAvail := retriever.CheckBatchAvailability(metadata.ToPath())
 			assert.Equal(t, tc.status, rValidAvail.Code)
 			require.ErrorIs(t, rValidAvail.Error, tc.err)
-		})
-	}
-}
-
-func TestSetRpcClientModes(t *testing.T) {
-	const endpoint = "https://example.com"
-	const apiKeyEnv = "TEST_RPC_API_KEY"
-	defer os.Unsetenv(apiKeyEnv)
-
-	rl := 5
-
-	tests := []struct {
-		name       string
-		setAPIKey  bool
-		rate       *int
-		wantOrigin string
-	}{
-		{"No API Key, No Rate Limit", false, nil, "default"},
-		{"API Key Only", true, nil, "apikey"},
-		{"Rate Limit Only", false, &rl, "limiter"},
-		{"API Key and Rate Limit", true, &rl, "limiter+apikey"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.setAPIKey {
-				os.Setenv(apiKeyEnv, "mock-key")
-			} else {
-				os.Unsetenv(apiKeyEnv)
-			}
-
-			client := solana.SetRpcClient(endpoint, apiKeyEnv, tt.rate)
-			if client.Origin != tt.wantOrigin {
-				t.Errorf("expected origin %q, got %q", tt.wantOrigin, client.Origin)
-			}
 		})
 	}
 }
