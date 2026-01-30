@@ -13,22 +13,25 @@ The noop contract must be deployed before using Sui DA. Sui devnet/testnet are r
 1. Install Sui CLI: <https://docs.sui.io/guides/developer/getting-started/sui-install>
 
 2. Configure Sui CLI for the target network:
-```shell
-sui client switch --env devnet
-```
+
+   ```shell
+   sui client switch --env devnet
+   ```
 
 3. Import your wallet (using the same mnemonic as DA config):
-```shell
-sui keytool import "<your-mnemonic>" ed25519
-```
+
+   ```shell
+   sui keytool import "<your-mnemonic>" ed25519
+   ```
 
 4. Get funds from faucet: <https://faucet.sui.io/>
 
 5. Deploy the contract from the `noop` directory:
-```shell
-cd da/sui/noop
-sui client publish --gas-budget 100000000
-```
+
+   ```shell
+   cd da/sui/noop
+   sui client publish --gas-budget 100000000
+   ```
 
 6. From the output, find the "Published Objects" section and copy the package ID. Use this as `noop_contract_address` in your config.
 
@@ -60,6 +63,6 @@ The address is derived from the mnemonic using ed25519 key derivation.
 
 ## Batch Size Limit
 
-**⚠️ Maximum blob size: ~96,000 bytes (~96KB)**
+Maximum blob size: ~96,000 bytes (~96KB)
 
 This is below the default rollapp batch size (500KB). You **must** set `batch_submit_bytes` in dymint.toml to a value below 96,000 (e.g., `batch_submit_bytes = 90000`).
