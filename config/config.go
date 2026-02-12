@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -194,10 +195,8 @@ func (nc NodeConfig) validateSettlementLayer() error {
 }
 
 func (nc NodeConfig) validateDALayer() error {
-	for _, daLayer := range nc.DALayer {
-		if daLayer == "" {
-			return fmt.Errorf("DALayer cannot be empty")
-		}
+	if slices.Contains(nc.DALayer, "") {
+		return fmt.Errorf("DALayer cannot be empty")
 	}
 	if nc.DAGrpc.Host == "" {
 		return fmt.Errorf("DAGrpc.Host cannot be empty")
