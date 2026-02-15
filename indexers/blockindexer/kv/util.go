@@ -3,6 +3,7 @@ package kv
 import (
 	"encoding/binary"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/google/orderedcode"
@@ -13,13 +14,7 @@ import (
 const BlockEventHeightKey = "blockevent.height"
 
 func intInSlice(a int, list []int) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(list, a)
 }
 
 func int64FromBytes(bz []byte) int64 {
