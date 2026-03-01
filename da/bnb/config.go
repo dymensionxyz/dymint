@@ -1,4 +1,4 @@
-package aptos
+package bnb
 
 import (
 	"encoding/json"
@@ -8,19 +8,19 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 )
 
-const aptSymbol = "APT"
-
-// Config stores Aptos DALC configuration parameters.
+// Config stores BNB DALC configuration parameters.
 type Config struct {
 	da.BaseConfig `json:",inline"`
 	da.KeyConfig  `json:",inline"`
-	NetworkID     string `json:"network_id,omitempty"`
+	Endpoint      string `json:"endpoint,omitempty"`
+	NetworkID     uint64 `json:"network_id,omitempty"`
 }
 
 var TestConfig = Config{
-	NetworkID: "testnet",
+	Endpoint:  "https://bsc-testnet-rpc.publicnode.com",
+	NetworkID: 97, // BSC testnet
 	KeyConfig: da.KeyConfig{
-		KeyPath: "/tmp/aptos_key.json",
+		KeyPath: "/tmp/bnb_key.json",
 	},
 }
 
@@ -31,10 +31,6 @@ func createConfig(bz []byte) (c Config, err error) {
 	err = json.Unmarshal(bz, &c)
 	if err != nil {
 		return c, fmt.Errorf("json unmarshal: %w", err)
-	}
-
-	if c.NetworkID == "" {
-		c.NetworkID = "testnet"
 	}
 
 	// Set common defaults (retry, backoff, timeout)

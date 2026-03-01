@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/cosmos/go-bip39"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet"
 	"github.com/kaspanet/kaspad/cmd/kaspawallet/libkaspawallet/bip32"
@@ -17,7 +18,6 @@ import (
 	"github.com/kaspanet/kaspad/infrastructure/network/rpcclient"
 	"github.com/kaspanet/kaspad/util"
 	"github.com/kaspanet/kaspad/util/txmass"
-	"github.com/tyler-smith/go-bip39"
 )
 
 const (
@@ -70,7 +70,7 @@ type Client struct {
 var _ KaspaClient = &Client{}
 
 func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClient, error) {
-	rpcClient, err := rpcclient.NewRPCClient(config.GrpcAddress)
+	rpcClient, err := rpcclient.NewRPCClient(config.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -80,13 +80,13 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 	}
 
 	var params *dagconfig.Params
-	switch config.Network {
+	switch config.NetworkID {
 	case Testnet:
 		params = &dagconfig.TestnetParams
 	case Mainnet:
 		params = &dagconfig.MainnetParams
 	default:
-		return nil, fmt.Errorf("kaspa network not set to testnet or mainnet. Param: %s", config.Network)
+		return nil, fmt.Errorf("kaspa network_id must be kaspa-mainnet or kaspa-testnet-10. Got: %s", config.NetworkID)
 	}
 
 	seed := bip39.NewSeed(mnemonic, "")
@@ -100,18 +100,32 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		return nil, err
 	}
 
-	address, err := util.DecodeAddress(config.Address, params.Prefix)
+	pubKey, err := master.Public()
 	if err != nil {
 		return nil, err
+	}
+
+	// Use default wallet address at index 0 (path m/44'/111111'/0'/0/0)
+	defaultWalletAddr := &walletAddress{
+		index:         0,
+		cosignerIndex: 0,
+		keyChain:      libkaspawallet.ExternalKeychain,
+	}
+
+	// Derive address string from public key at default path
+	addrPath := walletAddressPath(defaultWalletAddr)
+	addrStr, err := libkaspawallet.Address(params, []string{pubKey.String()}, 1, addrPath, false)
+	if err != nil {
+		return nil, fmt.Errorf("derive address from mnemonic: %w", err)
+	}
+
+	address, err := util.DecodeAddress(addrStr.String(), params.Prefix)
+	if err != nil {
+		return nil, fmt.Errorf("decode derived address: %w", err)
 	}
 
 	httpClient := &http.Client{
 		Timeout: config.Timeout,
-	}
-
-	pubKey, err := master.Public()
-	if err != nil {
-		return nil, err
 	}
 
 	kaspaClient := &Client{
@@ -119,6 +133,7 @@ func NewClient(ctx context.Context, config *Config, mnemonic string) (KaspaClien
 		httpClient:       httpClient,
 		publicKey:        pubKey,
 		address:          address,
+		wAddress:         defaultWalletAddr,
 		params:           params,
 		mnemonic:         mnemonic,
 		apiURL:           config.APIUrl,

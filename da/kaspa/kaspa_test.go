@@ -31,14 +31,10 @@ import (
 func TestKaspaDataAvailabilityClient(t *testing.T) {
 	t.Skip("Skipping Kaspa client test")
 
-	// Set up test environment
-	mnemoEnv := "KASPA_MNEMONIC"
-	mnemonic := "broom home badge wrap unveil smoke birth erupt scan merry deny neglect pull select hold winner crouch hazard wear van spell jewel moment actual"
-	err := os.Setenv(mnemoEnv, mnemonic)
-	require.NoError(t, err)
-
-	// Create test config. By default, tests use Kaspa testnet.
+	// Create test config with mnemonic directly
 	config := client.TestConfig
+	config.KeyConfig.Mnemonic = "broom home badge wrap unveil smoke birth erupt scan merry deny neglect pull select hold winner crouch hazard wear van spell jewel moment actual"
+	config.KeyConfig.MnemonicPath = "" // Clear the path since we're using direct mnemonic
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
 

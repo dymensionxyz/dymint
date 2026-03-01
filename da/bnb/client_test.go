@@ -2,6 +2,7 @@ package bnb_test
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -23,7 +24,7 @@ import (
 	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/bnb"
 )
 
-// TestBNB validates the SubmitBatch and RetrieveBatches method
+// TestBNBSubmitRetrieve validates the SubmitBatch and RetrieveBatches method using mock client
 func TestBNBSubmitRetrieve(t *testing.T) {
 	// init mock
 	mockClient, client := setDAandMock(t)
@@ -114,11 +115,23 @@ func setDAandMock(t *testing.T) (*mocks.MockBNBClient, da.DataAvailabilityLayerC
 	// init avail DA with mock RPC client
 	dalc := registry.GetClient("bnb")
 
-	config := bnb.BNBConfig{
-		Timeout:    5000000000,
-		Endpoint:   "http://localhost:8545/rpc",
-		ChainId:    1,
-		PrivateKey: "459c954ea1366473e0edfa4cf55b8028fa6405e44959cfcaa1771890dc527275",
+	// Create temp file with test private key in JSON format
+	keyFile, err := os.CreateTemp("", "bnb_test_key")
+	require.NoError(err)
+	defer os.Remove(keyFile.Name())
+	_, err = keyFile.WriteString(`{"private_key": "459c954ea1366473e0edfa4cf55b8028fa6405e44959cfcaa1771890dc527275"}`)
+	require.NoError(err)
+	keyFile.Close()
+
+	config := bnb.Config{
+		BaseConfig: da.BaseConfig{
+			Timeout: 5000000000,
+		},
+		KeyConfig: da.KeyConfig{
+			KeyPath: keyFile.Name(),
+		},
+		Endpoint:  "http://localhost:8545/rpc",
+		NetworkID: 1,
 	}
 
 	conf, err := json.Marshal(config)

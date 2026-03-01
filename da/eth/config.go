@@ -4,46 +4,34 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
-	uretry "github.com/dymensionxyz/dymint/utils/retry"
+	"github.com/dymensionxyz/dymint/da"
 )
 
 const (
-	defaultRpcRetryDelay    = 3 * time.Second
-	defaultRpcRetryAttempts = 5
-	defaultGasLimit         = uint64(21000) // standard gas for blob tx execution (blob gas is separate)
-	defaultPrivateKeyEnv    = "ETH_PRIVATE_KEY"
-	defaultTimeout          = 500000000000
-)
-
-var defaultSubmitBackoff = uretry.NewBackoffConfig(
-	uretry.WithInitialDelay(time.Second*6),
-	uretry.WithMaxDelay(time.Second*6),
+	defaultGasLimit = uint64(21000) // standard gas for blob tx execution (blob gas is separate)
 )
 
 // Config stores Eth DALC configuration parameters.
-type EthConfig struct {
-	Timeout       time.Duration        `json:"timeout,omitempty"`
-	Endpoint      string               `json:"endpoint"`
-	PrivateKeyEnv string               `json:"private_key_env"`
-	ChainId       uint64               `json:"chain_id"`
-	ApiUrl        string               `json:"api_url"`
-	Backoff       uretry.BackoffConfig `json:"backoff,omitempty"`
-	RetryAttempts *int                 `json:"retry_attempts,omitempty"`
-	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`
-	GasLimit      *uint64              `json:"gas_limit"`
+type Config struct {
+	da.BaseConfig `json:",inline"`
+	da.KeyConfig  `json:",inline"`
+	Endpoint      string  `json:"endpoint,omitempty"`
+	NetworkID     uint64  `json:"network_id,omitempty"`
+	ApiUrl        string  `json:"api_url,omitempty"`
+	GasLimit      *uint64 `json:"gas_limit,omitempty"`
 }
 
-var TestConfig = EthConfig{
-	Timeout:       500000000000,
-	PrivateKeyEnv: "ETH_PRIVATE_KEY",
-	Endpoint:      "https://ethereum-sepolia-rpc.publicnode.com",
-	ChainId:       11155111,
-	ApiUrl:        "https://ethereum-sepolia-beacon-api.publicnode.com",
+var TestConfig = Config{
+	KeyConfig: da.KeyConfig{
+		KeyPath: "/tmp/eth_key.json",
+	},
+	Endpoint:  "https://ethereum-sepolia-rpc.publicnode.com",
+	NetworkID: 11155111,
+	ApiUrl:    "https://ethereum-sepolia-beacon-api.publicnode.com",
 }
 
-func createConfig(bz []byte) (c EthConfig, err error) {
+func createConfig(bz []byte) (c Config, err error) {
 	if len(bz) <= 0 {
 		return c, errors.New("supplied config is empty")
 	}
@@ -52,27 +40,13 @@ func createConfig(bz []byte) (c EthConfig, err error) {
 		return c, fmt.Errorf("json unmarshal: %w", err)
 	}
 
-	if c.PrivateKeyEnv == "" {
-		c.PrivateKeyEnv = defaultPrivateKeyEnv
-	}
-
-	if c.Timeout == 0 {
-		c.Timeout = defaultTimeout
-	}
-
-	if c.RetryDelay == 0 {
-		c.RetryDelay = defaultRpcRetryDelay
-	}
-	if c.Backoff == (uretry.BackoffConfig{}) {
-		c.Backoff = defaultSubmitBackoff
-	}
-	if c.RetryAttempts == nil {
-		attempts := defaultRpcRetryAttempts
-		c.RetryAttempts = &attempts
-	}
 	if c.GasLimit == nil {
 		gasLimit := defaultGasLimit
 		c.GasLimit = &gasLimit
 	}
+
+	// Set common defaults (retry, backoff, timeout)
+	c.BaseConfig.SetDefaults()
+
 	return c, nil
 }

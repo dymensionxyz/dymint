@@ -8,12 +8,19 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/ethutils"
 	"github.com/dymensionxyz/go-ethereum/common"
 	"github.com/dymensionxyz/go-ethereum/core/types"
 	"github.com/dymensionxyz/go-ethereum/crypto"
 	"github.com/dymensionxyz/go-ethereum/crypto/kzg4844"
 	"github.com/holiman/uint256"
+)
+
+const (
+	// DefaultBNBDerivationPath is the default BIP44 derivation path for BNB/BSC
+	// BNB uses coin type 60 (same as Ethereum) for BSC compatibility
+	DefaultBNBDerivationPath = "m/44'/60'/0'/0/0"
 )
 
 type Account struct {
@@ -105,6 +112,8 @@ func createBlobTx(key *ecdsa.PrivateKey, chainId, gasLimit uint64, gasTipCap *bi
 }
 
 func fromHexKey(hexkey string) (*Account, error) {
+	// Remove 0x prefix if present
+	hexkey = strings.TrimPrefix(hexkey, "0x")
 	key, err := crypto.HexToECDSA(hexkey)
 	if err != nil {
 		return &Account{}, err
@@ -117,4 +126,22 @@ func fromHexKey(hexkey string) (*Account, error) {
 	}
 	addr := crypto.PubkeyToAddress(*pubKeyECDSA)
 	return &Account{key, addr}, nil
+}
+
+// accountFromMnemonic returns BNB account from BIP39 mnemonic using BIP44 derivation path
+func accountFromMnemonic(mnemonic string) (*Account, error) {
+	privateKey, err := da.DeriveECDSAKeyFromMnemonic(mnemonic, DefaultBNBDerivationPath)
+	if err != nil {
+		return nil, fmt.Errorf("derive key from mnemonic: %w", err)
+	}
+
+	// Derive address from public key
+	publicKey := privateKey.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return nil, errors.New("failed to get public key")
+	}
+	addr := crypto.PubkeyToAddress(*publicKeyECDSA)
+
+	return &Account{privateKey, addr}, nil
 }

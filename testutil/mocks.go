@@ -201,8 +201,10 @@ func NewMockDA(t *testing.T) (*MockDA, error) {
 	mockDA.DaClient = registry.GetClient("celestia")
 
 	config := celestia.Config{
+		BaseConfig: da.BaseConfig{
+			Timeout: 30 * time.Second,
+		},
 		BaseURL:        "http://localhost:26658",
-		Timeout:        30 * time.Second,
 		GasPrices:      celestia.DefaultGasPrices,
 		NamespaceIDStr: "0000000000000000ffff",
 	}

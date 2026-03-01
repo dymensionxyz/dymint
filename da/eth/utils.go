@@ -9,12 +9,19 @@ import (
 	"math/big"
 	"net/http"
 
+	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/ethutils"
 	"github.com/dymensionxyz/go-ethereum/common"
 	"github.com/dymensionxyz/go-ethereum/core/types"
 	"github.com/dymensionxyz/go-ethereum/crypto"
 	"github.com/dymensionxyz/go-ethereum/crypto/kzg4844"
 	"github.com/holiman/uint256"
+)
+
+const (
+	// DefaultEthDerivationPath is the default BIP44 derivation path for Ethereum
+	// Used by MetaMask, Ledger, Trezor, etc.
+	DefaultEthDerivationPath = "m/44'/60'/0'/0/0"
 )
 
 type Account struct {
@@ -122,6 +129,24 @@ func accountFromHexKey(hexkey string) (*Account, error) {
 	}
 	addr := crypto.PubkeyToAddress(*pubKeyECDSA)
 	return &Account{key, addr}, nil
+}
+
+// accountFromMnemonic returns Eth account from BIP39 mnemonic using BIP44 derivation path
+func accountFromMnemonic(mnemonic string) (*Account, error) {
+	privateKey, err := da.DeriveECDSAKeyFromMnemonic(mnemonic, DefaultEthDerivationPath)
+	if err != nil {
+		return nil, fmt.Errorf("derive key from mnemonic: %w", err)
+	}
+
+	// Derive address from public key
+	publicKey := privateKey.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return nil, errors.New("failed to get public key")
+	}
+	addr := crypto.PubkeyToAddress(*publicKeyECDSA)
+
+	return &Account{privateKey, addr}, nil
 }
 
 // calculateNextBaseFee estimates base fee for EIP-1559

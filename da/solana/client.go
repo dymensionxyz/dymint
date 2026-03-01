@@ -6,17 +6,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/decred/base58"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/gagliardetto/solana-go"
-	"golang.org/x/time/rate"
-
 	"github.com/gagliardetto/solana-go/rpc"
+	"golang.org/x/time/rate"
 )
 
 const maxTxData = 973 // 1232 max tx size - 195 bytes (64 signature + 3 header + 96 accounts + 32 blockhash + 64 tx string)
@@ -48,19 +45,12 @@ type RPCClient struct {
 // NewClient creates the new client that is used to communicate with Solana chain
 func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 	// create two rpc clients, one for sending transactions and one for queries. done this way to allow different rate limits.
-	txRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.SubmitTxRatePerSecond)
-	reqRpcClient := SetRpcClient(config.Endpoint, config.ApiKeyEnv, config.RequestTxRatePerSecond)
+	txRpcClient := setRpcClient(config.Endpoint, config.ApiKey, config.SubmitTxRatePerSecond)
+	reqRpcClient := setRpcClient(config.Endpoint, config.ApiKey, config.RequestTxRatePerSecond)
 
-	// keypath is used to get solana private key
-	keyPath := os.Getenv(config.KeyPathEnv)
-	if keyPath == "" {
-		return nil, fmt.Errorf("keyPath environment variable %s is not set or empty", config.KeyPathEnv)
-	}
-
-	// Load sender's private key (from file, base58, or other means)
-	sender, err := solana.PrivateKeyFromSolanaKeygenFile(keyPath)
+	sender, err := loadPrivateKey(config)
 	if err != nil {
-		log.Fatalf("Failed to load keypair: %v", err)
+		return nil, fmt.Errorf("load private key: %w", err)
 	}
 
 	// programId is created from config address
@@ -76,6 +66,29 @@ func NewClient(ctx context.Context, config *Config) (SolanaClient, error) {
 	}
 
 	return client, nil
+}
+
+// loadPrivateKey loads the Solana private key from the configured private key file.
+// Solana DA only supports private key file (JSON format with "private_key" field containing base58-encoded key).
+func loadPrivateKey(config *Config) (solana.PrivateKey, error) {
+	if err := config.KeyConfig.Validate(); err != nil {
+		return solana.PrivateKey{}, err
+	}
+
+	privateKey, err := config.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return solana.PrivateKey{}, err
+	}
+	if privateKey == "" {
+		return solana.PrivateKey{}, fmt.Errorf("keypath is required for Solana DA (mnemonic not supported)")
+	}
+
+	// Parse the base58-encoded private key
+	sender, err := solana.PrivateKeyFromBase58(privateKey)
+	if err != nil {
+		return solana.PrivateKey{}, fmt.Errorf("parse private key: %w", err)
+	}
+	return sender, nil
 }
 
 // SubmitBlob slices the blob in small pieces and sends each piece to the Solana program (specified in config) as input data. It returns the list of transactions plus the blob hash used to compare with the original one on retrieval.
@@ -255,17 +268,15 @@ func (c *Client) getDataFromTxLogs(txHash string) (string, string, error) {
 	return data, hash, nil
 }
 
-func SetRpcClient(endpoint string, apiKeyEnv string, maxRatePerSecond *int) *RPCClient {
-	if os.Getenv(apiKeyEnv) != "" && maxRatePerSecond != nil {
-		apiKey := os.Getenv(apiKeyEnv)
+func setRpcClient(endpoint string, apiKey string, maxRatePerSecond *int) *RPCClient {
+	if apiKey != "" && maxRatePerSecond != nil {
 		jsonRpcClient := rpc.NewWithLimiterWithCustomHeaders(endpoint, rate.Every(time.Second), *maxRatePerSecond, map[string]string{
 			"x-api-key": apiKey,
 		})
 		return &RPCClient{rpc.NewWithCustomRPCClient(jsonRpcClient), "limiter+apikey"}
 	}
 
-	if os.Getenv(apiKeyEnv) != "" {
-		apiKey := os.Getenv(apiKeyEnv)
+	if apiKey != "" {
 		return &RPCClient{rpc.NewWithHeaders(endpoint, map[string]string{
 			"x-api-key": apiKey,
 		}), "apikey"}

@@ -41,18 +41,6 @@ type Gateway interface {
 	RetrieveFromGateway(ctx context.Context, txHash string) (*loadnetworktypes.LNDymintBlob, error)
 }
 
-// TODO: adjust
-const (
-	defaultRpcRetryDelay    = 3 * time.Second
-	defaultRpcTimeout       = 5 * time.Second
-	defaultRpcRetryAttempts = 5
-)
-
-var defaultSubmitBackoff = uretry.NewBackoffConfig(
-	uretry.WithInitialDelay(time.Second*6),
-	uretry.WithMaxDelay(time.Second*6),
-)
-
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
 	client       LoadNetwork
@@ -119,20 +107,9 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	c.pubsubServer = pubsubServer
 	c.logger = logger
 
-	// Validate and set defaults for config
-	if cfg.Timeout == 0 {
-		cfg.Timeout = defaultRpcTimeout
-	}
-	if cfg.RetryDelay == 0 {
-		cfg.RetryDelay = defaultRpcRetryDelay
-	}
-	if cfg.RetryAttempts == nil {
-		attempts := defaultRpcRetryAttempts
-		cfg.RetryAttempts = &attempts
-	}
-	if cfg.Backoff == (uretry.BackoffConfig{}) {
-		cfg.Backoff = defaultSubmitBackoff
-	}
+	// Set common defaults (retry, backoff, timeout)
+	cfg.BaseConfig.SetDefaults()
+
 	if cfg.ChainID == 0 {
 		return fmt.Errorf("chain ID must be set")
 	}
@@ -163,20 +140,40 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 				return fmt.Errorf("failed to initialize rpc client: %w", err)
 			}
 			c.client = client
-		} else if cfg.PrivateKeyHex != "" {
-			// Initialize with private key
-			privateKeySigner := signer.NewPrivateKeySigner(cfg.PrivateKeyHex, logger, cfg.ChainID)
+		} else {
+			// Try to load private key from KeyConfig
+			privateKeyHex, err := loadPrivateKey(&cfg)
+			if err != nil {
+				return fmt.Errorf("load private key: %w", err)
+			}
+			privateKeySigner := signer.NewPrivateKeySigner(privateKeyHex, logger, cfg.ChainID)
 			client, err := rpc.NewLNRPCClient(logger, &cfg, privateKeySigner)
 			if err != nil {
 				return fmt.Errorf("failed to initialize rpc client: %w", err)
 			}
 			c.client = client
-		} else {
-			return fmt.Errorf("either web3signer endpoint or private key must be provided")
 		}
 	}
 
 	return nil
+}
+
+// loadPrivateKey loads the private key from the configured private key file.
+// LoadNetwork DA only supports private key file (JSON format with "private_key" field).
+func loadPrivateKey(cfg *loadnetworktypes.Config) (string, error) {
+	if err := cfg.KeyConfig.Validate(); err != nil {
+		return "", err
+	}
+
+	privateKey, err := cfg.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return "", err
+	}
+	if privateKey == "" {
+		return "", fmt.Errorf("keypath is required for LoadNetwork DA (mnemonic not supported)")
+	}
+
+	return privateKey, nil
 }
 
 // Start starts DataAvailabilityLayerClient instance.

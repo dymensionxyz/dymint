@@ -33,7 +33,7 @@ type Client struct {
 	ethclient *ethclient.Client
 	rpcClient *rpc.Client
 	ctx       context.Context
-	cfg       *BNBConfig
+	cfg       *Config
 	account   *Account
 }
 
@@ -89,15 +89,15 @@ func (c Client) ValidateInclusion(txHash string, txCommitment []byte, txProof []
 
 var _ BNBClient = &Client{}
 
-func NewClient(ctx context.Context, config *BNBConfig) (BNBClient, error) {
+func NewClient(ctx context.Context, config *Config) (BNBClient, error) {
 	rpcClient, err := rpc.DialContext(ctx, config.Endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	account, err := fromHexKey(config.PrivateKey)
+	account, err := loadAccount(config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load account: %w", err)
 	}
 
 	client := Client{
@@ -109,6 +109,34 @@ func NewClient(ctx context.Context, config *BNBConfig) (BNBClient, error) {
 	}
 
 	return client, nil
+}
+
+// loadAccount loads the account from the configured source.
+// Supports both mnemonic (direct or from file) and private key (from JSON file).
+func loadAccount(config *Config) (*Account, error) {
+	if err := config.KeyConfig.Validate(); err != nil {
+		return nil, err
+	}
+
+	// Try mnemonic first (direct or from file)
+	mnemonic, err := config.KeyConfig.GetMnemonic()
+	if err != nil {
+		return nil, err
+	}
+	if mnemonic != "" {
+		return accountFromMnemonic(mnemonic)
+	}
+
+	// Try private key from JSON file
+	privateKey, err := config.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	if privateKey != "" {
+		return fromHexKey(privateKey)
+	}
+
+	return nil, fmt.Errorf("key configuration required for BNB DA: set mnemonic, mnemonic_path, or keypath")
 }
 
 // SubmitBlob sends blob data to BNB chain
@@ -148,7 +176,7 @@ func (c Client) SubmitBlob(blob []byte) (common.Hash, []byte, []byte, error) {
 	}
 
 	// create blob tx with blob and fee params previously obtained
-	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
+	blobTx, err := createBlobTx(c.account.Key, c.cfg.NetworkID, gas, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	if err != nil {
 		return common.Hash{}, nil, nil, err
 	}
