@@ -84,7 +84,7 @@ func estimateTransientMass(transaction *serialization.PartiallySignedTransaction
 	return uint64(len(serializedTx) * TRANSIENT_BYTE_TO_MASS_FACTOR), nil //nolint:gosec // serializedTx size will not overflow
 }
 
-// estimateTransientMass calculates the overall mass of the transaction including compute and storage mass components (see KIP-0009)
+// estimateMassAfterSignatures calculates the overall mass of the transaction including compute and storage mass components (see KIP-0009)
 func estimateMassAfterSignatures(transaction *serialization.PartiallySignedTransaction, ecdsa bool, minimumSignatures uint32, txMassCalculator *txmass.Calculator) (uint64, error) {
 	transactionWithSignatures, err := createTransactionWithJunkFieldsForMassCalculation(transaction, ecdsa, minimumSignatures, txMassCalculator)
 	if err != nil {
