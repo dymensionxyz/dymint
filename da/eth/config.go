@@ -24,15 +24,17 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 
 // Config stores Eth DALC configuration parameters.
 type EthConfig struct {
-	Timeout       time.Duration        `json:"timeout,omitempty"`
-	Endpoint      string               `json:"endpoint"`
-	PrivateKeyEnv string               `json:"private_key_env"`
-	ChainId       uint64               `json:"chain_id"`
-	ApiUrl        string               `json:"api_url"`
-	Backoff       uretry.BackoffConfig `json:"backoff,omitempty"`
-	RetryAttempts *int                 `json:"retry_attempts,omitempty"`
-	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`
-	GasLimit      *uint64              `json:"gas_limit"`
+	Timeout        time.Duration        `json:"timeout,omitempty"`
+	Endpoint       string               `json:"endpoint"`
+	PrivateKeyEnv  string               `json:"private_key_env,omitempty"`  // Environment variable name for private key (highest priority)
+	PrivateKeyFile string               `json:"private_key_file,omitempty"` // Path to file containing private key (second priority)
+	PrivateKey     string               `json:"private_key,omitempty"`      // Private key directly in config (lowest priority, fallback only)
+	ChainId        uint64               `json:"chain_id"`
+	ApiUrl         string               `json:"api_url"`
+	Backoff        uretry.BackoffConfig `json:"backoff,omitempty"`
+	RetryAttempts  *int                 `json:"retry_attempts,omitempty"`
+	RetryDelay     time.Duration        `json:"retry_delay,omitempty"`
+	GasLimit       *uint64              `json:"gas_limit"`
 }
 
 var TestConfig = EthConfig{

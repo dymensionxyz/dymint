@@ -19,7 +19,19 @@ LoadNetwork integration within Dymension allows decentralized and secure way to 
 
 ### Configuration Options
 
-For EOA private key signing:
+For EOA private key signing (using environment variable - recommended):
+
+```toml
+da_config = '{"endpoint":"https://alphanet.load.network","chain_id":9496,"timeout":60000000000,"private_key_env":"LN_PRIVATE_KEY"}'
+```
+
+For EOA private key signing (using file - recommended for production):
+
+```toml
+da_config = '{"endpoint":"https://alphanet.load.network","chain_id":9496,"timeout":60000000000,"private_key_file":"/path/to/private_key.txt"}'
+```
+
+For EOA private key signing (direct in config - alternative, not recommended for production):
 
 ```toml
 da_config = '{"endpoint":"https://alphanet.load.network","chain_id":9496,"timeout":60000000000,"private_key_hex":"your_hex_string_ln_priv_key_without_0x_at_the_beginning"}'

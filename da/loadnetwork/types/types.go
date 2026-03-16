@@ -18,7 +18,9 @@ type Config struct {
 	Endpoint string        `json:"endpoint,omitempty"`
 
 	// Signer config (either private key or web3signer required)
-	PrivateKeyHex           string `json:"private_key_hex,omitempty"`
+	PrivateKeyEnv           string `json:"private_key_env,omitempty"`  // Environment variable name for private key (highest priority)
+	PrivateKeyFile          string `json:"private_key_file,omitempty"` // Path to file containing private key (second priority)
+	PrivateKeyHex           string `json:"private_key_hex,omitempty"`  // Private key directly in config (lowest priority, fallback only)
 	Web3SignerEndpoint      string `json:"web3_signer_endpoint,omitempty"`
 	Web3SignerTLSCertFile   string `json:"web3_signer_tls_cert_file,omitempty"`
 	Web3SignerTLSKeyFile    string `json:"web3_signer_tls_key_file,omitempty"`

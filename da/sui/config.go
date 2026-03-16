@@ -28,7 +28,9 @@ type Config struct {
 	NoopContractAddress string               `json:"noop_contract_address,omitempty"`
 	GasBudget           string               `json:"gas_budget,omitempty"`
 	Timeout             time.Duration        `json:"timeout,omitempty"`
-	MnemonicEnv         string               `json:"mnemonic_env,omitempty"`
+	MnemonicEnv         string               `json:"mnemonic_env,omitempty"`  // Environment variable name for mnemonic (highest priority)
+	MnemonicFile        string               `json:"mnemonic_file,omitempty"` // Path to file containing mnemonic (second priority)
+	Mnemonic            string               `json:"mnemonic,omitempty"`      // Mnemonic directly in config (lowest priority, fallback only)
 	Backoff             uretry.BackoffConfig `json:"backoff,omitempty"`
 	RetryAttempts       *int                 `json:"retry_attempts,omitempty"`
 	RetryDelay          time.Duration        `json:"retry_delay,omitempty"`
