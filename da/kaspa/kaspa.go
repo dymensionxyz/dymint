@@ -346,7 +346,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *SubmitM
 				// Check if this is a maturity error with missing confirmations info
 				if errors.As(err, &maturityErr) {
 					// Calculate dynamic delay based on missing confirmations. Kaspa has 10 blocks per second, so we estimate delay accordingly
-					currentDelay += time.Duration(float64(maturityErr.MissingConfirmations)/client.KaspaBlocksPerSecond) * time.Second
+					currentDelay = c.batchRetryDelay + time.Duration(float64(maturityErr.MissingConfirmations)/client.KaspaBlocksPerSecond)*time.Second
 
 					c.logger.Debug("Transaction not mature yet, retrying with dynamic delay",
 						"txHash", daMetaData.TxHash,
