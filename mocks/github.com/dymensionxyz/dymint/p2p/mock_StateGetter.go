@@ -20,17 +20,17 @@ func (_m *MockStateGetter) EXPECT() *MockStateGetter_Expecter {
 	return &MockStateGetter_Expecter{mock: &_m.Mock}
 }
 
-// GetRevision provides a mock function with no fields
-func (_m *MockStateGetter) GetRevision() uint64 {
-	ret := _m.Called()
+// GetRevisionNumberByHeight provides a mock function with given fields: height
+func (_m *MockStateGetter) GetRevisionNumberByHeight(height uint64) uint64 {
+	ret := _m.Called(height)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetRevision")
+		panic("no return value specified for GetRevisionNumberByHeight")
 	}
 
 	var r0 uint64
-	if rf, ok := ret.Get(0).(func() uint64); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(uint64) uint64); ok {
+		r0 = rf(height)
 	} else {
 		r0 = ret.Get(0).(uint64)
 	}
@@ -38,29 +38,30 @@ func (_m *MockStateGetter) GetRevision() uint64 {
 	return r0
 }
 
-// MockStateGetter_GetRevision_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRevision'
-type MockStateGetter_GetRevision_Call struct {
+// MockStateGetter_GetRevisionNumberByHeight_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRevisionNumberByHeight'
+type MockStateGetter_GetRevisionNumberByHeight_Call struct {
 	*mock.Call
 }
 
-// GetRevision is a helper method to define mock.On call
-func (_e *MockStateGetter_Expecter) GetRevision() *MockStateGetter_GetRevision_Call {
-	return &MockStateGetter_GetRevision_Call{Call: _e.mock.On("GetRevision")}
+// GetRevisionNumberByHeight is a helper method to define mock.On call
+//   - height uint64
+func (_e *MockStateGetter_Expecter) GetRevisionNumberByHeight(height interface{}) *MockStateGetter_GetRevisionNumberByHeight_Call {
+	return &MockStateGetter_GetRevisionNumberByHeight_Call{Call: _e.mock.On("GetRevisionNumberByHeight", height)}
 }
 
-func (_c *MockStateGetter_GetRevision_Call) Run(run func()) *MockStateGetter_GetRevision_Call {
+func (_c *MockStateGetter_GetRevisionNumberByHeight_Call) Run(run func(height uint64)) *MockStateGetter_GetRevisionNumberByHeight_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(uint64))
 	})
 	return _c
 }
 
-func (_c *MockStateGetter_GetRevision_Call) Return(_a0 uint64) *MockStateGetter_GetRevision_Call {
+func (_c *MockStateGetter_GetRevisionNumberByHeight_Call) Return(_a0 uint64) *MockStateGetter_GetRevisionNumberByHeight_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockStateGetter_GetRevision_Call) RunAndReturn(run func() uint64) *MockStateGetter_GetRevision_Call {
+func (_c *MockStateGetter_GetRevisionNumberByHeight_Call) RunAndReturn(run func(uint64) uint64) *MockStateGetter_GetRevisionNumberByHeight_Call {
 	_c.Call.Return(run)
 	return _c
 }

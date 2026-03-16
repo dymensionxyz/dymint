@@ -214,8 +214,8 @@ func (m *Manager) Start(ctx context.Context) error {
 		return err
 	}
 
-	// update dymint state with next revision info
-	err = m.updateStateForNextRevision()
+	// update dymint state with revisions info
+	err = m.updateStateWithRevisions()
 	if err != nil {
 		return err
 	}
@@ -395,8 +395,8 @@ func (m *Manager) SafeProposerPubKey() (tmcrypto.PubKey, error) {
 	return m.State.SafeProposerPubKey()
 }
 
-func (m *Manager) GetRevision() uint64 {
-	return m.State.GetRevision()
+func (m *Manager) GetRevisionNumberByHeight(height uint64) uint64 {
+	return m.State.GetRevisionByHeight(height).Revision.Consensus.App
 }
 
 func (m *Manager) UpdateTargetHeight(h uint64) {

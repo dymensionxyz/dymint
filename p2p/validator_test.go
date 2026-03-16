@@ -9,6 +9,7 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -16,6 +17,8 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 
 	cfg "github.com/tendermint/tendermint/config"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	"github.com/tendermint/tendermint/proto/tendermint/version"
 	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/block"
@@ -133,6 +136,8 @@ func TestValidator_BlockValidator(t *testing.T) {
 			maxBytes := uint64(100)
 			state := &types.State{}
 			state.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)))
+			revisions := []types.Revision{{Revision: tmstate.Version{Consensus: version.Consensus{App: 0, Block: 11}}, StartHeight: 0}}
+			state.SetRevisions(revisions)
 			state.ConsensusParams.Block.MaxGas = 100000
 			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 
@@ -141,7 +146,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 
 			getProposer := &p2pmock.MockStateGetter{}
 			getProposer.On("SafeProposerPubKey").Return(proposerKey.PubKey(), nil)
-			getProposer.On("GetRevision").Return(uint64(0))
+			getProposer.On("GetRevisionNumberByHeight", mock.Anything).Return(uint64(0))
 
 			// Create commit for the block
 			abciHeaderPb := types.ToABCIHeaderPB(&block.Header)
