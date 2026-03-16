@@ -39,7 +39,7 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 		m.UpdateTargetHeight(eventData.EndHeight)
 	} else {
 		// trigger validation of the last state update available in settlement
-		m.triggerSettlementValidation()
+		m.TriggerSettlementValidation()
 	}
 }
 
@@ -95,7 +95,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSettlementHeight.Load())
 
 				// trigger state update validation, after each state update is applied
-				m.triggerSettlementValidation()
+				m.TriggerSettlementValidation()
 
 			}
 
@@ -131,8 +131,8 @@ func (m *Manager) triggerSettlementSyncing() {
 	}
 }
 
-// triggerSettlementValidation sends signal to channel used by validation loop
-func (m *Manager) triggerSettlementValidation() {
+// TriggerSettlementValidation sends signal to channel used by validation loop
+func (m *Manager) TriggerSettlementValidation() {
 	select {
 	case m.settlementValidationC <- struct{}{}:
 	default:
