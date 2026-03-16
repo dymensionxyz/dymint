@@ -2,8 +2,8 @@ package sui
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
-	"os"
 
 	"cosmossdk.io/math"
 	"github.com/avast/retry-go/v4"
@@ -464,21 +464,59 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		return nil
 	}
 
-	mnemonic := os.Getenv(c.config.MnemonicEnv)
-	if mnemonic == "" {
-		return fmt.Errorf("mnemonic environment variable %s is not set or empty", c.config.MnemonicEnv)
-	}
-
-	signer, err := suisigner.NewSignertWithMnemonic(mnemonic)
+	signer, err := c.loadSigner()
 	if err != nil {
-		return fmt.Errorf("create signer from mnemonic: %w", err)
+		return fmt.Errorf("load signer: %w", err)
 	}
 
-	c.cli = sui.NewSuiClient(c.config.RPCURL)
+	c.cli = sui.NewSuiClient(c.config.Endpoint)
 	c.signer = signer
 
 	c.logger.Info("Sui client initialized successfully", "address", c.signer.Address)
 	return nil
+}
+
+// loadSigner loads the Sui signer from the configured source.
+// Supports both mnemonic (direct or from file) and private key (from JSON file).
+func (c *DataAvailabilityLayerClient) loadSigner() (*suisigner.Signer, error) {
+	if err := c.config.KeyConfig.Validate(); err != nil {
+		return nil, err
+	}
+
+	// Try mnemonic first (direct or from file)
+	mnemonic, err := c.config.KeyConfig.GetMnemonic()
+	if err != nil {
+		return nil, err
+	}
+	if mnemonic != "" {
+		return suisigner.NewSignertWithMnemonic(mnemonic)
+	}
+
+	// Try private key from JSON file
+	privateKey, err := c.config.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	if privateKey != "" {
+		return signerFromHexKey(privateKey)
+	}
+
+	return nil, fmt.Errorf("key configuration required for Sui DA: set mnemonic, mnemonic_path, or keypath")
+}
+
+// signerFromHexKey creates a Sui signer from a hex-encoded private key.
+func signerFromHexKey(hexKey string) (*suisigner.Signer, error) {
+	// Remove 0x prefix if present
+	if len(hexKey) > 2 && hexKey[:2] == "0x" {
+		hexKey = hexKey[2:]
+	}
+
+	seed, err := hex.DecodeString(hexKey)
+	if err != nil {
+		return nil, fmt.Errorf("decode hex key: %w", err)
+	}
+
+	return suisigner.NewSigner(seed), nil
 }
 
 // Stop stops the Sui Data Availability Layer Client.
@@ -529,7 +567,7 @@ func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint64 {
 
 // TestRequestCoins requests coins from the Sui faucet. Only for testing purposes.
 func (c *DataAvailabilityLayerClient) TestRequestCoins() error {
-	err := sui.RequestSuiFromFaucet("https://faucet.devnet.sui.io", c.signer.Address, map[string]string{})
+	err := sui.RequestSuiFromFaucet("https://faucet.sui.io/?network=devnet", c.signer.Address, map[string]string{})
 	if err != nil {
 		return fmt.Errorf("request coins: %w", err)
 	}

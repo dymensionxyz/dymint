@@ -7,6 +7,7 @@ import (
 	"errors"
 	"math/big"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -79,7 +80,7 @@ const (
 func setupTestDALC(t *testing.T, mockLN *MockLoadNetwork, mockGateway *MockGateway) (*loadnetwork.DataAvailabilityLayerClient, *pubsub.Server) {
 	t.Helper()
 
-	cfg := getTestConfig()
+	cfg := getTestConfig(t)
 	configBytes, err := json.Marshal(cfg)
 	require.NoError(t, err)
 
@@ -123,10 +124,20 @@ func compareBlocks(t *testing.T, expected, actual *types.Block) {
 // TestInit checks different config initialization scenarios with sub-tests.
 func TestInit(t *testing.T) {
 	t.Run("ValidConfigWithPrivateKey", func(t *testing.T) {
+		// Create temp file with test private key in JSON format
+		keyFile, err := os.CreateTemp("", "ln_test_key")
+		require.NoError(t, err)
+		defer os.Remove(keyFile.Name())
+		_, err = keyFile.WriteString(`{"private_key": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"}`)
+		require.NoError(t, err)
+		keyFile.Close()
+
 		config := loadnetworktypes.Config{
-			ChainID:       1,
-			PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-			Endpoint:      "http://localhost:8545",
+			ChainID:  1,
+			Endpoint: "http://localhost:8545",
+			KeyConfig: da.KeyConfig{
+				KeyPath: keyFile.Name(),
+			},
 		}
 		configBytes, err := json.Marshal(config)
 		require.NoError(t, err)
@@ -164,9 +175,19 @@ func TestInit(t *testing.T) {
 	})
 
 	t.Run("InvalidConfigNoChainID", func(t *testing.T) {
+		// Create temp file with test private key in JSON format
+		keyFile, err := os.CreateTemp("", "ln_test_key")
+		require.NoError(t, err)
+		defer os.Remove(keyFile.Name())
+		_, err = keyFile.WriteString(`{"private_key": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"}`)
+		require.NoError(t, err)
+		keyFile.Close()
+
 		config := loadnetworktypes.Config{
-			PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-			Endpoint:      "http://localhost:8545",
+			Endpoint: "http://localhost:8545",
+			KeyConfig: da.KeyConfig{
+				KeyPath: keyFile.Name(),
+			},
 		}
 		configBytes, err := json.Marshal(config)
 		require.NoError(t, err)
@@ -177,20 +198,32 @@ func TestInit(t *testing.T) {
 	})
 }
 
-func getTestConfig() loadnetworktypes.Config {
+func getTestConfig(t *testing.T) loadnetworktypes.Config {
+	// Create temp file with test private key in JSON format
+	keyFile, err := os.CreateTemp("", "ln_test_key")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Remove(keyFile.Name()) })
+	_, err = keyFile.WriteString(`{"private_key": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"}`)
+	require.NoError(t, err)
+	keyFile.Close()
+
 	attempts := 1 // Single attempt for tests to simplify validation
 	return loadnetworktypes.Config{
-		ChainID:       1,
-		PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-		Endpoint:      "http://localhost:8545",
-		Timeout:       1 * time.Second,
-		RetryDelay:    100 * time.Millisecond,
-		RetryAttempts: &attempts,
-		// Disable backoff for predictable behavior in tests
-		Backoff: uretry.BackoffConfig{
-			InitialDelay: 1 * time.Millisecond,
-			MaxDelay:     1 * time.Millisecond,
-			GrowthFactor: 1.0,
+		BaseConfig: da.BaseConfig{
+			Timeout:       1 * time.Second,
+			RetryDelay:    100 * time.Millisecond,
+			RetryAttempts: &attempts,
+			// Disable backoff for predictable behavior in tests
+			Backoff: uretry.BackoffConfig{
+				InitialDelay: 1 * time.Millisecond,
+				MaxDelay:     1 * time.Millisecond,
+				GrowthFactor: 1.0,
+			},
+		},
+		ChainID:  1,
+		Endpoint: "http://localhost:8545",
+		KeyConfig: da.KeyConfig{
+			KeyPath: keyFile.Name(),
 		},
 	}
 }

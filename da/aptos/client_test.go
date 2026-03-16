@@ -3,6 +3,7 @@ package aptos_test
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"cosmossdk.io/math"
@@ -18,18 +19,23 @@ import (
 const (
 	// Minimum APT balance required for testing
 	minAPTBalance = 1000000 // 0.001 APT
+	// Test private key (testnet only - DO NOT USE IN PRODUCTION)
+	testPrivateKey = "0x638802252197206baa5160bf2ac60e0b95491d2128a265e6ee51e0c1b0a59d9f"
 )
 
 func TestDataAvailabilityClient(t *testing.T) {
 	t.Skip("Skipping Aptos client tests")
 
-	// Set up test environment
-	priKeyEnv := "APT_PRIVATE_KEY"
-	err := os.Setenv(priKeyEnv, "0x638802252197206baa5160bf2ac60e0b95491d2128a265e6ee51e0c1b0a59d9f")
+	// Create temporary key file with test private key
+	tmpDir := t.TempDir()
+	keyFile := filepath.Join(tmpDir, "aptos_key.json")
+	keyJSON := `{"private_key": "` + testPrivateKey + `"}`
+	err := os.WriteFile(keyFile, []byte(keyJSON), 0600)
 	require.NoError(t, err)
 
-	// Create test config. By default, tests use Aptos testnet.
+	// Create test config with the temp key file path
 	config := aptos.TestConfig
+	config.KeyPath = keyFile
 	configBytes, err := json.Marshal(config)
 	require.NoError(t, err)
 
@@ -75,11 +81,12 @@ func TestDataAvailabilityClient(t *testing.T) {
 			name:  "mid-size batch 2: almost 64KB",
 			batch: testutil.GenerateBatchWithBlocks(107, proposerKey),
 		},
-		// Error: EXCEEDED_MAX_TRANSACTION_SIZE
-		{
-			name:  "big-size batch 2: 72KB",
-			batch: testutil.GenerateBatchWithBlocks(120, proposerKey),
-		},
+		// Error: EXCEEDED_MAX_TRANSACTION_SIZE. it does not error but time out
+		/*{
+			name:    "big-size batch 2: 72KB",
+			batch:   testutil.GenerateBatchWithBlocks(120, proposerKey),
+			wantErr: true,
+		},*/
 	}
 
 	for _, tc := range testCases {

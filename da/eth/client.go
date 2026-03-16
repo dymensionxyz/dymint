@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/avast/retry-go/v4"
@@ -44,7 +43,7 @@ type Client struct {
 	rpcClient  *rpc.Client
 	httpClient *http.Client
 	ctx        context.Context
-	cfg        *EthConfig
+	cfg        *Config
 	account    *Account
 	apiURL     string
 	logger     dyminttypes.Logger
@@ -52,20 +51,15 @@ type Client struct {
 
 var _ EthClient = &Client{}
 
-func NewClient(ctx context.Context, config *EthConfig, logger dyminttypes.Logger) (EthClient, error) {
+func NewClient(ctx context.Context, config *Config, logger dyminttypes.Logger) (EthClient, error) {
 	rpcClient, err := rpc.DialContext(ctx, config.Endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	priKeyHex := os.Getenv(config.PrivateKeyEnv)
-	if priKeyHex == "" {
-		return nil, fmt.Errorf("private key environment %s is not set or empty", config.PrivateKeyEnv)
-	}
-
-	account, err := accountFromHexKey(priKeyHex)
+	account, err := loadAccount(config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load account: %w", err)
 	}
 
 	httpClient := &http.Client{
@@ -84,6 +78,34 @@ func NewClient(ctx context.Context, config *EthConfig, logger dyminttypes.Logger
 	}
 
 	return client, nil
+}
+
+// loadAccount loads the account from the configured source.
+// Supports both mnemonic (direct or from file) and private key (from JSON file).
+func loadAccount(config *Config) (*Account, error) {
+	if err := config.KeyConfig.Validate(); err != nil {
+		return nil, err
+	}
+
+	// Try mnemonic first (direct or from file)
+	mnemonic, err := config.KeyConfig.GetMnemonic()
+	if err != nil {
+		return nil, err
+	}
+	if mnemonic != "" {
+		return accountFromMnemonic(mnemonic)
+	}
+
+	// Try private key from JSON file
+	privateKey, err := config.KeyConfig.GetPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	if privateKey != "" {
+		return accountFromHexKey(privateKey)
+	}
+
+	return nil, fmt.Errorf("key configuration required for Ethereum DA: set mnemonic, mnemonic_path, or keypath")
 }
 
 // SubmitBlob sends blob data to Ethereum
@@ -110,7 +132,7 @@ func (c Client) SubmitBlob(blob []byte) ([]byte, []byte, string, error) {
 	totalCost := new(big.Int).Add(regularGasCost, blobGasCost)
 	c.logger.Debug("Estimated transaction costs", "regularGasCost", regularGasCost.String(), "blobGasCost", blobGasCost.String(), "totalCost", totalCost.String())
 	// create blob tx with blob and fee params previously obtained
-	blobTx, err := createBlobTx(c.account.Key, c.cfg.ChainId, *c.cfg.GasLimit, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
+	blobTx, err := createBlobTx(c.account.Key, c.cfg.NetworkID, *c.cfg.GasLimit, gasTipCap, gasFeeCap, blobBaseFee, blob, common.HexToAddress(ArchivePoolAddress), nonce)
 	if err != nil {
 		return nil, nil, "", err
 	}
