@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -25,8 +26,8 @@ func NewClient(reg Registry, logger log.Logger) *Client {
 func (mc *Client) Handle(h http.Handler) http.Handler {
 	registeredMiddlewares := mc.registry.GetRegistered()
 	finalHandler := h
-	for i := len(registeredMiddlewares) - 1; i >= 0; i-- {
-		finalHandler = registeredMiddlewares[i].Handler(mc.logger)(finalHandler)
+	for _, v := range slices.Backward(registeredMiddlewares) {
+		finalHandler = v.Handler(mc.logger)(finalHandler)
 	}
 	return finalHandler
 }

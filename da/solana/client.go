@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -110,8 +111,8 @@ func (c *Client) GetBlob(txHash string) ([]byte, error) {
 		}
 		txHash = tx
 	}
-	for i := len(data) - 1; i >= 0; i-- {
-		hexResult.WriteString(data[i])
+	for _, v := range slices.Backward(data) {
+		hexResult.WriteString(v)
 	}
 
 	blob, err := hex.DecodeString(hexResult.String())
