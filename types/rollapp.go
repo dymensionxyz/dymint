@@ -1,6 +1,10 @@
 package types
 
-import rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+import (
+	"slices"
+
+	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+)
 
 type Rollapp struct {
 	RollappID string
@@ -21,9 +25,9 @@ func (r Rollapp) LatestRevision() Revision {
 }
 
 func (r Rollapp) GetRevisionForHeight(height uint64) Revision {
-	for i := len(r.Revisions) - 1; i >= 0; i-- {
-		if height >= r.Revisions[i].StartHeight {
-			return r.Revisions[i]
+	for _, v := range slices.Backward(r.Revisions) {
+		if height >= v.StartHeight {
+			return v
 		}
 	}
 	return Revision{}
